@@ -562,7 +562,7 @@ RawDataInput CellInitHelper::generateRawInput_stab() {
 	return rawData;
 }
 
-RawDataInput_M CellInitHelper::generateRawInput_M() {
+RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function in cell inithelper
 	RawDataInput_M rawData;
 
 	rawData.simuType = simuType;
@@ -779,20 +779,46 @@ void CellInitHelper::generateCellInitNodeInfo_v2(vector<CVector>& initPos) {
 	initPos = generateInitCellNodes();
 }
 
-void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,
+void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,   //here
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
 		vector<vector<CVector> >& initIntnlPos) {
 	assert(initCenters.size() == initGrowProg.size());
 	vector<CVector> initMembrPosTmp;
 	vector<CVector> initIntnlPosTmp;
 	for (uint i = 0; i < initCenters.size(); i++) {
-		initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
-				initGrowProg[i]);
+	//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
+	//			initGrowProg[i]);
 		initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
 				initGrowProg[i]);
-		initMembrPos.push_back(initMembrPosTmp);
+		//
+	//	initMembrPos.push_back(initMembrPosTmp);
 		initIntnlPos.push_back(initIntnlPosTmp);
 	}
+
+	uint initMembrNodeCount = globalConfigVars.getConfigValue(
+			"InitMembrNodeCount").toInt();
+	std::fstream inputc;
+	inputc.open("./resources/coordinate_Membrane1.txt");
+    //inputc.open(CellCentersFileName.c_str());
+    if (inputc.is_open()){
+       cout << "File for reading membrane nodes coordinates opened successfully ";
+    }
+	else{
+       cout << "failed opening membrane nodes coordinates ";
+    }
+
+	for (int j=0 ; j<initCenters.size() ; j++) {
+		initMembrPosTmp.clear() ; 
+        CVector mCoordinate ; 
+        for (int i = 0; i <initMembrNodeCount; i = i + 1) {
+	    	inputc >> mCoordinate.x >> mCoordinate.y  ;	
+	    	initMembrPosTmp.push_back(mCoordinate);
+        }
+		initMembrPos.push_back(initMembrPosTmp);
+	}
+		
+		//
+
 }
 
 double CellInitHelper::getRandomNum(double min, double max) {
