@@ -811,7 +811,9 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 		initMembrPosTmp.clear() ; 
         CVector mCoordinate ; 
         for (int i = 0; i <initMembrNodeCount; i = i + 1) {
-	    	inputc >> mCoordinate.x >> mCoordinate.y  ;	
+	    	inputc >> mCoordinate.x >> mCoordinate.y  ;
+			cout << "x coordinate of membrane node is "<<mCoordinate.x << 
+			" y coordinate of membrane node is "<<mCoordinate.y <<endl ;  
 	    	initMembrPosTmp.push_back(mCoordinate);
         }
 		initMembrPos.push_back(initMembrPosTmp);

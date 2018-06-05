@@ -104,11 +104,11 @@ typedef thrust::tuple<uint, uint, uint, double, double,int ,int > TuuuddII;
 
 struct SubApicalInfoEachCell{
 
-	int nodeIdFront[14];
-	int nodeIdBehind[14] ; 
+	int nodeIdFront[42];
+	int nodeIdBehind[42] ; 
 
 	SubApicalInfoEachCell() {
-		for (int i=0 ; i<14 ; i++) {
+		for (int i=0 ; i<42 ; i++) {
 			nodeIdFront[i]= 0 ; 
 			nodeIdBehind[i]= 0 ; 
 		}
