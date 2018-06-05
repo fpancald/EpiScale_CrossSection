@@ -405,7 +405,7 @@ SimulationInitData_V2 CellInitHelper::initInputsV3(RawDataInput& rawData) {
 	return initData;
 }
 
-SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
+SimulationInitData_V2_M CellInitHelper::initInputsV3_M(   // this function is called Ali 
 		RawDataInput_M& rawData_m) {
 
 	if (rawData_m.simuType != Disc_M) {
@@ -562,7 +562,7 @@ RawDataInput CellInitHelper::generateRawInput_stab() {
 	return rawData;
 }
 
-RawDataInput_M CellInitHelper::generateRawInput_M() {
+RawDataInput_M CellInitHelper::generateRawInput_M() {   // main function for cell initialization
 	RawDataInput_M rawData;
 
 	rawData.simuType = simuType;
@@ -779,7 +779,7 @@ void CellInitHelper::generateCellInitNodeInfo_v2(vector<CVector>& initPos) {
 	initPos = generateInitCellNodes();
 }
 
-void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,
+void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,    // This function is called Ali 
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
 		vector<vector<CVector> >& initIntnlPos) {
 	assert(initCenters.size() == initGrowProg.size());
@@ -810,7 +810,7 @@ vector<CVector> CellInitHelper::generateInitCellNodes() {
 			isSuccess = true;
 		}
 	}
-	// also need to make sure center point is (0,0,0).
+	// also need to make sure center point is (0,0,0).  // to make sure the random node postions are actually at zero.
 	CVector tmpSum(0, 0, 0);
 	for (uint i = 0; i < attemptedPoss.size(); i++) {
 		tmpSum = tmpSum + attemptedPoss[i];
@@ -856,8 +856,14 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 	 attemptedPoss[i] = attemptedPoss[i] - tmpSum;
 	 }
 	 */
+	double initRadius =
+			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
+
+	double	noiseNucleusY=getRandomNum(-0.3*initRadius,0.7*initRadius);  
+		center.y=center.y+ noiseNucleusY ; 
+
 	for (uint i = 0; i < attemptedPoss.size(); i++) {
-		attemptedPoss[i] = attemptedPoss[i] + center;
+		attemptedPoss[i] = attemptedPoss[i] + center ;
 	}
 	return attemptedPoss;
 }
@@ -879,7 +885,7 @@ vector<CVector> CellInitHelper::generateInitMembrNodes(CVector& center,
 	return initMembrNodes;
 }
 
-vector<CVector> CellInitHelper::tryGenInitCellNodes() {
+vector<CVector> CellInitHelper::tryGenInitCellNodes() { //not active right now 
 	double radius =
 			globalConfigVars.getConfigValue("InitCellRadius").toDouble();
 	//int initCellNodeCount =
@@ -920,9 +926,9 @@ vector<CVector> CellInitHelper::tryGenInitCellNodes(uint initNodeCt) {
 	while (foundCount < initNodeCt) {
 		bool isInCircle = false;
 		//while (!isInCircle) {
-			randX = getRandomNum(-radius, radius);
-			randY = getRandomNum(-radius, radius);
-			isInCircle = (sqrt(randX * randX + randY * randY) < radius);
+			randX = getRandomNum(-0.15*radius, 0.15*radius);
+			randY = getRandomNum(-0.15*radius, 0.15*radius);
+			isInCircle = (sqrt(randX * randX + randY * randY) < 0.15*radius);
 	//	}
                 //Ali
                  if (isInCircle) {
@@ -991,7 +997,7 @@ SimulationInitData_V2 CellInitHelper::initStabInput() {
 	return initData;
 }
 
-//RawDataInput rawInput = generateRawInput_stab();
+//RawDataInput rawInput = generateRawInput_stab(); // this function is called in main Ali 
 SimulationInitData_V2_M CellInitHelper::initInput_M() {
 	RawDataInput_M rawInput_m = generateRawInput_M();
 	SimulationInitData_V2_M initData = initInputsV3_M(rawInput_m);

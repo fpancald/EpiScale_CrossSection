@@ -2272,7 +2272,7 @@ void SceNodes::applySceForcesDisc_M() {
 					}
 					if (infoVecs.memNodeType1Host[i]==lateral1 && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
 						firstApiLat[cellRank]=i ; // lateral node 
-						for (int j=0 ; j<14 ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
+						for (int j=0 ; j<28 ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
 							jJunction=firstApiLat[cellRank]-j ; 
 							if (jJunction <(cellRank*maxNodePerCell)) {
 								jJunction=jJunction + activeMemCount [cellRank] ;
@@ -2304,7 +2304,7 @@ void SceNodes::applySceForcesDisc_M() {
 					}
 					if (infoVecs.memNodeType1Host[i]==apical1 && infoVecs.memNodeType1Host[iNext]==lateral1 ) {
 						secondApiLat[cellRank]=iNext ; 
-						for (int j=0 ; j<14 ; j++) {   //find junction nodes
+						for (int j=0 ; j<28 ; j++) {   //find junction nodes
 							jJunction=secondApiLat[cellRank]+j ; 
 							if (jJunction>=(cellRank*maxNodePerCell+activeMemCount [cellRank]) ) {
 								jJunction=jJunction - activeMemCount [cellRank];
@@ -2333,7 +2333,7 @@ void SceNodes::applySceForcesDisc_M() {
 			int idFirst=firstApiLat[i]; 
 			int idSecond=secondApiLat[i]; 
 			if (infoVecs.nodeLocXHost[idFirst]<infoVecs.nodeLocXHost[idSecond]) {
-				for (int j=0 ; j<14 ; j++) {   
+				for (int j=0 ; j<28 ; j++) {   
 					int tmp=subApicalInfo[i].nodeIdFront[j]; 
 					subApicalInfo[i].nodeIdFront[j]=subApicalInfo[i].nodeIdBehind[j] ; 
 					subApicalInfo[i].nodeIdBehind[j]=tmp; 
@@ -2345,7 +2345,7 @@ void SceNodes::applySceForcesDisc_M() {
 		cout << " I am finding the pair nodes" << endl ; 
 		for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
 				
-			for ( int j=0 ; j<14 ; j++) {
+			for ( int j=0 ; j<28 ; j++) {
 				int idFront=subApicalInfo[i].nodeIdFront[j] ;
 				int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
 				int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
