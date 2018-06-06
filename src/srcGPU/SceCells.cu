@@ -2849,6 +2849,15 @@ totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			thrust::make_zip_iterator(
 					thrust::make_tuple(cellInfoVecs.centerCoordX.begin(),
 									   cellInfoVecs.centerCoordY.begin())), CVec2Divide());
+
+			for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+				cout << "for cell rank "<<i<< " cell center in X direction is " << cellInfoVecs.centerCoordX[i] << endl ; 
+		cout << "for cell rank "<<i<< " cell center in Y direction is " << cellInfoVecs.centerCoordY[i] << endl ; 
+
+		}
+
+
+
 }
 
 void SceCells::computeLagrangeForces() {
@@ -2952,11 +2961,11 @@ thrust::transform(
 							           cellInfoVecs.sumLagrangeFPerCellY.begin())),
 			thrust::equal_to<uint>(), CVec2Add());
 
-			//for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
-			//	cout << "for cell rank "<<i<< " the summation of lagrangian force in X direction is " << cellInfoVecs.sumLagrangeFPerCellX[i] << endl ; 
-			//	cout << "for cell rank "<<i<< " the summation of lagrangian force in Y direction is " << cellInfoVecs.sumLagrangeFPerCellY[i] << endl ; 
+			for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+				cout << "for cell rank "<<i<< " the summation of lagrangian force in X direction is " << cellInfoVecs.sumLagrangeFPerCellX[i] << endl ; 
+		cout << "for cell rank "<<i<< " the summation of lagrangian force in Y direction is " << cellInfoVecs.sumLagrangeFPerCellY[i] << endl ; 
 
-	//		}
+		}
 
 
 }

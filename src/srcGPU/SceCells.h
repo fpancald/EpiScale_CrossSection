@@ -1190,8 +1190,8 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 			double term4X=posX*posXR*posXR+ posXR*posY*posYR ;
 			double term4Y=posY*posYR*posYR+ posYR*posX*posXR ;
 
-			double term5=2*sqrt( pow(len*lenL,2)-pow(posX*posXL+posY*posYL, 2) ); 
-			double term6=2*sqrt( pow(len*lenR,2)-pow(posX*posXR+posY*posYR, 2) );
+			double term5=2*sqrt( pow(len*lenL,2)-pow(posX*posXL+posY*posYL, 2) ) ; 
+			double term6=2*sqrt( pow(len*lenR,2)-pow(posX*posXR+posY*posYR, 2) ) ; 
 			double percent ; 
 			if (progress>_mitoticCri) {
 				percent =(progress-_mitoticCri)/(1.0-_mitoticCri) ;  
@@ -2985,7 +2985,8 @@ struct CalTriArea: public thrust::unary_function<Tuuudd, double> {
 				double vec1Y = _locYAddr[index_right] - posY;
 				double vec2X = centerX - posX;
 				double vec2Y = centerY - posY;
-				double result = fabs(vec1X * vec2Y - vec2X * vec1Y) / 2.0;
+				//double result = fabs(vec1X * vec2Y - vec2X * vec1Y) / 2.0;
+				double result = (vec1X * vec2Y - vec2X * vec1Y) / 2.0;
 				return result;
 			} else {
 				return 0.0;

@@ -407,7 +407,7 @@ SimulationInitData_V2 CellInitHelper::initInputsV3(RawDataInput& rawData) {
 
 SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 		RawDataInput_M& rawData_m) {
-
+// This function is called Ali 
 	if (rawData_m.simuType != Disc_M) {
 		throw SceException("V2_M data can be used for Disc_M simulation only!",
 				ConfigValueException);
@@ -779,7 +779,7 @@ void CellInitHelper::generateCellInitNodeInfo_v2(vector<CVector>& initPos) {
 	initPos = generateInitCellNodes();
 }
 
-void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,   //here
+void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,   //This function is called Ali 
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
 		vector<vector<CVector> >& initIntnlPos) {
 	assert(initCenters.size() == initGrowProg.size());
@@ -884,6 +884,13 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 	 attemptedPoss[i] = attemptedPoss[i] - tmpSum;
 	 }
 	 */
+double initRadius =
+			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
+
+	double	noiseNucleusY=getRandomNum(0.0*-1.2*initRadius,1.2*initRadius);  
+		center.y=center.y+ noiseNucleusY ; 
+
+
 	for (uint i = 0; i < attemptedPoss.size(); i++) {
 		attemptedPoss[i] = attemptedPoss[i] + center;
 	}
@@ -907,7 +914,8 @@ vector<CVector> CellInitHelper::generateInitMembrNodes(CVector& center,
 	return initMembrNodes;
 }
 
-vector<CVector> CellInitHelper::tryGenInitCellNodes() {
+vector<CVector> CellInitHelper::tryGenInitCellNodes() { 
+	// Not active right now 
 	double radius =
 			globalConfigVars.getConfigValue("InitCellRadius").toDouble();
 	//int initCellNodeCount =
@@ -924,9 +932,9 @@ vector<CVector> CellInitHelper::tryGenInitCellNodes() {
                cout << "I am in the wrong one" << endl ; 
                //Ali
 		while (!isInCircle) {
-			randX = getRandomNum(-radius, radius);
-			randY = getRandomNum(-radius, radius);
-			isInCircle = (sqrt(randX * randX + randY * randY) < radius);
+			randX = getRandomNum(-0.2*radius, 0.2*radius);
+			randY = getRandomNum(-0.2*radius, 0.2*radius);
+			isInCircle = (sqrt(randX * randX + randY * randY) < 0.2*radius);
 		}
 		poss.push_back(CVector(randX, randY, 0));
 		foundCount++;
@@ -1020,7 +1028,8 @@ SimulationInitData_V2 CellInitHelper::initStabInput() {
 }
 
 //RawDataInput rawInput = generateRawInput_stab();
-SimulationInitData_V2_M CellInitHelper::initInput_M() {
+SimulationInitData_V2_M CellInitHelper::initInput_M() { 
+	// This function is called in the main input
 	RawDataInput_M rawInput_m = generateRawInput_M();
 	SimulationInitData_V2_M initData = initInputsV3_M(rawInput_m);
 	initData.isStab = false;
