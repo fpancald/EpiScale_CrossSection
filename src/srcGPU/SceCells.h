@@ -1201,12 +1201,17 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 			}
 
 			cellAreaDesire=20+ percent*20 ; 
-
+/*
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1X-term2X)/term5+ (term3X-term4X)/term6 ) ; 
 			 fY=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1Y-term2Y)/term5+ (term3Y-term4Y)/term6 ) ; 
+*/
 
+			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
+			     (  posYR-posYL ) ; 
+			 fY=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
+			     ( -posXR+posXL ) ; 
 			velX=velX+fX ;
 			velY=velY+fY ;
 
