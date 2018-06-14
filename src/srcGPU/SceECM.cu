@@ -124,7 +124,7 @@ int numberNodes_ECM ;
 double tmpPosX_ECM,tmpPosY_ECM ; 
 vector<double> posXIni_ECM,posYIni_ECM ;
 vector <EType> eNodeVec ;  
-readCoord_ECM.open("./resources/coordinate_ECM13.txt") ;
+readCoord_ECM.open("./resources/coordinate_ECM14.txt") ;
 if (readCoord_ECM.is_open()) {
 	cout << "ECM coordinates file opened successfully" <<endl ; 
 }
@@ -266,19 +266,19 @@ thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
 PrintECM(0.0) ; 
 for (int i=0 ; i<maxTotalNodes ; i++) {
 	int nodeRankPerCell=i%maxAllNodePerCell ;
-	if (nodeRankPerCell<21) {
+	if (nodeRankPerCell<70) {
 		memNodeType[i]=lateral1 ;
 	}
-	else if (nodeRankPerCell<35) {
+	else if (nodeRankPerCell<84) {
 		memNodeType[i]=apical1 ;
 	}
-	else if (nodeRankPerCell<77) {
+	else if (nodeRankPerCell<224) {
 		memNodeType[i]=lateral1 ;
 	}
-	else if (nodeRankPerCell<91) {
+	else if (nodeRankPerCell<238) {
 		memNodeType[i]=basal1 ;
 	}
-	else if (nodeRankPerCell<112) {
+	else if (nodeRankPerCell<308) {
 		memNodeType[i]=lateral1 ;
 	}
 	else {

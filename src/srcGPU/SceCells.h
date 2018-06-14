@@ -1200,7 +1200,7 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 				percent =0 ; // max ((progress-_mitoticCri)/(0.9-_mitoticCri),0.0);  
 			}
 
-			cellAreaDesire=20+ percent*20 ; 
+			cellAreaDesire=40+ percent*40 ; 
 /*
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1X-term2X)/term5+ (term3X-term4X)/term6 ) ; 

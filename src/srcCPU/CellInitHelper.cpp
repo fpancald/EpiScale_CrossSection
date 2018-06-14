@@ -887,7 +887,7 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 double initRadius =
 			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
 
-	double	noiseNucleusY=getRandomNum(0.0*-1.2*initRadius,2.0*initRadius);  
+	double	noiseNucleusY=getRandomNum(0.4*initRadius,7.6*initRadius);  
 		center.y=center.y+ noiseNucleusY ; 
 
 
