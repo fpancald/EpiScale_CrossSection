@@ -480,16 +480,16 @@ struct MechProp: public thrust::unary_function<EType,DD> {
 	double sponLen=0 ;   ; 
 	if (_isInitPhase == false ) {
 		if (nodeType==excm) {
-			stiffness=1.0* _stiffness ; 
-			sponLen=0.08  ; 
+			stiffness=5.0* _stiffness ; 
+			sponLen=0.0  ; 
 		}
 		if (nodeType==perip) {
-			stiffness=_stiffness ; 
+			stiffness=5.0*_stiffness ; 
 			sponLen=0.08 ; // 0.1 ; 
 		}
 
 		if (nodeType==bc2) {
-			stiffness=1.0*_stiffness ; 
+			stiffness=5.0*_stiffness ; 
 			sponLen=0.08 ;// _sponLen ; 
 		}
 	}
