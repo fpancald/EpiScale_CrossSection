@@ -5407,11 +5407,11 @@ void SceCells::processMemVec(std::vector<VecValT>& tmp1,
 	}
 	for (uint j = 0; j < ptsBetween1.size(); j++) {
 		divAuxData.tmp1VecMem.push_back(ptsBetween1[j]);
-		divAuxData.tmp1VecMemNodeType.push_back(lateral1);
+		divAuxData.tmp1VecMemNodeType.push_back(lateralR); // for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
 	}
 	for (uint j = 0; j < ptsBetween2.size(); j++) {
 		divAuxData.tmp2VecMem.push_back(ptsBetween2[j]);
-		divAuxData.tmp2VecMemNodeType.push_back(lateral1);
+		divAuxData.tmp2VecMemNodeType.push_back(lateralL);// for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
 	}
 
 	assert(divAuxData.tmp1VecMem.size() <= membThreshold);
@@ -5570,7 +5570,7 @@ CVector SceCells::calDivDir_ApicalBasal(CVector center,
 //	}	
 	//return 0 ; 
 	for (uint i = 0; i < membrNodes.size(); i++) {
-		if (nodeTypeIndxDiv[i]!=lateral1) {
+		if ( (nodeTypeIndxDiv[i]!=lateralR) || (nodeTypeIndxDiv[i]!=lateralL) ) {
 			continue ; 
 		} 
 		CVector tmpDir = membrNodes[i] - center;
@@ -6119,6 +6119,7 @@ void SceCells::applySceCellDisc_M() {
 	uint maxAllNodePerCell = allocPara_m.maxAllNodePerCell;
 	uint maxMemNodePerCell = allocPara_m.maxMembrNodePerCell;
 	thrust::counting_iterator<uint> iBegin(0);
+	thrust::counting_iterator<uint> iBegin2(0);
 
 	double* nodeLocXAddr = thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().nodeLocX[0]));
@@ -6126,6 +6127,8 @@ void SceCells::applySceCellDisc_M() {
 			&(nodes->getInfoVecs().nodeLocY[0]));
 	bool* nodeIsActiveAddr = thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().nodeIsActive[0]));
+	MembraneType1* nodeTypeAddr=thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().memNodeType1[0]));
 
 	//double grthPrgrCriVal_M = growthAuxData.grthProgrEndCPU
 	//		- growthAuxData.prolifDecay
@@ -6184,6 +6187,59 @@ void SceCells::applySceCellDisc_M() {
 							   nodes->getInfoVecs().nodeIMEnergy.begin())),// ALi added for cell pressure calculation
 			AddSceCellForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,
 					nodeLocYAddr, nodeIsActiveAddr, grthPrgrCriVal_M));
+
+
+			thrust::transform(
+				thrust::make_zip_iterator(
+					thrust::make_tuple(
+							thrust::make_permutation_iterator(
+									cellInfoVecs.nucleusLocY.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.activeMembrNodeCounts.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell)),
+									make_transform_iterator(iBegin2,
+											ModuloFunctor(maxAllNodePerCell)),
+									nodes->getInfoVecs().nodeIsActive.begin(),
+									nodes->getInfoVecs().nodeLocX.begin(),
+									nodes->getInfoVecs().nodeLocY.begin(),
+									nodes->getInfoVecs().nodeVelX.begin(),
+									nodes->getInfoVecs().nodeVelY.begin(),
+									nodes->getInfoVecs().memNodeType1.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							thrust::make_permutation_iterator(
+									cellInfoVecs.nucleusLocY.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.activeMembrNodeCounts.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+									make_transform_iterator(iBegin2,
+										DivideFunctor(maxAllNodePerCell)),
+									make_transform_iterator(iBegin2,
+										ModuloFunctor(maxAllNodePerCell)),
+									nodes->getInfoVecs().nodeIsActive.begin(),
+									nodes->getInfoVecs().nodeLocX.begin(),
+									nodes->getInfoVecs().nodeLocY.begin(),
+									nodes->getInfoVecs().nodeVelX.begin(),
+									nodes->getInfoVecs().nodeVelY.begin(),
+									nodes->getInfoVecs().memNodeType1.begin()))
+									+ totalNodeCountForActiveCells,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+								nodes->getInfoVecs().nodeVelX.begin(),
+							   	nodes->getInfoVecs().nodeVelY.begin(),
+							    nodes->getInfoVecs().nodeF_MM_C_X.begin(),  //Ali added for cell pressure calculation 
+							    nodes->getInfoVecs().nodeF_MM_C_Y.begin(),// ALi added for cell pressure calculation
+							   nodes->getInfoVecs().nodeContractEnergyT.begin())),// ALi added for cell pressure calculation
+			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr));
+
 
 
 }
@@ -6414,6 +6470,32 @@ void calAndAddIB_M2(double& xPos, double& yPos, double& xPos2, double& yPos2,
 	xRes = xRes + forceValue * (xPos2 - xPos) / linkLength;
 	yRes = yRes + forceValue * (yPos2 - yPos) / linkLength;
 }
+
+__device__
+void calAndAddMM_Contract(double& xPos, double& yPos, double& xPos2, double& yPos2,
+		double& xRes, double& yRes, double & F_MM_C_x, double & F_MM_C_y) {
+	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
+
+	double forceValue = 0;
+	double sceMM_C[5] ; 
+	for (int i=0 ; i<5 ; i++) {
+		sceMM_C[i]=sceII_M[i] ; 
+	}
+		
+	if (linkLength < sceMM_C[4]) {
+		forceValue =0.0*( -sceMM_C[0] / sceMM_C[2]
+					* exp(-linkLength / sceMM_C[2])
+					+ sceMM_C[1] / sceMM_C[3] * exp(-linkLength / sceMM_C[3]));
+		}
+	
+
+	F_MM_C_x=F_MM_C_x+forceValue * (xPos2 - xPos) / linkLength;
+	F_MM_C_y=F_MM_C_y+forceValue * (yPos2 - yPos) / linkLength;
+       
+	xRes = xRes + forceValue * (xPos2 - xPos) / linkLength;
+	yRes = yRes + forceValue * (yPos2 - yPos) / linkLength;
+}
+
 __device__
 void calAndAddII_M(double& xPos, double& yPos, double& xPos2, double& yPos2,
 		double& growPro, double& xRes, double& yRes, double grthPrgrCriVal_M) {

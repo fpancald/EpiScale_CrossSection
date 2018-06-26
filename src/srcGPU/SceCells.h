@@ -37,6 +37,8 @@ typedef thrust::tuple<ECellType,uint,double,uint ,MembraneType1, double, double>
 typedef thrust::tuple<uint, uint, uint, double, double> BendData;
 typedef thrust::tuple<uint, uint, uint, double, double, double, double, double, double, double> CurvatureData;//AAMIRI
 typedef thrust::tuple<uint, uint, uint, uint, double, double, double> CellData;
+typedef thrust::tuple<double, uint, uint, uint, bool, double, double, double, double,MembraneType1> DUiUiUiBDDDDT ;
+
 //typedef pair<device_vector<double>::iterator,device_vector<double>::iterator> MinMaxNode ; 
 // maxMemThres, cellRank, nodeRank , locX, locY, velX, velY
 
@@ -131,6 +133,12 @@ void CalAndAddIMEnergy(double& xPos, double& yPos, double& xPos2, double& yPos2,
 __device__
 void calAndAddIB_M2(double& xPos, double& yPos, double& xPos2, double& yPos2,
 		double& growPro, double& xRes, double& yRes, double &F_MI_M_x, double & F_MI_M_y,double grthPrgrCriVal_M);
+
+__device__
+void calAndAddMM_Contract(double& xPos, double& yPos, double& xPos2, double& yPos2,
+			double& xRes, double& yRes, double &F_MI_M_x, double & F_MI_M_y);
+
+
 
 __device__
 void calAndAddII_M(double& xPos, double& yPos, double& xPos2, double& yPos2,
@@ -543,7 +551,7 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 		*/			
 
 			if (_subMembPolar) { // if # 6 s
-				if (cellType==pouch && memType==lateral1 ) { 
+				if ( (cellType==pouch && memType==lateralL) || (cellType==pouch && memType==lateralR)  ) { 
 					actinLevel=4.5*kStiff ;  //0.5
 				}
 		        if (cellType==pouch &&  memType==apical1) {
@@ -565,7 +573,7 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 				}
 				*/
 
-				if (cellType==bc && memType==lateral1 ) { 
+				if ( (cellType==bc && memType==lateralL) || (cellType==bc && memType==lateralR)  ) { 
 					actinLevel=4.5*kStiff ; //1.5
 				}
 		        if (cellType==bc &&  memType==apical1) {
@@ -1080,11 +1088,11 @@ struct AddExtForce: public thrust::unary_function<TUiDUiTDD, CVec2> {
 			return thrust::make_tuple(velX, velY);
 		}else {
 			
-			if (cellType==bc && memNodeType==lateral1 && cellCenterX> _tissueCenterX) {
+			if (cellType==bc && ( memNodeType==lateralL ||  memNodeType==lateralR  ) && cellCenterX> _tissueCenterX) {
 				fExt=0 ; // calExtForce (_time) ;  
 				velX = velX -fExt  ;
 			}
-			if (cellType==bc && memNodeType==lateral1  && cellCenterX< _tissueCenterX) {
+			if (cellType==bc && ( memNodeType==lateralL ||  memNodeType==lateralR  )  && cellCenterX< _tissueCenterX) {
 				fExt=0 ; //calExtForce (_time) ;  
 				velX = velX +fExt  ;
 			}
@@ -1549,6 +1557,73 @@ struct AddSceCellForce: public thrust::unary_function<CellData, CVec6> {
 		return thrust::make_tuple(oriVelX, oriVelY,F_MI_M_x,F_MI_M_y,IIEnergyT,IMEnergyT);
 	}
 };
+
+struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5> {
+	uint _maxNodePerCell;
+	uint _maxMemNodePerCell;
+	double* _locXAddr;
+	double* _locYAddr;
+	MembraneType1* _MemTypeAddr;
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__host__ __device__ AddMemContractForce(uint maxNodePerCell,
+			uint maxMemNodePerCell, double* locXAddr, double* locYAddr, MembraneType1* MemTypeAddr) :
+			_maxNodePerCell(maxNodePerCell), _maxMemNodePerCell(
+					maxMemNodePerCell), _locXAddr(locXAddr), _locYAddr(locYAddr),_MemTypeAddr(MemTypeAddr) {
+	}
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__device__ CVec5 operator()(const DUiUiUiBDDDDT &dUiUiUiBDDDDT ) const {
+		double nucLocY   = thrust::get<0>(dUiUiUiBDDDDT );
+		uint   activeMembrCount = thrust::get<1>(dUiUiUiBDDDDT );
+		uint   cellRank  = thrust::get<2>(dUiUiUiBDDDDT );
+		uint   nodeRank  = thrust::get<3>(dUiUiUiBDDDDT );
+		bool   isActive  = thrust::get<4>(dUiUiUiBDDDDT );
+		double locX      = thrust::get<5>(dUiUiUiBDDDDT );
+		double locY      = thrust::get<6>(dUiUiUiBDDDDT );
+		double oriVelX   = thrust::get<7>(dUiUiUiBDDDDT );
+		double oriVelY   = thrust::get<8>(dUiUiUiBDDDDT );
+		MembraneType1 nodeType = thrust::get<9>(dUiUiUiBDDDDT );
+		
+		
+		uint index = cellRank * _maxNodePerCell + nodeRank;
+		double F_MM_C_x=0 ; //AliA
+		double F_MM_C_y=0 ; //AliA
+		double contractEnergyT=0.0 ; 
+
+		if ( isActive == false || nodeRank >= _maxMemNodePerCell  ) {
+			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
+		}
+				// means membrane node
+		//Because we want to compute the force on the membrane nodes we modify this function 
+		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( nucLocY>locY )  ) {
+			uint memIndxBegin = cellRank * _maxNodePerCell;
+			uint memIndxEnd   = cellRank * _maxNodePerCell +activeMembrCount-1 ;
+			uint index_Other;
+			double locXOther, locYOther;
+			MembraneType1 nodeTypeOther; 
+			for (index_Other = memIndxBegin; index_Other <= memIndxEnd;index_Other++) {
+				locXOther = _locXAddr[index_Other];
+				locYOther = _locYAddr[index_Other];
+				nodeTypeOther= _MemTypeAddr[index_Other] ;
+				if ( nucLocY>locYOther ) { 
+					if (  (nodeTypeOther==lateralL && nodeType==lateralR) || (nodeTypeOther==lateralR && nodeType==lateralL) )  { 
+                		calAndAddMM_Contract(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_x,F_MM_C_y);
+					}
+
+				}
+			}
+			return thrust::make_tuple(oriVelX, oriVelY,F_MM_C_x,F_MM_C_y,contractEnergyT);
+		} 
+		else {
+			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
+		}
+	}
+};
+
+
+
+
+
+
 
 struct AddNucleusForce: public thrust::unary_function<DDDBDDDD, CVec2> {
 	double _grthPrgrCriVal_M;

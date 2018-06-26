@@ -267,19 +267,19 @@ PrintECM(0.0) ;
 for (int i=0 ; i<maxTotalNodes ; i++) {
 	int nodeRankPerCell=i%maxAllNodePerCell ;
 	if (nodeRankPerCell<70) {
-		memNodeType[i]=lateral1 ;
+		memNodeType[i]=lateralR ;
 	}
 	else if (nodeRankPerCell<84) {
 		memNodeType[i]=apical1 ;
 	}
 	else if (nodeRankPerCell<224) {
-		memNodeType[i]=lateral1 ;
+		memNodeType[i]=lateralL ;
 	}
 	else if (nodeRankPerCell<238) {
 		memNodeType[i]=basal1 ;
 	}
 	else if (nodeRankPerCell<308) {
-		memNodeType[i]=lateral1 ;
+		memNodeType[i]=lateralR ;
 	}
 	else {
 		memNodeType[i]=notAssigned1;

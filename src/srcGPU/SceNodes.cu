@@ -2270,7 +2270,7 @@ void SceNodes::applySceForcesDisc_M() {
 					if ( (i%maxNodePerCell)==(activeMemCount[cellRank]-1)) {  // if the node is the last node of cell's membrane
 						iNext=iNext-activeMemCount [cellRank] ;
 					}
-					if (infoVecs.memNodeType1Host[i]==lateral1 && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
+					if (infoVecs.memNodeType1Host[i]==lateralR && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
 						firstApiLat[cellRank]=i ; // lateral node 
 						for (int j=0 ; j<140 ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
 							jJunction=firstApiLat[cellRank]-j ; 
@@ -2302,7 +2302,7 @@ void SceNodes::applySceForcesDisc_M() {
 					if ( (i%maxNodePerCell)==(activeMemCount [cellRank]-1)) {
 						iNext=iNext-activeMemCount [cellRank]  ; 
 					}
-					if (infoVecs.memNodeType1Host[i]==apical1 && infoVecs.memNodeType1Host[iNext]==lateral1 ) {
+					if (infoVecs.memNodeType1Host[i]==apical1 && infoVecs.memNodeType1Host[iNext]==lateralL ) {
 						secondApiLat[cellRank]=iNext ; 
 						for (int j=0 ; j<140 ; j++) {   //find junction nodes
 							jJunction=secondApiLat[cellRank]+j ; 
@@ -2675,6 +2675,13 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeVelY.resize(maxTotalNodeCount);
 	infoVecs.nodeVelZ.resize(maxTotalNodeCount);
 
+    cout << " I am here 0  " << maxNumCells << endl ;  
+	//infoVecs.nodeContractLevel.resize(maxTotalNodeCount,0.0);// Ali
+	infoVecs.nodeF_MM_C_X.resize(maxTotalNodeCount,0.0);// Ali
+	infoVecs.nodeF_MM_C_Y.resize(maxTotalNodeCount,0.0);// Ali
+	infoVecs.nodeContractEnergyT.resize(maxTotalNodeCount,0.0);// Ali
+
+    cout << " I am here 1  " << maxNumCells << endl ;  
 	infoVecs.nodeF_MI_M_x.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_y.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_T.resize(maxTotalNodeCount);  //Ali
@@ -2736,6 +2743,7 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.memNodeType1Host.resize(maxTotalNodeCount, notAssigned1); //Ali 
 		infoVecs.isSubApicalJunction.resize(maxTotalNodeCount, false); //Ali 
 		infoVecs.isSubApicalJunctionHost.resize(maxTotalNodeCount, false); //Ali 
+    	cout << " I am here2  " << maxNumCells << endl ;  
 
 		auxVecs.bucketKeys.resize(maxTotalNodeCount);
 		auxVecs.bucketValues.resize(maxTotalNodeCount);
@@ -2762,6 +2770,7 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeCellRankBehind[0]=-1 ; //currentActiveCellCount-1 ; 
 	infoVecs.nodeCellRankFront[currentActiveCellCount-1]=-1 ; //0 ;
 
+    	cout << " I am here 3   " << maxNumCells << endl ;  
 
 }
 

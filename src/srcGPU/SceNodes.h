@@ -1012,6 +1012,10 @@ public:
 	thrust::host_vector<int> nodeAdhIndxHostCopy;
 	thrust::host_vector<int> nodeAdhereIndexHost;    //Ali
 	thrust::device_vector<int> membrIntnlIndex;
+	//thrust::device_vector<double> nodeContractLevel; //Ali 
+	thrust::device_vector<double> nodeF_MM_C_X; //Ali 
+	thrust::device_vector<double> nodeF_MM_C_Y; //Ali 
+	thrust::device_vector<double> nodeContractEnergyT; //Ali 
 
 	thrust::device_vector<double> membrTensionMag;
 	thrust::device_vector<double> membrTenMagRi;
