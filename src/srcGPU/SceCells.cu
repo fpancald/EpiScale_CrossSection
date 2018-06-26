@@ -1,6 +1,6 @@
 // to do list  center of the tissue is manually intorduced in the obtainTwoNewCenter function to recognize if the mothe cell is in front or behind
 // if two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
-
+// In function processMemVec the lateral L and right are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
 #include "SceCells.h"
 #include <cmath>
 
@@ -5570,7 +5570,7 @@ CVector SceCells::calDivDir_ApicalBasal(CVector center,
 //	}	
 	//return 0 ; 
 	for (uint i = 0; i < membrNodes.size(); i++) {
-		if ( (nodeTypeIndxDiv[i]!=lateralR) || (nodeTypeIndxDiv[i]!=lateralL) ) {
+		if ( (nodeTypeIndxDiv[i]!=lateralR) &&  (nodeTypeIndxDiv[i]!=lateralL) ) {
 			continue ; 
 		} 
 		CVector tmpDir = membrNodes[i] - center;
