@@ -489,7 +489,7 @@ struct MechProp: public thrust::unary_function<EType,DD> {
 		}
 
 		if (nodeType==bc2) {
-			stiffness=5.0*_stiffness ; 
+			stiffness=1.0*_stiffness ; 
 			sponLen=0.08 ;// _sponLen ; 
 		}
 	}
