@@ -135,9 +135,12 @@ void calAndAddIB_M2(double& xPos, double& yPos, double& xPos2, double& yPos2,
 		double& growPro, double& xRes, double& yRes, double &F_MI_M_x, double & F_MI_M_y,double grthPrgrCriVal_M);
 
 __device__
-void calAndAddMM_Contract(double& xPos, double& yPos, double& xPos2, double& yPos2,
-			double& xRes, double& yRes, double &F_MI_M_x, double & F_MI_M_y);
+void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& yPos2,
+			double& xRes, double& yRes, double &F_MM_C_X, double & F_MM_C_Y);
 
+__device__
+void calAndAddMM_ContractRepl(double& xPos, double& yPos, double& xPos2, double& yPos2,
+			double& xRes, double& yRes, double &F_MM_C_X, double & F_MM_C_Y);
 
 
 __device__
@@ -1564,11 +1567,12 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 	double* _locXAddr;
 	double* _locYAddr;
 	MembraneType1* _MemTypeAddr;
+	int*_MirrorIndexAddr ;
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__ AddMemContractForce(uint maxNodePerCell,
-			uint maxMemNodePerCell, double* locXAddr, double* locYAddr, MembraneType1* MemTypeAddr) :
+			uint maxMemNodePerCell, double* locXAddr, double* locYAddr, MembraneType1* MemTypeAddr, int* MirrorIndexAddr) :
 			_maxNodePerCell(maxNodePerCell), _maxMemNodePerCell(
-					maxMemNodePerCell), _locXAddr(locXAddr), _locYAddr(locYAddr),_MemTypeAddr(MemTypeAddr) {
+					maxMemNodePerCell), _locXAddr(locXAddr), _locYAddr(locYAddr),_MemTypeAddr(MemTypeAddr), _MirrorIndexAddr(MirrorIndexAddr) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__device__ CVec5 operator()(const DUiUiUiBDDDDT &dUiUiUiBDDDDT ) const {
@@ -1584,34 +1588,42 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 		MembraneType1 nodeType = thrust::get<9>(dUiUiUiBDDDDT );
 		
 		
-		uint index = cellRank * _maxNodePerCell + nodeRank;
-		double F_MM_C_x=0 ; //AliA
-		double F_MM_C_y=0 ; //AliA
+		double F_MM_C_X=0 ; //AliA
+		double F_MM_C_Y=0 ; //AliA
 		double contractEnergyT=0.0 ; 
+		
+		double locXOther, locYOther;
+		int index_Other ; 
+		MembraneType1 nodeTypeOther ;
+
+		uint index = cellRank * _maxNodePerCell + nodeRank;
 
 		if ( isActive == false || nodeRank >= _maxMemNodePerCell  ) {
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
 		}
 				// means membrane node
-		//Because we want to compute the force on the membrane nodes we modify this function 
 		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( nucLocY>locY )  ) {
+		
+			index_Other=_MirrorIndexAddr[index];  // assuming all lateral nodes have an adhere index, otherwise it will ask for [-1] which is undefined.
+			locXOther = _locXAddr[index_Other];
+			locYOther = _locYAddr[index_Other];
+
+            calAndAddMM_ContractAdh(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
+
 			uint memIndxBegin = cellRank * _maxNodePerCell;
 			uint memIndxEnd   = cellRank * _maxNodePerCell +activeMembrCount-1 ;
-			uint index_Other;
-			double locXOther, locYOther;
-			MembraneType1 nodeTypeOther; 
 			for (index_Other = memIndxBegin; index_Other <= memIndxEnd;index_Other++) {
 				locXOther = _locXAddr[index_Other];
 				locYOther = _locYAddr[index_Other];
 				nodeTypeOther= _MemTypeAddr[index_Other] ;
 				if ( nucLocY>locYOther ) { 
 					if (  (nodeTypeOther==lateralL && nodeType==lateralR) || (nodeTypeOther==lateralR && nodeType==lateralL) )  { 
-                		calAndAddMM_Contract(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_x,F_MM_C_y);
+                		calAndAddMM_ContractRepl(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 					}
 
 				}
 			}
-			return thrust::make_tuple(oriVelX, oriVelY,F_MM_C_x,F_MM_C_y,contractEnergyT);
+			return thrust::make_tuple(oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y,contractEnergyT);
 		} 
 		else {
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE

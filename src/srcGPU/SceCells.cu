@@ -6130,6 +6130,8 @@ void SceCells::applySceCellDisc_M() {
 	MembraneType1* nodeTypeAddr=thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().memNodeType1[0]));
 
+	int* nodeMemMirrorIndexAddr = thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().nodeMemMirrorIndex[0]));
 	//double grthPrgrCriVal_M = growthAuxData.grthProgrEndCPU
 	//		- growthAuxData.prolifDecay
 	//				* (growthAuxData.grthProgrEndCPU
@@ -6238,7 +6240,7 @@ void SceCells::applySceCellDisc_M() {
 							    nodes->getInfoVecs().nodeF_MM_C_X.begin(),  //Ali added for cell pressure calculation 
 							    nodes->getInfoVecs().nodeF_MM_C_Y.begin(),// ALi added for cell pressure calculation
 							   nodes->getInfoVecs().nodeContractEnergyT.begin())),// ALi added for cell pressure calculation
-			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr));
+			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr,nodeMemMirrorIndexAddr));
 
 
 
@@ -6472,29 +6474,51 @@ void calAndAddIB_M2(double& xPos, double& yPos, double& xPos2, double& yPos2,
 }
 
 __device__
-void calAndAddMM_Contract(double& xPos, double& yPos, double& xPos2, double& yPos2,
-		double& xRes, double& yRes, double & F_MM_C_x, double & F_MM_C_y) {
+void calAndAddMM_ContractRepl(double& xPos, double& yPos, double& xPos2, double& yPos2,
+		double& xRes, double& yRes, double & F_MM_C_X, double & F_MM_C_Y) {
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
 	double forceValue = 0;
 	double sceMM_C[5] ; 
 	for (int i=0 ; i<5 ; i++) {
-		sceMM_C[i]=sceII_M[i] ; 
+		sceMM_C[i]=sceIIDiv_M[i] ; 
 	}
 		
 	if (linkLength < sceMM_C[4]) {
-		forceValue =0.0*( -sceMM_C[0] / sceMM_C[2]
+		forceValue = -sceMM_C[0] / sceMM_C[2]
 					* exp(-linkLength / sceMM_C[2])
-					+ sceMM_C[1] / sceMM_C[3] * exp(-linkLength / sceMM_C[3]));
+					+ sceMM_C[1] / sceMM_C[3] * exp(-linkLength / sceMM_C[3]);
 		}
 	
 
-	F_MM_C_x=F_MM_C_x+forceValue * (xPos2 - xPos) / linkLength;
-	F_MM_C_y=F_MM_C_y+forceValue * (yPos2 - yPos) / linkLength;
+	F_MM_C_X=F_MM_C_X+forceValue * (xPos2 - xPos) / linkLength;
+	F_MM_C_Y=F_MM_C_Y+forceValue * (yPos2 - yPos) / linkLength;
        
 	xRes = xRes + forceValue * (xPos2 - xPos) / linkLength;
 	yRes = yRes + forceValue * (yPos2 - yPos) / linkLength;
 }
+
+__device__
+void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& yPos2,
+		double& xRes, double& yRes, double & F_MM_C_X, double & F_MM_C_Y) {
+	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
+
+	double lZero=0.0625 ;
+	double kCAdh=100 ; 
+	double forceValue = 0;
+		
+	if (linkLength > lZero) {
+		forceValue =kCAdh*(linkLength-lZero) ; 
+		}
+	
+
+	F_MM_C_X=F_MM_C_X+forceValue * (xPos2 - xPos) / linkLength;
+	F_MM_C_Y=F_MM_C_Y+forceValue * (yPos2 - yPos) / linkLength;
+       
+	xRes = xRes + forceValue * (xPos2 - xPos) / linkLength;
+	yRes = yRes + forceValue * (yPos2 - yPos) / linkLength;
+}
+
 
 __device__
 void calAndAddII_M(double& xPos, double& yPos, double& xPos2, double& yPos2,

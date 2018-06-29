@@ -1009,8 +1009,10 @@ public:
 
 // only for modified version
 	thrust::device_vector<int> nodeAdhereIndex;
+	thrust::device_vector<int> nodeMemMirrorIndex;  //Ali for contracting basal side of cells
 	thrust::host_vector<int> nodeAdhIndxHostCopy;
 	thrust::host_vector<int> nodeAdhereIndexHost;    //Ali
+	thrust::host_vector<int> nodeMemMirrorIndexHost;    //Ali
 	thrust::device_vector<int> membrIntnlIndex;
 	//thrust::device_vector<double> nodeContractLevel; //Ali 
 	thrust::device_vector<double> nodeF_MM_C_X; //Ali 

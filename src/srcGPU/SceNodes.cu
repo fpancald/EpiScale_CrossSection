@@ -2225,6 +2225,7 @@ void SceNodes::applySceForcesDisc_M() {
      	thrust :: copy (infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.end(),infoVecs.nodeCellRankBehindHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.memNodeType1.begin(),infoVecs.memNodeType1.end(),infoVecs.memNodeType1Host.begin()) ; // Ali 	
 	 	thrust::fill(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), -1) ;  //Ali it is important to reset the values
+	 	thrust::fill(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), -1) ;  //Ali it is important to reset the values
 	 	//thrust::fill(infoVecs.nodeIsLateralMemHost.begin(),infoVecs.nodeIsLateralMemHost.end(), false) ;  //Ali
 	 	thrust::fill(infoVecs.nodeAdhMinDist.begin(),infoVecs.nodeAdhMinDist.end(), 10000) ;  //Ali
         int totalActiveNodes = allocPara_M.currentActiveCellCount* allocPara_M.maxAllNodePerCell; // Ali
@@ -2348,9 +2349,14 @@ void SceNodes::applySceForcesDisc_M() {
 			for ( int j=0 ; j<70 ; j++) {
 				int idFront=subApicalInfo[i].nodeIdFront[j] ;
 				int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
+
 				int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
 				int cellRankBehind=infoVecs.nodeCellRankBehindHost[i] ;
 				
+				infoVecs.nodeMemMirrorIndexHost[idFront]=idBehind ;
+				infoVecs.nodeMemMirrorIndexHost[idBehind]=idFront ;
+
+
 				if (cellRankFront  != -1) {
 					infoVecs.nodeAdhereIndexHost[idFront]=subApicalInfo[cellRankFront].nodeIdBehind[j] ;
 				}
@@ -2414,6 +2420,7 @@ void SceNodes::applySceForcesDisc_M() {
   	} // finish if of bypassing the first time
 		// copy back to GPU 
 	thrust::copy(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), infoVecs.nodeAdhereIndex.begin()) ;  //Ali
+	thrust::copy(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), infoVecs.nodeMemMirrorIndex.begin()) ;  //Ali
     thrust::copy(infoVecs.isSubApicalJunctionHost.begin(),infoVecs.isSubApicalJunctionHost.end(), infoVecs.isSubApicalJunction.begin()) ;  //Ali
  
 
@@ -2720,8 +2727,10 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	}
 	if (controlPara.simuType == Disc_M) {
 		infoVecs.nodeAdhereIndex.resize(maxTotalNodeCount);
+		infoVecs.nodeMemMirrorIndex.resize(maxTotalNodeCount);  //Ali 
 		infoVecs.nodeAdhIndxHostCopy.resize(maxTotalNodeCount);
 		infoVecs.nodeAdhereIndexHost.resize(maxTotalNodeCount); //Ali 
+		infoVecs.nodeMemMirrorIndexHost.resize(maxTotalNodeCount); //Ali 
 		infoVecs.membrIntnlIndex.resize(maxTotalNodeCount);
 		infoVecs.nodeGrowPro.resize(maxTotalNodeCount);
 		infoVecs.membrTensionMag.resize(maxTotalNodeCount, 0);
