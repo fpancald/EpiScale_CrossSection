@@ -212,7 +212,6 @@ numNodesECM= numberNodes_ECM ; //(eCMMaxX-eCMMinX)/eCMMinDist ;
 
 
 
-
 indexECM.resize(numNodesECM,0) ;
 peripORexcm.resize(numNodesECM,perip) ;
 
@@ -303,7 +302,7 @@ std::string cSVFileName = "EnergyExport.CSV";
 
 
 
-void SceECM:: ApplyECMConstrain(int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){   
+void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){   
 
 thrust::counting_iterator<int> iBegin(0) ; 
 nodeDeviceTmpLocX.resize(totalNodeCountForActiveCellsECM,0.0) ;
@@ -340,6 +339,8 @@ memNodeType.resize(maxTotalNodes,notAssigned1) ;
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
 					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
+					make_transform_iterator (iBegin,
 							ModuloFunctor2(maxAllNodePerCell)),
 					nodeDeviceTmpLocX.begin(),
 					nodeDeviceTmpLocY.begin(), 
@@ -348,6 +349,8 @@ memNodeType.resize(maxTotalNodes,notAssigned1) ;
 					)), 
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
+					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
 					 make_transform_iterator (iBegin,
 							ModuloFunctor2(maxAllNodePerCell)),
 					 nodeDeviceTmpLocX.begin(),
@@ -363,7 +366,7 @@ memNodeType.resize(maxTotalNodes,notAssigned1) ;
 					adhPairECM_Cell.begin(),
 					morseEnergyCell.begin(),
 					adhEnergyCell.begin())),
-				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime));
+				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime,currentActiveCellCount));
 
 totalMorseEnergyCell = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 totalAdhEnergyCell   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );

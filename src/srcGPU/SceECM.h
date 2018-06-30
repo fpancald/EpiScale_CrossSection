@@ -7,7 +7,7 @@
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 
-typedef thrust ::tuple<int,double,double,bool,MembraneType1> IDDBT ; 
+typedef thrust ::tuple<int,int,double,double,bool,MembraneType1> IIDDBT ; 
 typedef thrust ::tuple<double,double> DD ; 
 typedef thrust ::tuple<double,double,double,double> DDDD ; 
 typedef thrust ::tuple<double,double,bool> DDB ; 
@@ -28,7 +28,7 @@ class SceECM {
 //	SceNodes* nodes;
 
 public:
-        void ApplyECMConstrain(int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
+        void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
 		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData); 
 		EType ConvertStringToEType (string eNodeRead) ;
 		void PrintECM(double curTime); 
@@ -184,10 +184,24 @@ struct ModuloFunctor2: public thrust::unary_function <int,int>{
        int operator()(const int &num) {
                 return num %_dividend;
 	} 
-	} ; 
+} ; 
+
+struct DivideFunctor2: public thrust::unary_function <int,int>{
+       int _dividend ;  
+      
+
+       __host__ __device__ DivideFunctor2(int dividend) :
+                             _dividend(dividend) {
+	}
+       __host__ __device__
+       int operator()(const int &num) {
+                return num /_dividend;
+	} 
+} ; 
 
 
-struct MoveNodes2_Cell: public thrust::unary_function<IDDBT,DDTIDD> {
+
+struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDTIDD> {
 	 double  *_locXAddr_ECM; 
          double  *_locYAddr_ECM; 
         uint _maxMembrNodePerCell ; 
@@ -197,17 +211,18 @@ struct MoveNodes2_Cell: public thrust::unary_function<IDDBT,DDTIDD> {
 	 bool _isInitPhase ;
 	 EType*  _peripORexcmAddr ;
 	 double _curTime ; 
-	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef, bool isInitPhase, EType * peripORexcmAddr, double curTime) :
+	 int _activeCellCount ; 
+	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef, bool isInitPhase, EType * peripORexcmAddr, double curTime, int activeCellCount) :
 				_locXAddr_ECM(locXAddr_ECM),_locYAddr_ECM(locYAddr_ECM),_maxMembrNodePerCell(maxMembrNodePerCell),_numNodes_ECM(numNodes_ECM),_dt(dt),
-			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime)	{
+			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime), _activeCellCount (activeCellCount)	{
 	}
-	__device__ DDTIDD  operator()(const IDDBT & iDDBT) const {
-	
-	int nodeRankInOneCell=          thrust::get<0>(iDDBT) ; 
-	double            locX=         thrust::get<1>(iDDBT) ; 
-	double            locY=         thrust::get<2>(iDDBT) ; 
-	bool              nodeIsActive= thrust::get<3>(iDDBT) ; 
-	MembraneType1     nodeType=     thrust::get<4>(iDDBT) ; 
+	__device__ DDTIDD  operator()(const IIDDBT & iIDDBT) const {
+	int cellRank=					thrust::get<0>(iIDDBT) ; 
+	int nodeRankInOneCell=          thrust::get<1>(iIDDBT) ; 
+	double            locX=         thrust::get<2>(iIDDBT) ; 
+	double            locY=         thrust::get<3>(iIDDBT) ; 
+	bool              nodeIsActive= thrust::get<4>(iIDDBT) ; 
+	MembraneType1     nodeType=     thrust::get<5>(iIDDBT) ; 
 	
 	double locX_ECM, locY_ECM ; 
 	double dist ;
@@ -228,7 +243,7 @@ struct MoveNodes2_Cell: public thrust::unary_function<IDDBT,DDTIDD> {
 	int    adhPairECM=-1 ; //no adhere Pair
 	int   iPair=-1 ;
 	double smallNumber=0.000001;
-
+		
 		if ( nodeIsActive && nodeRankInOneCell<_maxMembrNodePerCell ) {
 			for (int i=0 ; i<_numNodes_ECM ; i++) {
 				locX_ECM=_locXAddr_ECM[i]; 
@@ -239,16 +254,22 @@ struct MoveNodes2_Cell: public thrust::unary_function<IDDBT,DDTIDD> {
 				fTotalMorseX=fTotalMorseX+fMorse*(locX_ECM-locX)/dist ; 
 				fTotalMorseY=fTotalMorseY+fMorse*(locY_ECM-locY)/dist ; 
 				fTotalMorse=fTotalMorse+fMorse ; 
-				
-				if ( dist < distMin && (nodeType==basal1 || nodeType==apical1) ) {  //adhesion only for basal and apical nodes
-					distMin=dist ; 
-					distMinX=(locX_ECM-locX) ;
-					distMinY=(locY_ECM-locY) ; 
-					iPair=i ; 
+				if ( dist < distMin) {
+					if( (nodeType==basal1 || nodeType==apical1) ) {  //adhesion only for basal and apical nodes
+						distMin=dist ; 
+						distMinX=(locX_ECM-locX) ;
+						distMinY=(locY_ECM-locY) ; 
+						iPair=i ; 
+					}
+					else if (  (cellRank==0 && nodeType==lateralL) || (cellRank==(_activeCellCount-1) && nodeType==lateralR)  )  {
+						distMin=dist ; 
+						distMinX=(locX_ECM-locX) ;
+						distMinY=(locY_ECM-locY) ; 
+						iPair=i ; 
+					}
+
 				}
-
 			}
-
 			if (IsValidAdhPairForNotInitPhase(distMin)&& iPair!=-1) {
 
         		fAdhMemECM=CalAdhECM(distMin) ; 

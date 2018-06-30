@@ -1515,11 +1515,11 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	
 	computeCenterPos_M2();
 	computeInternalAvgPos_M();
-	computeNucleusLoc() ;
-	if (tmpIsInitPhase==false) {
-		updateInternalAvgPos_M ();
-	}
-	PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
+	//computeNucleusLoc() ;
+//	if (tmpIsInitPhase==false) {
+//		updateInternalAvgPos_M ();
+//	}
+//	PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
     BC_Imp_M() ; 
 	std::cout << "     ***3.5 ***" << endl;
 	std::cout.flush();
@@ -1540,7 +1540,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	applyMemForce_M(cellPolar,subCellPolar);
 	applyVolumeConstraint();
 
-	computeContractileRingForces() ; 
+	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
 	std::cout.flush();
 
@@ -3465,6 +3465,7 @@ void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitP
 
 	int totalNodeCountForActiveCellsECM = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
+	int activeCellCount=allocPara_m.currentActiveCellCount ; 
 
 	eCM.nodeDeviceLocX.resize(totalNodeCountForActiveCellsECM,0.0) ; 
     eCM.nodeDeviceLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
@@ -3476,7 +3477,8 @@ void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitP
 	thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeIsActive_Cell.begin()) ; 
     thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
 
-	eCM.ApplyECMConstrain(totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
+	
+	eCM.ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
 
     thrust:: copy (eCM.nodeDeviceLocX.begin(),eCM.nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 
     thrust:: copy (eCM.nodeDeviceLocY.begin(),eCM.nodeDeviceLocY.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocY.begin()) ; 
