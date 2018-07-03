@@ -3234,9 +3234,11 @@ struct CellInfoVecs {
 	thrust::device_vector<bool> isCellActive;//AAMIRI
 	thrust::device_vector<double> centerCoordX;
 	thrust::device_vector<double> InternalAvgX;
+	thrust::device_vector<double> InternalAvgIniX;
 	thrust::device_vector<double> tmpShiftVecX;
 	thrust::device_vector<double> centerCoordY;
 	thrust::device_vector<double> InternalAvgY;
+	thrust::device_vector<double> InternalAvgIniY;
 	thrust::device_vector<double> tmpShiftVecY;
 	thrust::device_vector<double> centerCoordZ;
 	thrust::device_vector<double> apicalLocX; //Ali 

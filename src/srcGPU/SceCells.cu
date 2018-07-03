@@ -757,9 +757,11 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.isCellActive.resize(allocPara_m.maxCellCount, false);//AAMIRI
 	cellInfoVecs.centerCoordX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.InternalAvgX.resize(allocPara_m.maxCellCount);
+	cellInfoVecs.InternalAvgIniX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.tmpShiftVecX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.centerCoordY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.InternalAvgY.resize(allocPara_m.maxCellCount);
+	cellInfoVecs.InternalAvgIniY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.tmpShiftVecY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.centerCoordZ.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.apicalLocX.resize(allocPara_m.maxCellCount);  //Ali 
@@ -1492,6 +1494,11 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 		cout << " I initialized the ECM module" << endl ;
 		lastPrintNucleus=10000000  ; //just a big number 
 		outputFrameNucleus=0 ;
+
+		computeInternalAvgPos_M();
+
+ 		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
+ 		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
 		nodes->isInitPhase=true ;
 		std::string cSVFileName = "EnergyExport_Cell.CSV";
 		ofstream EnergyExportCell ;
@@ -6197,7 +6204,7 @@ void SceCells::applySceCellDisc_M() {
 				thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.InternalAvgY.begin(),
+									cellInfoVecs.InternalAvgIniY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
@@ -6217,7 +6224,7 @@ void SceCells::applySceCellDisc_M() {
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.InternalAvgY.begin(),
+									cellInfoVecs.InternalAvgIniY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
