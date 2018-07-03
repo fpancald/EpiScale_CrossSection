@@ -6197,7 +6197,7 @@ void SceCells::applySceCellDisc_M() {
 				thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.nucleusLocY.begin(),
+									cellInfoVecs.InternalAvgY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
@@ -6217,7 +6217,7 @@ void SceCells::applySceCellDisc_M() {
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.nucleusLocY.begin(),
+									cellInfoVecs.InternalAvgY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
@@ -6506,7 +6506,7 @@ void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& 
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
 	double lZero=0.0625 ;
-	double kCAdh=100 ; 
+	double kCAdh=20 ; 
 	double forceValue = 0;
 		
 	if (linkLength > lZero) {
