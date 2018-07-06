@@ -768,6 +768,7 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.apicalLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.nucleusLocY.resize(allocPara_m.maxCellCount); //Ali 
+	cellInfoVecs.nucleusLocPercent.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.apicalNodeCount.resize(allocPara_m.maxCellCount,0); //Ali 
 	cellInfoVecs.ringApicalId.resize(allocPara_m.maxCellCount,-1); //Ali 
 	cellInfoVecs.ringBasalId.resize(allocPara_m.maxCellCount,-1); //Ali 
@@ -1496,7 +1497,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 		outputFrameNucleus=0 ;
 
 		computeInternalAvgPos_M();
-
+		computeNucleusIniLocPercent();  
  		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
  		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
 		nodes->isInitPhase=true ;
@@ -3327,6 +3328,22 @@ void SceCells::computeNucleusLoc() {
 //}
 
 }
+
+void SceCells::computeNucleusIniLocPercent() {
+
+		thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.InternalAvgY.begin(),
+									   cellInfoVecs.centerCoordY.begin(),
+							           cellInfoVecs.apicalLocY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.InternalAvgY.begin(),
+									   cellInfoVecs.centerCoordY.begin(),
+							           cellInfoVecs.apicalLocY.begin()))
+					+ allocPara_m.currentActiveCellCount,
+			cellInfoVecs.nucleusLocPercent.begin(), CalNucleusIniLocPercent());
+}
+
 
 void SceCells::updateInternalAvgPos_M () {
 
@@ -6512,8 +6529,8 @@ void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& 
 		double& xRes, double& yRes, double & F_MM_C_X, double & F_MM_C_Y) {
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
-	double lZero=0.0625 ;
-	double kCAdh=20 ; 
+	double lZero=0.03125 ;
+	double kCAdh=100 ; 
 	double forceValue = 0;
 		
 	if (linkLength > lZero) {

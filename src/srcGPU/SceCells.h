@@ -687,7 +687,25 @@ struct CalNucleusLoc: public thrust::unary_function<CVec5,CVec2> {
 			return thrust::make_tuple( nucleusX,nucleusY) ; 
 		}
 	}
+};
+
+struct CalNucleusIniLocPercent: public thrust::unary_function<CVec3,double> {
+	
+
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__host__ __device__ CalNucleusIniLocPercent() {
+		
+		}
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__host__  __device__ double  operator()(const CVec3 &cVec3) const {
+		double   avgPosY= thrust::get<0>(cVec3);
+		double   centerY = thrust::get<1>(cVec3);
+		double   apicalY = thrust::get<2>(cVec3);
+
+			return ( (avgPosY-centerY)/(apicalY-centerY)+ 0.5 ) ; 
+		}
 }; 
+
 struct ApicalLocCal: public thrust::unary_function<CVec2Int,CVec2> {
 	int * _apicalNodeCountAddr ; 	
 
@@ -1602,7 +1620,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
 		}
 				// means membrane node
-		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( nucLocY>locY )  ) {
+		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( (nucLocY-2)>locY )  ) {
 		
 			index_Other=_MirrorIndexAddr[index];  // assuming all lateral nodes have an adhere index, otherwise it will ask for [-1] which is undefined.
 			locXOther = _locXAddr[index_Other];
@@ -1616,7 +1634,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 				locXOther = _locXAddr[index_Other];
 				locYOther = _locYAddr[index_Other];
 				nodeTypeOther= _MemTypeAddr[index_Other] ;
-				if ( nucLocY>locYOther ) { 
+				if ( (nucLocY-2)>locYOther ) { 
 					if (  (nodeTypeOther==lateralL && nodeType==lateralR) || (nodeTypeOther==lateralR && nodeType==lateralL) )  { 
                 		calAndAddMM_ContractRepl(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 					}
@@ -3245,6 +3263,7 @@ struct CellInfoVecs {
 	thrust::device_vector<double> apicalLocY; //Ali 
 	thrust::device_vector<double> nucleusLocX; //Ali 
 	thrust::device_vector<double> nucleusLocY; //Ali 
+	thrust::device_vector<double> nucleusLocPercent; //Ali 
 	thrust::device_vector<double> sumLagrangeFPerCellX; //Ali 
 	thrust::device_vector<double> sumLagrangeFPerCellY; //Ali 
 	thrust::device_vector<int> apicalNodeCount; //Ali 
@@ -3654,6 +3673,7 @@ class SceCells {
 	void assignMemNodeType();  //Ali 
 	void computeApicalLoc();  //Ali 
 	void computeNucleusLoc();  //Ali 
+	void computeNucleusIniLocPercent();  //Ali 
 	void applyNucleusEffect();  //Ali 
 	void updateInternalAvgPos_M();  //Ali 
 	void PlotNucleus(int & lastPrintNucleus, int & outputFrameNucleus);  //Ali 
