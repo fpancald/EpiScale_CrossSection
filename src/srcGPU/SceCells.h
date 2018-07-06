@@ -1595,14 +1595,14 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 		double locXOther, locYOther;
 		int index_Other ; 
 		MembraneType1 nodeTypeOther ;
-
+		double nucLocYBottom=nucLocY-2.5 ; 
 		uint index = cellRank * _maxNodePerCell + nodeRank;
 
 		if ( isActive == false || nodeRank >= _maxMemNodePerCell  ) {
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
 		}
 				// means membrane node
-		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( nucLocY>locY )  ) {
+		if (  (  (nodeType==lateralR) || (nodeType==lateralL) ) && ( nucLocYBottom>locY )  ) {
 		
 			index_Other=_MirrorIndexAddr[index];  // assuming all lateral nodes have an adhere index, otherwise it will ask for [-1] which is undefined.
 			locXOther = _locXAddr[index_Other];
@@ -1616,7 +1616,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiUiUiBDDDDT , CVec5>
 				locXOther = _locXAddr[index_Other];
 				locYOther = _locYAddr[index_Other];
 				nodeTypeOther= _MemTypeAddr[index_Other] ;
-				if ( nucLocY>locYOther ) { 
+				if ( nucLocYBottom>locYOther ) { 
 					if (  (nodeTypeOther==lateralL && nodeType==lateralR) || (nodeTypeOther==lateralR && nodeType==lateralL) )  { 
                 		calAndAddMM_ContractRepl(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 					}

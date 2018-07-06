@@ -6513,7 +6513,7 @@ void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& 
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
 	double lZero=0.0625 ;
-	double kCAdh=20 ; 
+	double kCAdh=30 ; 
 	double forceValue = 0;
 		
 	if (linkLength > lZero) {
