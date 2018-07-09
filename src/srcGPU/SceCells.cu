@@ -767,6 +767,9 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.apicalLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.apicalLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocX.resize(allocPara_m.maxCellCount);  //Ali 
+	cellInfoVecs.nucleusDesireLocX.resize(allocPara_m.maxCellCount);  //Ali 
+	cellInfoVecs.nucleusDesireLocY.resize(allocPara_m.maxCellCount); //Ali 
+	cellInfoVecs.nucDesireDistApical.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocPercent.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.apicalNodeCount.resize(allocPara_m.maxCellCount,0); //Ali 
@@ -1497,7 +1500,6 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 		outputFrameNucleus=0 ;
 
 		computeInternalAvgPos_M();
-		computeNucleusIniLocPercent();  
  		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
  		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
 		nodes->isInitPhase=true ;
@@ -1524,6 +1526,12 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	computeCenterPos_M2();
 	computeInternalAvgPos_M();
 	//computeNucleusLoc() ;
+
+ 	if (curTime==(InitTimeStage+dt)) {
+		computeNucleusIniLocPercent(); 
+		cout << "time is " << curTime << endl ; 
+	}
+	computeNucleusDesireLoc() ; 
 //	if (tmpIsInitPhase==false) {
 //		updateInternalAvgPos_M ();
 //	}
@@ -1536,9 +1544,9 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	std::cout.flush();
 	applySceCellDisc_M();
 
-	if (curTime>0) {
-		applyNucleusEffect() ; 
-	}
+	//if (curTime>0) {
+	//	applyNucleusEffect() ; 
+//	}
 	std::cout << "     *** 3 ***" << endl;
 	std::cout.flush();
 //Ali        
@@ -3329,6 +3337,31 @@ void SceCells::computeNucleusLoc() {
 
 }
 
+void SceCells::computeNucleusDesireLoc() {
+
+		thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.nucleusLocPercent.begin(),
+									   cellInfoVecs.centerCoordX.begin(),
+									   cellInfoVecs.centerCoordY.begin(),
+									   cellInfoVecs.apicalLocX.begin(),
+							           cellInfoVecs.apicalLocY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.nucleusLocPercent.begin(),
+									   cellInfoVecs.centerCoordX.begin(),
+									   cellInfoVecs.centerCoordY.begin(),
+									   cellInfoVecs.apicalLocX.begin(),
+							           cellInfoVecs.apicalLocY.begin()))
+					+ allocPara_m.currentActiveCellCount,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.nucleusDesireLocX.begin(),
+							           cellInfoVecs.nucleusDesireLocY.begin(),
+									   cellInfoVecs.nucDesireDistApical.begin())), CalNucleusDesireLoc());
+}
+
+
+
+
 void SceCells::computeNucleusIniLocPercent() {
 
 		thrust::transform(
@@ -3342,6 +3375,16 @@ void SceCells::computeNucleusIniLocPercent() {
 							           cellInfoVecs.apicalLocY.begin()))
 					+ allocPara_m.currentActiveCellCount,
 			cellInfoVecs.nucleusLocPercent.begin(), CalNucleusIniLocPercent());
+
+for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+
+	cout << "for cell rank "<< i << " nucleus cell percent is " <<         cellInfoVecs.nucleusLocPercent[i] << endl ; 
+	cout << "for cell rank "<< i << " cell center in Y direction is "  <<  cellInfoVecs.centerCoordY[i] << endl ; 
+	cout << "for cell rank "<< i << " apical location  in Y direction is " << cellInfoVecs.apicalLocY[i] << endl ; 
+	cout << "for cell rank "<< i << " Internal average in Y direction is " << cellInfoVecs.InternalAvgY[i] << endl ; 
+}
+
+
 }
 
 
@@ -6221,11 +6264,19 @@ void SceCells::applySceCellDisc_M() {
 				thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.InternalAvgIniY.begin(),
+									cellInfoVecs.nucDesireDistApical.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
 									cellInfoVecs.activeMembrNodeCounts.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.apicalLocX.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.apicalLocY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 									make_transform_iterator(iBegin2,
@@ -6233,19 +6284,25 @@ void SceCells::applySceCellDisc_M() {
 									make_transform_iterator(iBegin2,
 											ModuloFunctor(maxAllNodePerCell)),
 									nodes->getInfoVecs().nodeIsActive.begin(),
-									nodes->getInfoVecs().nodeLocX.begin(),
-									nodes->getInfoVecs().nodeLocY.begin(),
 									nodes->getInfoVecs().nodeVelX.begin(),
 									nodes->getInfoVecs().nodeVelY.begin(),
 									nodes->getInfoVecs().memNodeType1.begin())),
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
-									cellInfoVecs.InternalAvgIniY.begin(),
+									cellInfoVecs.nucDesireDistApical.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 							thrust::make_permutation_iterator(
 									cellInfoVecs.activeMembrNodeCounts.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.apicalLocX.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor(maxAllNodePerCell))),
+							thrust::make_permutation_iterator(
+									cellInfoVecs.apicalLocY.begin(),
 									make_transform_iterator(iBegin2,
 											DivideFunctor(maxAllNodePerCell))),
 									make_transform_iterator(iBegin2,
@@ -6253,8 +6310,6 @@ void SceCells::applySceCellDisc_M() {
 									make_transform_iterator(iBegin2,
 										ModuloFunctor(maxAllNodePerCell)),
 									nodes->getInfoVecs().nodeIsActive.begin(),
-									nodes->getInfoVecs().nodeLocX.begin(),
-									nodes->getInfoVecs().nodeLocY.begin(),
 									nodes->getInfoVecs().nodeVelX.begin(),
 									nodes->getInfoVecs().nodeVelY.begin(),
 									nodes->getInfoVecs().memNodeType1.begin()))
