@@ -1645,7 +1645,8 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 		double contractEnergyT=0.0 ; 
 		
 		double locX,locY,locXOther, locYOther;
-		uint   index, index_Other ; 
+		uint   index ; 
+		int    index_Other ; 
 		MembraneType1 nodeTypeOther ;
 
 		
@@ -1658,12 +1659,12 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 			index       = cellRank * _maxNodePerCell + nodeRank;
 			locX 		= _locXAddr[index];
 			locY 		= _locYAddr[index];
-			double nodeDistToApical=sqrt( ( locX-apicalX)*(locX-apicalX) + (locY-apicalY)*(locY-apicalY) )+2  ; // 2 is for saftey to make sure is beneath the nucleus  
+			double nodeDistToApical=sqrt( ( locX-apicalX)*(locX-apicalX) + (locY-apicalY)*(locY-apicalY) )-2  ; // 2 is for saftey to make sure is beneath the nucleus  
 
 			index_Other =_MirrorIndexAddr[index];  // assuming all lateral nodes have an adhere index, otherwise it will ask for [-1] which is undefined.
 			locXOther   = _locXAddr[index_Other];
 			locYOther   = _locYAddr[index_Other];
-			double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) ) ; 
+			double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) )-2 ; 
 
 			if ( (nodeDistToApical>nucDistToApical)&& (nodeDistToApicalOther>nucDistToApical) ) { 
             	calAndAddMM_ContractAdh(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
@@ -1675,7 +1676,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 			for (index_Other = memIndxBegin; index_Other <= memIndxEnd;index_Other++) {
 				locXOther = _locXAddr[index_Other];
 				locYOther = _locYAddr[index_Other];
-				double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) ) ;  
+				double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) )-2 ;  
 		
 			 
 				nodeTypeOther= _MemTypeAddr[index_Other] ;

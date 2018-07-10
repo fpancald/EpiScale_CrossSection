@@ -6259,6 +6259,12 @@ void SceCells::applySceCellDisc_M() {
 			AddSceCellForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,
 					nodeLocYAddr, nodeIsActiveAddr, grthPrgrCriVal_M));
 
+		for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+				cout << "for cell rank "<<i<< " cell apical location is " << cellInfoVecs.apicalLocX[i] <<" , " <<cellInfoVecs.apicalLocY[i] << endl ; 
+				cout << "for cell rank "<<i<< " cell nucleus distance from apical is " << cellInfoVecs.nucDesireDistApical[i]  << endl ; 
+		}
+
+
 
 			thrust::transform(
 				thrust::make_zip_iterator(
@@ -6323,8 +6329,7 @@ void SceCells::applySceCellDisc_M() {
 							   nodes->getInfoVecs().nodeContractEnergyT.begin())),// ALi added for cell pressure calculation
 			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr,nodeMemMirrorIndexAddr));
 
-
-
+	
 }
 
 
@@ -6585,7 +6590,7 @@ void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& 
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
 	double lZero=0.03125 ;
-	double kCAdh=100 ; 
+	double kCAdh=30 ; 
 	double forceValue = 0;
 		
 	if (linkLength > lZero) {
