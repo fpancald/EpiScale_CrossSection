@@ -2865,13 +2865,13 @@ totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			thrust::make_zip_iterator(
 					thrust::make_tuple(cellInfoVecs.centerCoordX.begin(),
 									   cellInfoVecs.centerCoordY.begin())), CVec2Divide());
-
+/*
 			for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 				cout << "for cell rank "<<i<< " cell center in X direction is " << cellInfoVecs.centerCoordX[i] << endl ; 
 		cout << "for cell rank "<<i<< " cell center in Y direction is " << cellInfoVecs.centerCoordY[i] << endl ; 
 
 		}
-
+*/
 
 
 }
@@ -2976,13 +2976,13 @@ thrust::transform(
 					thrust::make_tuple(cellInfoVecs.sumLagrangeFPerCellX.begin(),
 							           cellInfoVecs.sumLagrangeFPerCellY.begin())),
 			thrust::equal_to<uint>(), CVec2Add());
-
+/*
 			for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 				cout << "for cell rank "<<i<< " the summation of lagrangian force in X direction is " << cellInfoVecs.sumLagrangeFPerCellX[i] << endl ; 
 		cout << "for cell rank "<<i<< " the summation of lagrangian force in Y direction is " << cellInfoVecs.sumLagrangeFPerCellY[i] << endl ; 
 
 		}
-
+*/
 
 }
 void SceCells::computeContractileRingForces() {
@@ -3375,7 +3375,7 @@ void SceCells::computeNucleusIniLocPercent() {
 							           cellInfoVecs.apicalLocY.begin()))
 					+ allocPara_m.currentActiveCellCount,
 			cellInfoVecs.nucleusLocPercent.begin(), CalNucleusIniLocPercent());
-
+/*
 for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 
 	cout << "for cell rank "<< i << " nucleus cell percent is " <<         cellInfoVecs.nucleusLocPercent[i] << endl ; 
@@ -3384,6 +3384,7 @@ for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 	cout << "for cell rank "<< i << " Internal average in Y direction is " << cellInfoVecs.InternalAvgY[i] << endl ; 
 }
 
+*/
 
 }
 
@@ -6258,13 +6259,13 @@ void SceCells::applySceCellDisc_M() {
 							   nodes->getInfoVecs().nodeIMEnergy.begin())),// ALi added for cell pressure calculation
 			AddSceCellForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,
 					nodeLocYAddr, nodeIsActiveAddr, grthPrgrCriVal_M));
-
+/*
 		for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 				cout << "for cell rank "<<i<< " cell apical location is " << cellInfoVecs.apicalLocX[i] <<" , " <<cellInfoVecs.apicalLocY[i] << endl ; 
 				cout << "for cell rank "<<i<< " cell nucleus distance from apical is " << cellInfoVecs.nucDesireDistApical[i]  << endl ; 
 		}
 
-
+*/
 
 			thrust::transform(
 				thrust::make_zip_iterator(
