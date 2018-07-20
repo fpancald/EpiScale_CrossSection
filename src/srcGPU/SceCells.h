@@ -3714,6 +3714,7 @@ class SceCells {
 
 	void applySceCellDisc_M();
 
+	void applyMembContraction() ; 
 	void computeInternalAvgPos_M();
 	void computeCenterPos_M2();
 

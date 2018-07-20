@@ -1537,12 +1537,13 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 //	}
 //	PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
     BC_Imp_M() ; 
-	std::cout << "     ***3.5 ***" << endl;
+	std::cout << "     ***1.5 ***" << endl;
 	std::cout.flush();
 
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
+	//applyMembContraction() ;  // Ali 
 
 	//if (curTime>0) {
 	//	applyNucleusEffect() ; 
@@ -6189,7 +6190,6 @@ void SceCells::applySceCellDisc_M() {
 	uint maxAllNodePerCell = allocPara_m.maxAllNodePerCell;
 	uint maxMemNodePerCell = allocPara_m.maxMembrNodePerCell;
 	thrust::counting_iterator<uint> iBegin(0);
-	thrust::counting_iterator<uint> iBegin2(0);
 
 	double* nodeLocXAddr = thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().nodeLocX[0]));
@@ -6197,11 +6197,7 @@ void SceCells::applySceCellDisc_M() {
 			&(nodes->getInfoVecs().nodeLocY[0]));
 	bool* nodeIsActiveAddr = thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().nodeIsActive[0]));
-	MembraneType1* nodeTypeAddr=thrust::raw_pointer_cast(
-			&(nodes->getInfoVecs().memNodeType1[0]));
 
-	int* nodeMemMirrorIndexAddr = thrust::raw_pointer_cast(
-			&(nodes->getInfoVecs().nodeMemMirrorIndex[0]));
 	//double grthPrgrCriVal_M = growthAuxData.grthProgrEndCPU
 	//		- growthAuxData.prolifDecay
 	//				* (growthAuxData.grthProgrEndCPU
@@ -6266,6 +6262,24 @@ void SceCells::applySceCellDisc_M() {
 		}
 
 */
+}
+
+
+void SceCells::applyMembContraction() {
+	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+			* allocPara_m.maxAllNodePerCell;
+	uint maxAllNodePerCell = allocPara_m.maxAllNodePerCell;
+	uint maxMemNodePerCell = allocPara_m.maxMembrNodePerCell;
+	thrust::counting_iterator<uint> iBegin2(0);
+
+	double* nodeLocXAddr = thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().nodeLocX[0]));
+	double* nodeLocYAddr = thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().nodeLocY[0]));
+	MembraneType1* nodeTypeAddr=thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().memNodeType1[0]));
+	int* nodeMemMirrorIndexAddr = thrust::raw_pointer_cast(
+			&(nodes->getInfoVecs().nodeMemMirrorIndex[0]));
 
 			thrust::transform(
 				thrust::make_zip_iterator(
@@ -6325,9 +6339,9 @@ void SceCells::applySceCellDisc_M() {
 					thrust::make_tuple(
 								nodes->getInfoVecs().nodeVelX.begin(),
 							   	nodes->getInfoVecs().nodeVelY.begin(),
-							    nodes->getInfoVecs().nodeF_MM_C_X.begin(),  //Ali added for cell pressure calculation 
-							    nodes->getInfoVecs().nodeF_MM_C_Y.begin(),// ALi added for cell pressure calculation
-							   nodes->getInfoVecs().nodeContractEnergyT.begin())),// ALi added for cell pressure calculation
+							    nodes->getInfoVecs().nodeF_MM_C_X.begin(),   
+							    nodes->getInfoVecs().nodeF_MM_C_Y.begin(),
+							   nodes->getInfoVecs().nodeContractEnergyT.begin())),
 			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr,nodeMemMirrorIndexAddr));
 
 	
