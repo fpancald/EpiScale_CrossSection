@@ -798,7 +798,7 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	uint initMembrNodeCount = globalConfigVars.getConfigValue(
 			"InitMembrNodeCount").toInt();
 	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane2.txt");
+	inputc.open("./resources/coordinate_Membrane1.txt");
     //inputc.open(CellCentersFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully ";
@@ -889,7 +889,7 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 double initRadius =
 			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
 
-	double	noiseNucleusY=getRandomNum(0.4*initRadius,3.5*initRadius);  
+	double	noiseNucleusY=getRandomNum(0.4*initRadius,7.6*initRadius);  
 		center.y=center.y+ noiseNucleusY ; 
 
 
