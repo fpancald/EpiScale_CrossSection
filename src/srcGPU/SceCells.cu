@@ -9,6 +9,7 @@ double epsilon = 1.0e-12;
 __constant__ double membrEquLen;
 __constant__ double membrStiff;
 __constant__ double membrStiff_Mitotic; //Ali June 30
+__constant__ double kContractMemb ; 
 __constant__ double pI;
 __constant__ double minLength;
 __constant__ double minDivisor;
@@ -242,6 +243,7 @@ void MembrPara::initFromConfig() {
 	membrEquLenCPU = globalConfigVars.getConfigValue("MembrEquLen").toDouble();
 	membrStiffCPU = globalConfigVars.getConfigValue("MembrStiff").toDouble();
 	membrStiff_Mitotic = globalConfigVars.getConfigValue("MembrStiff_Mitotic").toDouble();  //Ali June30
+	kContractMemb = globalConfigVars.getConfigValue("KContractMemb").toDouble();  //Ali 
 	membrGrowCoeff_Ori =
 			globalConfigVars.getConfigValue("MembrGrowCoeff").toDouble();
 	membrGrowLimit_Ori =
@@ -1490,8 +1492,11 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 		totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
         uint maxTotalNodes=nodes->getInfoVecs().nodeLocX.size() ; 
-		cout << " in the initial time step the total number of nodes in the domain is equal to " << maxTotalNodes << endl ; 
-		eCM.Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData);
+		cout << " in the initial time step the total number of nodes in the domain is equal to " << maxTotalNodes << endl ;
+		string uniqueSymbolOutput =
+			globalConfigVars.getConfigValue("UniqueSymbol").toString();
+
+		eCM.Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData, uniqueSymbolOutput);
 
  		thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCells,nodes->getInfoVecs().memNodeType1.begin()) ;
 
@@ -1503,7 +1508,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
  		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
  		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
 		nodes->isInitPhase=true ;
-		std::string cSVFileName = "EnergyExport_Cell.CSV";
+		std::string cSVFileName = "EnergyExportCell_" + uniqueSymbolOutput + ".CSV";
 		ofstream EnergyExportCell ;
 		
 		EnergyExportCell.open(cSVFileName.c_str() );
@@ -2529,7 +2534,10 @@ double totalNodeIMEnergyCell=thrust::reduce
 
 int timeStep=curTime/dt ; 
 if ( (timeStep % 10000)==0 ) {
-	std::string cSVFileName = "EnergyExport_Cell.CSV";
+
+	string uniqueSymbolOutput =
+			globalConfigVars.getConfigValue("UniqueSymbol").toString();
+	std::string cSVFileName = "EnergyExportCell_" + uniqueSymbolOutput +  ".CSV";
 	ofstream EnergyExportCell ;
 	EnergyExportCell.open(cSVFileName.c_str(),ofstream::app);
 
@@ -4840,6 +4848,7 @@ void SceCells::copyToGPUConstMem() {
 	cudaMemcpyToSymbol(membrEquLen, &membrPara.membrEquLenCPU, sizeof(double));
 	cudaMemcpyToSymbol(membrStiff, &membrPara.membrStiffCPU, sizeof(double));
 	cudaMemcpyToSymbol(membrStiff_Mitotic, &membrPara.membrStiff_Mitotic, sizeof(double)); // Ali June 30
+	cudaMemcpyToSymbol(kContractMemb, &membrPara.kContractMemb, sizeof(double)); 
 	cudaMemcpyToSymbol(pI, &pI_CPU, sizeof(double));
 
 	cudaMemcpyToSymbol(bendCoeff, &membrPara.membrBendCoeff, sizeof(double));
@@ -6605,11 +6614,11 @@ void calAndAddMM_ContractAdh(double& xPos, double& yPos, double& xPos2, double& 
 	double linkLength = compDist2D(xPos, yPos, xPos2, yPos2);
 
 	double lZero=0.03125 ;
-	double kCAdh=30 ; 
+	//double kCAdh=30 ; 
 	double forceValue = 0;
 		
 	if (linkLength > lZero) {
-		forceValue =kCAdh*(linkLength-lZero) ; 
+		forceValue =kContractMemb*(linkLength-lZero) ; 
 		}
 	
 

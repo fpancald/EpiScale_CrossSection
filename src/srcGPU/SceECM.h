@@ -29,7 +29,7 @@ class SceECM {
 
 public:
         void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
-		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData); 
+		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
 		EType ConvertStringToEType (string eNodeRead) ;
 		void PrintECM(double curTime); 
 double restLenECMSpring ;
@@ -37,6 +37,15 @@ double eCMLinSpringStiff ;
 double restLenECMAdhSpring ; 
 double maxLenECMAdhSpring ; 
 double kAdhECM ;
+
+double stiffnessECMBasal ;
+double stiffnessECMBC ;
+double stiffnessECMPerip ;
+double lknotECMBasal ;
+double lknotECMBC ;
+double lknotECMPerip ;
+
+
 double totalLinSpringEnergy,totalMorseEnergy, totalAdhEnergy, totalMorseEnergyCell, totalAdhEnergyCell ; 
 
 int outputFrameECM ;  
@@ -46,6 +55,8 @@ int freqPlotData ;
 uint maxAllNodePerCell ; 
 uint maxMembrNodePerCell ;
 uint maxTotalNodes ; 
+
+string uniqueSymbolOutput ; 
 MechPara_ECM mechPara_ECM ; 
  
 thrust::device_vector<int> indexECM ;
@@ -119,6 +130,9 @@ double CalAdhECM (const double & dist);
 
 __device__
 double CalAdhEnergy (const double & dist);
+
+__device__
+void DefineECMStiffnessAndLknot (EType nodeType, double & stiffness, double & sponLen) ; 
 
 struct InitECMLoc
 {
@@ -495,24 +509,13 @@ struct MechProp: public thrust::unary_function<EType,DD> {
 	__host__ __device__ MechProp(bool isInitPhase, double stiffness, double sponLen): _isInitPhase(isInitPhase), _stiffness(stiffness),_sponLen (sponLen) {
 	}
 
-	__host__ __device__ DD operator() (const EType  & nodeType) const {
+	__device__ DD operator() (const EType  & nodeType) const {
 
 	double stiffness= _stiffness  ;
 	double sponLen=0 ;   ; 
 	if (_isInitPhase == false ) {
-		if (nodeType==excm) {
-			stiffness=3.0* _stiffness ; 
-			sponLen=0.0  ; 
-		}
-		if (nodeType==perip) {
-			stiffness=3.0*_stiffness ; 
-			sponLen=0.06 ; // 0.1 ; 
-		}
 
-		if (nodeType==bc2) {
-			stiffness=0.3*_stiffness ; 
-			sponLen=0.06 ;// _sponLen ; 
-		}
+		DefineECMStiffnessAndLknot (nodeType, stiffness, sponLen) ;  
 	}
 
 	return thrust::make_tuple(stiffness,sponLen); 

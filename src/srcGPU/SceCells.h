@@ -3467,6 +3467,7 @@ struct CellDivAuxData {
 struct MembrPara {
 	double membrStiffCPU;
 	double membrStiff_Mitotic;
+	double kContractMemb ;  // Ali 
 	double membrEquLenCPU;
 	double membrGrowCoeff_Ori;
 	double membrGrowLimit_Ori;

@@ -1,10 +1,17 @@
 #include "SceECM.h"
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
+// bending stiffness is given inside the code. It should be given as in input from a txt file.
 __constant__ double sceInterCell_ECM[5]; 
 __constant__ double wLCPara_ECM[4]; 
 __constant__ double restLenECMAdhSpringGPU  ;  
 __constant__ double maxLenECMAdhSpringGPU ;
 __constant__ double kAdhECMGPU ;
+__constant__ double stiffnessECMBasalGPU ;
+__constant__ double stiffnessECMBCGPU ;
+__constant__ double stiffnessECMPeripGPU ;
+__constant__ double lknotECMBasalGPU ;
+__constant__ double lknotECMBCGPU ;
+__constant__ double lknotECMPeripGPU ;
 
 namespace patch{
 	template <typename  T> std::string to_string (const T& n) 
@@ -17,6 +24,24 @@ namespace patch{
 
 
 
+__device__
+void DefineECMStiffnessAndLknot ( EType nodeType, double & stiffness, double & sponLen) {
+
+	if (nodeType==excm) {
+		stiffness=stiffnessECMBasalGPU ;  //* stiffness ; 
+		sponLen=lknotECMBasalGPU  ; 
+	}
+	if (nodeType==perip) {
+		stiffness=stiffnessECMPeripGPU ; //*stiffness ; 
+		sponLen=lknotECMPeripGPU ; // 0.1 ; 
+	}
+
+	if (nodeType==bc2) {
+		stiffness=stiffnessECMBCGPU;  // *stiffness ; 
+		sponLen=lknotECMBCGPU ;// _sponLen ; 
+	}
+
+}
 
 __device__
 double calMorse_ECM(const double& linkLength ) {
@@ -110,16 +135,17 @@ EType SceECM:: ConvertStringToEType(string eNodeRead) {
 } 
 
 
-void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData) {
+void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
 
 maxAllNodePerCell=maxAllNodePerCellECM ; 
 maxMembrNodePerCell= maxMembrNodePerCellECM ; 
 maxTotalNodes=maxTotalNodesECM ; //Ali 
 this->freqPlotData=freqPlotData ; 
+this->uniqueSymbolOutput=uniqueSymbolOutput ; 
 
 
 std::fstream readCoord_ECM ;
-std::fstream readInput_ECM ;  
+std::fstream readInput_ECM ;
 int numberNodes_ECM ; 
 double tmpPosX_ECM,tmpPosY_ECM ; 
 vector<double> posXIni_ECM,posYIni_ECM ;
@@ -133,7 +159,7 @@ else {
 }
 
 
-
+string inputInfoText ; 
 string eNodeRead ; 
 readCoord_ECM>>numberNodes_ECM ;
 for (int i=0 ; i<numberNodes_ECM ; i++){
@@ -144,7 +170,7 @@ for (int i=0 ; i<numberNodes_ECM ; i++){
 	eNodeVec.push_back(eNode) ; 
 }
 
-readInput_ECM.open("./resources/input_ECM.txt") ;
+readInput_ECM.open("./resources/ECM_input.txt") ;
 if (readInput_ECM.is_open()) {
 	cout << "ECM Mech input opened successfully" <<endl ; 
 }
@@ -152,7 +178,8 @@ else {
 	cout << "ECM Mech input is not opened successfully" << endl ; 
 }
 
-
+ 
+ readInput_ECM>> inputInfoText ; 
  for (int i=0 ; i<5; i++) {
  	readInput_ECM>> mechPara_ECM.sceInterCellCPU_ECM[i] ; //=39.0 ; 
  }
@@ -168,12 +195,43 @@ else {
 
 
 
+std::fstream secondInput_ECM ; 
+std:: string secondInputInfo ;  //dummy 
+std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
+
+secondInput_ECM.open(secondInputFileName.c_str()) ;
+if (secondInput_ECM.is_open()) {
+	cout << "Second ECM Mech input opened successfully" <<endl ; 
+}
+else {
+	cout << "Second ECM Mech input is not opened successfully" << endl ; 
+}
+
+ secondInput_ECM>>secondInputInfo ;  // just for information no use in the code
+ secondInput_ECM>>stiffnessECMBasal ;
+ secondInput_ECM>>stiffnessECMBC ;
+ secondInput_ECM>>stiffnessECMPerip ;
+ secondInput_ECM>>lknotECMBasal ;
+ secondInput_ECM>>lknotECMBC ;
+ secondInput_ECM>>lknotECMPerip ;
+
+ cout <<" stiffness of ECM at the basal side is="<<stiffnessECMBasal <<endl ;   
+
+ cout <<" stiffness of ECM at boundary is="<<stiffnessECMBC<<endl ; 
+
+ cout <<" stiffness of ECM peripodial side is="<<stiffnessECMPerip<<endl ;  
+ cout <<" rest len basal ECM is="<<lknotECMBasal<<endl ;
+ cout <<" rest len boundary ECM is= "<<lknotECMBC<<endl ;
+ cout << "rest len peripodial ECM is=" <<lknotECMPerip <<endl ; 
+
+
+
 
 cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
-for (int i=0 ; i<posXIni_ECM.size() ; i++){
-	cout << "ECM nodes read in cpu"<<endl; 
-	cout << posXIni_ECM[i] <<", "<<posYIni_ECM[i]<<", " << eNodeVec[i] <<endl;  ; 
-}
+//for (int i=0 ; i<posXIni_ECM.size() ; i++){
+//	cout << "ECM nodes read in cpu"<<endl; 
+//	cout << posXIni_ECM[i] <<", "<<posYIni_ECM[i]<<", " << eNodeVec[i] <<endl;  ; 
+//}
 
 
 
@@ -205,6 +263,16 @@ cudaMemcpyToSymbol(restLenECMAdhSpringGPU, &restLenECMAdhSpring,sizeof(double));
 
 cudaMemcpyToSymbol(maxLenECMAdhSpringGPU, &maxLenECMAdhSpring,sizeof(double));
 cudaMemcpyToSymbol(kAdhECMGPU, &kAdhECM,sizeof(double));
+
+cudaMemcpyToSymbol(stiffnessECMPeripGPU, &stiffnessECMPerip,sizeof(double));
+cudaMemcpyToSymbol(stiffnessECMBCGPU, &stiffnessECMBC,sizeof(double));
+cudaMemcpyToSymbol(stiffnessECMBasalGPU, &stiffnessECMBasal,sizeof(double));
+
+cudaMemcpyToSymbol(lknotECMPeripGPU, & lknotECMPerip,sizeof(double));
+cudaMemcpyToSymbol(lknotECMBCGPU, & lknotECMBC,sizeof(double));
+cudaMemcpyToSymbol(lknotECMBasalGPU, & lknotECMBasal,sizeof(double));
+
+
 
 lastPrintECM=1000000 ; // large number 
 outputFrameECM=0 ; 
@@ -285,7 +353,7 @@ for (int i=0 ; i<maxTotalNodes ; i++) {
 	}
 }
 
-std::string cSVFileName = "EnergyExport.CSV";
+std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str());
 
@@ -560,7 +628,7 @@ void  SceECM:: PrintECM(double curTime) {
                if (lastPrintECM>=freqPlotData) { 
 			outputFrameECM++ ; 
 			lastPrintECM=0 ; 
-			std::string vtkFileName = "ECM_" + patch::to_string(outputFrameECM-1) + ".vtk";
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
 			ECMOut<< "# vtk DataFile Version 3.0" << endl;
@@ -607,7 +675,7 @@ void  SceECM:: PrintECM(double curTime) {
 
 			ECMOut.close();
 			// second output file for curvature estimation //
-			std::string txtFileName = "ECMExport_" + patch::to_string(outputFrameECM-1) + ".txt";
+			std::string txtFileName = "./ECMFolder/ECMExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
 			ofstream ECMExport ;
 			ECMExport.open(txtFileName.c_str());
 			//ECMExport << "ECM pouch coordinates" << std::endl;
@@ -632,7 +700,7 @@ void  SceECM:: PrintECM(double curTime) {
 			double totalEnergyECM=0.5*(totalMorseEnergyCell+totalMorseEnergy)+ 0.5*(totalAdhEnergyCell+totalAdhEnergy)+ 0.5*totalLinSpringEnergy ;
 
 
-			std::string cSVFileName = "EnergyExport.CSV";
+			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput+ ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str(),ofstream::app);
 			

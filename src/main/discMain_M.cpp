@@ -159,6 +159,7 @@ int main(int argc, char* argv[]) {
                           cout << "Init_Displace="<< Init_Displace<< endl ; 
                           FirstData=false ;  
                         }
+						/*
                         if (i==0){
                           polyData.printStressStrain_Ini( FileName2) ;
                           FirstData=true ; 
@@ -168,7 +169,8 @@ int main(int argc, char* argv[]) {
                           polyData.printStressStrain( FileName2,curTime,Init_Displace) ;
                          cout<<"I am in writing and i is equal to"<<i<<endl ;  
                         }
- 
+ 						*/
+
 			std::cout << "substep 2 " << std::endl;
 			//////// update division threshold //////
 			updateDivThres(curDivThred, i, curTime, decayCoeff,              //Ali
