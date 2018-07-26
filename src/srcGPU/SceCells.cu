@@ -1548,7 +1548,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	//applyMembContraction() ;  // Ali 
+	applyMembContraction() ;  // Ali 
 
 	//if (curTime>0) {
 	//	applyNucleusEffect() ; 
