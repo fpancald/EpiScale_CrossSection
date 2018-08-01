@@ -2277,7 +2277,7 @@ void SceNodes::applySceForcesDisc_M() {
 							jJunction=firstApiLat[cellRank]-j ; 
 							if (jJunction <(cellRank*maxNodePerCell)) {
 								jJunction=jJunction + activeMemCount [cellRank] ;
-								cout << " The subApicalNodes of cell rank " << cellRank << " passed the first node ID" << endl ; 
+								//cout << " The subApicalNodes of cell rank " << cellRank << " passed the first node ID" << endl ; 
 							}
 		 					infoVecs.isSubApicalJunctionHost[jJunction]=true ;
 
@@ -2310,7 +2310,7 @@ void SceNodes::applySceForcesDisc_M() {
 							if (jJunction>=(cellRank*maxNodePerCell+activeMemCount [cellRank]) ) {
 								jJunction=jJunction - activeMemCount [cellRank];
 
-								cout << " The subApicalNodes of cell rank " << cellRank << " passed the last node ID" << endl ; 
+								//cout << " The subApicalNodes of cell rank " << cellRank << " passed the last node ID" << endl ; 
 							}
 		 					infoVecs.isSubApicalJunctionHost[jJunction]=true ;
 							subApicalInfo[cellRank].nodeIdBehind[j]=jJunction ; // the vector of structures for active cells has already been generated.
