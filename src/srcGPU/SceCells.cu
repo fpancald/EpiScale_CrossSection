@@ -1540,7 +1540,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 //	if (tmpIsInitPhase==false) {
 //		updateInternalAvgPos_M ();
 //	}
-//	PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
+	//PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
     BC_Imp_M() ; 
 	std::cout << "     ***1.5 ***" << endl;
 	std::cout.flush();
@@ -6422,7 +6422,7 @@ void SceCells::applyNucleusEffect() {
 
 void SceCells::PlotNucleus (int & lastPrintNucleus, int & outputFrameNucleus) {
 	lastPrintNucleus=lastPrintNucleus+1 ; 
-    if (lastPrintNucleus>=5000) { 
+    if (lastPrintNucleus>=10000) { 
 		outputFrameNucleus++ ; 
 		lastPrintNucleus=0 ; 
 		std::string vtkFileName = "Nucleus_" + patch::to_string(outputFrameNucleus-1) + ".vtk";
@@ -6434,7 +6434,7 @@ void SceCells::PlotNucleus (int & lastPrintNucleus, int & outputFrameNucleus) {
 		NucleusOut << "DATASET UNSTRUCTURED_GRID" << std::endl;
 		NucleusOut << "POINTS " << allocPara_m.currentActiveCellCount << " float" << std::endl;
 		for (uint i = 0; i < allocPara_m.currentActiveCellCount; i++) {
-			NucleusOut << cellInfoVecs.nucleusLocX[i] << " " << cellInfoVecs.nucleusLocY[i] << " "
+			NucleusOut << cellInfoVecs.InternalAvgX[i] << " " << cellInfoVecs.InternalAvgY[i] << " "
 			<< 0.0 << std::endl;
 		}
 		NucleusOut<< std::endl;
