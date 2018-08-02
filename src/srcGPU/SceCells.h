@@ -266,6 +266,7 @@ struct CVec2Add: public thrust::binary_function<CVec2, CVec2, CVec2> {
 	}
 };
 
+
 /**
  * Divide three inputs by one same number.
  * @param input1 first number to be divide \n
@@ -1161,7 +1162,7 @@ struct AddExtForce: public thrust::unary_function<TUiDUiTDD, CVec2> {
 
 
 
-struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
+struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 	uint _maxMembrNodePerCell ; 
 	uint _maxNodePerCell;
 	double* _locXAddr;
@@ -1178,7 +1179,7 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 					_cellAreaVecAddr(cellAreaVecAddr), _mitoticCri(mitoticCri) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__device__ CVec4 operator()(const DUiDDUiUiDDDD &dUiDDUiUiDDDD) const {
+	__device__ CVec5 operator()(const DUiDDUiUiDDDD &dUiDDUiUiDDDD) const {
 
 		double progress = thrust::get<0>(dUiDDUiUiDDDD);
 		uint   activeMembrCount= thrust::get<1>(dUiDDUiUiDDDD);
@@ -1208,10 +1209,11 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 		double lenR;
 		double fX=0 ; 
 		double fY=0 ; 
+		double fN=0 ; 
 
 
 		if (_isActiveAddr[index] == false || nodeRank >= activeMembrCount) {
-			return thrust::make_tuple(velX, velY,fX,fY);
+			return thrust::make_tuple(velX, velY,fX,fY,fN);
 		} else {
 
 			posX=locX-cellCenterX ; 
@@ -1274,13 +1276,16 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec4> {
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     (  posYR-posYL ) ; 
 			 fY=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
-			     ( -posXR+posXL ) ; 
+			     ( -posXR+posXL ) ;
+			 fN=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*sqrt( (posYR-posYL)*(posYR-posYL) +( -posXR+posXL )* ( -posXR+posXL ) ) ;  
+
+		 
 			velX=velX+fX ;
 			velY=velY+fY ;
 
 
 
-			return thrust::make_tuple(velX, velY,fX,fY);
+			return thrust::make_tuple(velX, velY,fX,fY,fN);
 		}
 	}
 }; 
@@ -1459,7 +1464,7 @@ struct CalCurvatures: public thrust::unary_function<CurvatureData, CVec6> {
 		extForceN = extForceX * Nx     + extForceY * Ny;
 
                 DistToRi=S_tr ; 
-		return thrust::make_tuple(f_MI_M_T, f_MI_M_N, curvature, extForceT, extForceN,DistToRi);
+		return thrust::make_tuple(f_MI_M_T, abs(f_MI_M_N), curvature, extForceT, abs(extForceN),DistToRi);
 	}
 };
 
@@ -3316,6 +3321,8 @@ struct CellInfoVecs {
 	thrust::device_vector<double> nucleusLocPercent; //Ali 
 	thrust::device_vector<double> sumLagrangeFPerCellX; //Ali 
 	thrust::device_vector<double> sumLagrangeFPerCellY; //Ali 
+	thrust::device_vector<double> sumLagrangeFN; //Ali 
+	thrust::device_vector<double> sumF_MI_M_N; //Ali 
 	thrust::device_vector<int> apicalNodeCount; //Ali 
 	thrust::device_vector<int> ringApicalId; //Ali 
 	thrust::device_vector<int> ringBasalId; //Ali 
@@ -3350,6 +3357,7 @@ struct CellInfoVecs {
 
 	thrust::device_vector<double> cellAreaVec;
     thrust::device_vector<double> cellPerimVec;//AAMIRI
+    thrust::device_vector<double> cellPressure;//Ali 
     thrust::device_vector<ECellType> eCellTypeV2 ;//Ali
 };
 
@@ -3839,6 +3847,7 @@ class SceCells {
 
 	void calCellArea();
     void calCellPerim();//AAMIRI
+    void calCellPressure();//AAMIRI
 	void eCMCellInteraction(bool cellPolar, bool subCellPolar, bool tmpIsInitSetup) ; 
 public:
 	SceCells();

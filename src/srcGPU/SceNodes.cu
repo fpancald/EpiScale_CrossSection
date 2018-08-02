@@ -2692,7 +2692,7 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeF_MI_M_x.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_y.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_T.resize(maxTotalNodeCount);  //Ali
-	infoVecs.nodeF_MI_M_N.resize(maxTotalNodeCount);  //Ali
+	infoVecs.nodeF_MI_M_N.resize(maxTotalNodeCount,0.0);  //Ali
 	infoVecs.nodeVelTangent.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeVelNormal.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeCurvature.resize(maxTotalNodeCount, 0.0);//AAMIRI
@@ -2745,6 +2745,7 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.nodeIMEnergy.resize(maxTotalNodeCount, 0.0);
 		infoVecs.lagrangeFX.resize(maxTotalNodeCount, 0.0);
 		infoVecs.lagrangeFY.resize(maxTotalNodeCount, 0.0);
+		infoVecs.lagrangeFN.resize(maxTotalNodeCount, 0.0);
 		infoVecs.membrBendLeftY.resize(maxTotalNodeCount, 0);
 		infoVecs.membrBendRightX.resize(maxTotalNodeCount, 0);
 		infoVecs.membrBendRightY.resize(maxTotalNodeCount, 0);

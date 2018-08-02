@@ -1,6 +1,7 @@
 // to do list  center of the tissue is manually intorduced in the obtainTwoNewCenter function to recognize if the mothe cell is in front or behind
 // if two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
 // In function processMemVec the lateral L and right are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
+//If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
 #include "SceCells.h"
 #include <cmath>
 
@@ -802,6 +803,9 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.membrGrowSpeed.resize(allocPara_m.maxCellCount, 0.0);
 	cellInfoVecs.cellAreaVec.resize(allocPara_m.maxCellCount, 0.0);
     cellInfoVecs.cellPerimVec.resize(allocPara_m.maxCellCount, 0.0);//AAMIRI
+    cellInfoVecs.cellPressure.resize(allocPara_m.maxCellCount, 0.0);//Ali
+    cellInfoVecs.sumF_MI_M_N.resize(allocPara_m.maxCellCount, 0.0);//Ali
+    cellInfoVecs.sumLagrangeFN.resize(allocPara_m.maxCellCount, 0.0);//Ali
     cellInfoVecs.eCellTypeV2.resize(allocPara_m.maxCellCount, notActive);//Ali 
     cellInfoVecs.cellRoot.resize(allocPara_m.maxCellCount, -1);//Ali
 
@@ -2704,10 +2708,10 @@ void SceCells::findTangentAndNormal_M() {
 					+ totalNodeCountForActiveCells,
 			thrust::make_zip_iterator(
 					thrust::make_tuple(nodes->getInfoVecs().nodeF_MI_M_T.begin(),
-							nodes->getInfoVecs().nodeF_MI_M_N.begin(), 
+							nodes->getInfoVecs().nodeF_MI_M_N.begin(),   //Absoulte value since we know it is always repulsion. only it is used for output data
 							nodes->getInfoVecs().nodeCurvature.begin(),
 							nodes->getInfoVecs().nodeExtForceTangent.begin(),
-							nodes->getInfoVecs().nodeExtForceNormal.begin(),
+							nodes->getInfoVecs().nodeExtForceNormal.begin(), // Absolute value to be consittent only it is used for output data 
 							nodes->getInfoVecs().membrDistToRi.begin())),
 			CalCurvatures(maxAllNodePerCell, nodeIsActiveAddr, nodeLocXAddr, nodeLocYAddr));
 
@@ -2965,7 +2969,8 @@ thrust::transform(
 					thrust::make_tuple(nodes->getInfoVecs().nodeVelX.begin(),
 									   nodes->getInfoVecs().nodeVelY.begin(),
 									   nodes->getInfoVecs().lagrangeFX.begin(),
-									   nodes->getInfoVecs().lagrangeFY.begin())),
+									   nodes->getInfoVecs().lagrangeFY.begin(),
+									   nodes->getInfoVecs().lagrangeFN.begin())),
 			AddLagrangeForces(maxAllNodePerCell,nodeLocXAddr, nodeLocYAddr, nodeIsActiveAddr,cellAreaVecAddr,grthPrgrCriVal_M));
 			
 			uint maxNPerCell = allocPara_m.maxAllNodePerCell;
@@ -4260,8 +4265,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	thrust::host_vector<double> hostTmpVectorTenMag(maxActiveNode);
 	thrust::host_vector<double> hostTmpVectorF_MI_M_x(maxActiveNode);//AAMIRI //AliE
 	thrust::host_vector<double> hostTmpVectorF_MI_M_y(maxActiveNode);//AAMIRI //AliE
-	thrust::host_vector<double> hostTmpVectorF_MI_M_T(maxActiveNode); //AliE
-	thrust::host_vector<double> hostTmpVectorF_MI_M_N(maxActiveNode);//AliE
+	//thrust::host_vector<double> hostTmpVectorF_MI_M_T(maxActiveNode); //AliE
+	//thrust::host_vector<double> hostTmpVectorF_MI_M_N(maxActiveNode);//AliE
 	thrust::host_vector<double> hostTmpVectorNodeCurvature(maxActiveNode);//AAMIRI
 	thrust::host_vector<double> hostTmpVectorNodeActinLevel(maxActiveNode);//Ali
 	thrust::host_vector<double> hostTmpVectorExtForceTangent(maxActiveNode);//AAMIRI
@@ -4303,6 +4308,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							hostTmpVectorExtForceTangent.begin(), hostTmpVectorExtForceNormal.begin())));//AAMIRI
 
 //Copy more than 10 elements is not allowed so, I separate it
+/*
 	thrust::copy(
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
@@ -4321,6 +4327,12 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 					thrust::make_tuple(
 							hostTmpVectorF_MI_M_T.begin(), hostTmpVectorF_MI_M_N.begin(),hostTmpVectorNodeActinLevel.begin()
 							)));
+*/
+	thrust::copy(nodes->getInfoVecs().nodeActinLevel.begin(),nodes->getInfoVecs().nodeActinLevel.begin()+ maxActiveNode,hostTmpVectorNodeActinLevel.begin()); //Ali 
+
+
+
+
 
 
 	thrust::host_vector<uint> curActiveMemNodeCounts =
@@ -4345,12 +4357,12 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	double node1F_MI_M_x, node1F_MI_M_y;//AAMIRI //AliE
 	double nodeExtForceT, nodeExtForceN;//AAMIRI 
 	double aniVal;
-        double tmpF_MI_M_MagN_Int[activeCellCount-1] ; //AliE
+        //double tmpF_MI_M_MagN_Int[activeCellCount-1] ; //AliE
 
          //This is how the VTK file is intended to be written. First the memmbraen nodes are going to be written and then internal nodes.
         //loop on membrane nodes
 	for (uint i = 0; i < activeCellCount; i++) {
-		tmpF_MI_M_MagN_Int[i]=0.0   ;   
+		//tmpF_MI_M_MagN_Int[i]=0.0   ;   
 		for (uint j = 0; j < curActiveMemNodeCounts[i]; j++) {
 			index1 = beginIndx + i * maxNodePerCell + j;
 			if ( hostIsActiveVec[index1]==true) {
@@ -4366,7 +4378,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 				tmpF_MI_M= CVector(node1F_MI_M_x, node1F_MI_M_y, 0.0); //AliE
 				rawAniData.aniNodeF_MI_M.push_back(tmpF_MI_M); //AliE
                                // tmpF_MI_M_MagN_Int[i]=tmpF_MI_M_MagN_Int[i]+sqrt(pow(hostTmpVectorF_MI_M_x[index1],2)+pow(hostTmpVectorF_MI_M_y[index1],2)) ; //AliE
-                                tmpF_MI_M_MagN_Int[i]=tmpF_MI_M_MagN_Int[i]+abs(hostTmpVectorF_MI_M_N[index1]) ; //AliE
+                //tmpF_MI_M_MagN_Int[i]=tmpF_MI_M_MagN_Int[i]+hostTmpVectorF_MI_M_N[index1] ; //AliE
 
 				nodeExtForceT = hostTmpVectorExtForceTangent[index1];//AAMIRI
 				nodeExtForceN = hostTmpVectorExtForceNormal[index1];//AAMIRI
@@ -4459,7 +4471,9 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 					tmpPos = CVector(node1X, node1Y, 0);
 					//aniVal = hostTmpVectorNodeType[index1];
 					aniVal = cellColors[i];
-                                        rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali added 
+                    //rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali added 
+                    rawAniData.aniNodeF_MI_M_MagN_Int.push_back(cellInfoVecs.cellPressure[i]) ; //Ali added 
+					
 					rawAniData.aniNodePosArr.push_back(tmpPos);
 					rawAniData.aniNodeVal.push_back(aniVal);
 
@@ -4472,7 +4486,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 					tmpPos = CVector(node2X, node2Y, 0);
 					//aniVal = hostTmpVectorNodeType[index2];
 					aniVal = cellColors[i];
-                                        rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added 
+                    //rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added
+                    rawAniData.aniNodeF_MI_M_MagN_Int.push_back(cellInfoVecs.cellPressure[i]) ; //Ali Added
 					rawAniData.aniNodePosArr.push_back(tmpPos);
 					rawAniData.aniNodeVal.push_back(aniVal);
 
@@ -4516,7 +4531,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							tmpPos = CVector(node1X, node1Y, 0);
 							//aniVal = hostTmpVectorNodeType[index1];
 							aniVal = cellColors[i];
-                                                        rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added 
+                            //rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added 
+                            rawAniData.aniNodeF_MI_M_MagN_Int.push_back(cellInfoVecs.cellPressure[i]) ; //Ali Added 
 							rawAniData.aniNodePosArr.push_back(tmpPos);
 							rawAniData.aniNodeVal.push_back(aniVal);
 						}
@@ -4528,7 +4544,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							tmpPos = CVector(node2X, node2Y, 0);
 							//aniVal = hostTmpVectorNodeType[index1];
 							aniVal = cellColors[i];
-                                                        rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added
+                            //rawAniData.aniNodeF_MI_M_MagN_Int.push_back(tmpF_MI_M_MagN_Int[i]/cellsPerimeter[i]) ; //Ali Added
+                            rawAniData.aniNodeF_MI_M_MagN_Int.push_back(cellInfoVecs.cellPressure[i]) ; //Ali Added
 							rawAniData.aniNodePosArr.push_back(tmpPos);
 							rawAniData.aniNodeVal.push_back(aniVal);
 						}
@@ -5918,6 +5935,40 @@ void SceCells::calCellArea() {
  			thrust::plus<double>());
  }
  
+   //Ali added to calculate pressure of each cell
+ void SceCells::calCellPressure() {
+ 	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+ 			* allocPara_m.maxAllNodePerCell;
+ 
+ 	uint maxNPerCell = allocPara_m.maxAllNodePerCell;
+ 	thrust::counting_iterator<uint> iBegin(0) ;
+
+			// if the membrane node is not active or if this is an internal node it will automatically add with zero.
+			thrust::reduce_by_key(
+									make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
+									make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))+ totalNodeCountForActiveCells,
+			nodes->getInfoVecs().nodeF_MI_M_N.begin(),
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			cellInfoVecs.sumF_MI_M_N.begin());  
+
+			thrust::reduce_by_key(
+									make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
+									make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))+ totalNodeCountForActiveCells,
+			nodes->getInfoVecs().lagrangeFN.begin(),
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			cellInfoVecs.sumLagrangeFN.begin());  
+
+			thrust:: transform(cellInfoVecs.sumF_MI_M_N.begin(), cellInfoVecs.sumF_MI_M_N.begin()+allocPara_m.currentActiveCellCount, 
+			                   cellInfoVecs.sumLagrangeFN.begin(), cellInfoVecs.cellPressure.begin(),thrust::plus<float>()) ;
+			thrust:: transform(cellInfoVecs.cellPressure.begin(), cellInfoVecs.cellPressure.begin()+allocPara_m.currentActiveCellCount, 
+			                   cellInfoVecs.cellPerimVec.begin(), cellInfoVecs.cellPressure.begin(),thrust::divides<float>()) ;
+
+
+
+ }
+ 
+
+
 
 
 
@@ -5942,7 +5993,7 @@ CellsStatsData SceCells::outputPolyCountData() {
         cout << " I am after cells area" << endl ;
 
         calCellPerim();//AAMIRI
- 
+		calCellPressure() ; // Ali  
 	CellsStatsData result;
 
         cout << " I am after result" << endl ; 
@@ -5995,6 +6046,8 @@ CellsStatsData SceCells::outputPolyCountData() {
         thrust::host_vector<double> cellPerimHost(
  			allocPara_m.currentActiveCellCount);//AAMIRI
 
+        thrust::host_vector<double> cellPressureHost(
+ 			allocPara_m.currentActiveCellCount);//Ali
 
 	thrust::copy(cellInfoVecs.cellAreaVec.begin(),
 			cellInfoVecs.cellAreaVec.begin()
@@ -6004,6 +6057,9 @@ CellsStatsData SceCells::outputPolyCountData() {
  			cellInfoVecs.cellPerimVec.begin()
 					+ allocPara_m.currentActiveCellCount, cellPerimHost.begin());//AAMIRI
 
+        thrust::copy(cellInfoVecs.cellPressure.begin(),
+ 			cellInfoVecs.cellPressure.begin()
+					+ allocPara_m.currentActiveCellCount, cellPressureHost.begin());//Ali
 
 
         sumX=0 ; 
@@ -6088,7 +6144,8 @@ CellsStatsData SceCells::outputPolyCountData() {
 		cellStatsData.cellCenter = CVector(centerCoordXHost[i],
 				centerCoordYHost[i], 0);
 		cellStatsData.cellArea = cellAreaHost[i];
-                cellStatsData.cellPerim = cellPerimHost[i];//AAMIRI
+        cellStatsData.cellPerim = cellPerimHost[i];//AAMIRI
+        cellStatsData.cellPressure = cellPressureHost[i];//Ali
 		result.cellsStats.push_back(cellStatsData);
                 sumX=sumX+cellStatsData.cellCenter.x ; 
                 sumY=sumY+cellStatsData.cellCenter.y ;
@@ -6260,8 +6317,8 @@ void SceCells::applySceCellDisc_M() {
 							   nodes->getInfoVecs().nodeVelY.begin(),
 							   nodes->getInfoVecs().nodeF_MI_M_x.begin(),  //Ali added for cell pressure calculation 
 							   nodes->getInfoVecs().nodeF_MI_M_y.begin(),// ALi added for cell pressure calculation
-							   nodes->getInfoVecs().nodeIIEnergy.begin(),// ALi added for cell pressure calculation
-							   nodes->getInfoVecs().nodeIMEnergy.begin())),// ALi added for cell pressure calculation
+							   nodes->getInfoVecs().nodeIIEnergy.begin(),
+							   nodes->getInfoVecs().nodeIMEnergy.begin())),
 			AddSceCellForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,
 					nodeLocYAddr, nodeIsActiveAddr, grthPrgrCriVal_M));
 /*

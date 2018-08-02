@@ -690,6 +690,10 @@ struct CellStats {
 	uint currentActiveIntnlNodes;
 	uint currentActiveMembrNodes;
 	CVector cellCenter;
+	CVector cellApicalLoc; //Ali 
+	CVector cellBasalLoc;  //Ali 
+	CVector cellNucleusLoc; //Ali 
+	double  cellPressure ;  //Ali 
 	void printToFile(ofstream& ofs);
 
 	};
