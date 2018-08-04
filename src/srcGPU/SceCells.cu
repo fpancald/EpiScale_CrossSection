@@ -1,7 +1,11 @@
-// to do list  center of the tissue is manually intorduced in the obtainTwoNewCenter function to recognize if the mothe cell is in front or behind
-// if two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
-// In function processMemVec the lateral L and right are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
-//If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
+// to do list:
+	//1-center of the tissue is manually intorduced in the obtainTwoNewCenter function to recognize if the mothe cell is in front or behind
+	//2- If two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
+	//3- In function processMemVec the lateral L and right are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
+	//4- If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
+
+//Notes:
+	// 1- Currently the nucleus position is desired location not an enforced position. So, all the functions which used "nucleusLocX" & "nucleusLocY" are not active. Instead two variables "nucleusDesireLocX" & "nucleusDesireLocY" are active and internal avg position represent where the nuclei are located.
 #include "SceCells.h"
 #include <cmath>
 
@@ -769,6 +773,8 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.centerCoordZ.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.apicalLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.apicalLocY.resize(allocPara_m.maxCellCount); //Ali 
+	cellInfoVecs.basalLocX.resize(allocPara_m.maxCellCount);  //Ali 
+	cellInfoVecs.basalLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.nucleusDesireLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.nucleusDesireLocY.resize(allocPara_m.maxCellCount); //Ali 
@@ -776,6 +782,7 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.nucleusLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.nucleusLocPercent.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.apicalNodeCount.resize(allocPara_m.maxCellCount,0); //Ali 
+	cellInfoVecs.basalNodeCount.resize(allocPara_m.maxCellCount,0); //Ali 
 	cellInfoVecs.ringApicalId.resize(allocPara_m.maxCellCount,-1); //Ali 
 	cellInfoVecs.ringBasalId.resize(allocPara_m.maxCellCount,-1); //Ali 
 	cellInfoVecs.sumLagrangeFPerCellX.resize(allocPara_m.maxCellCount,0.0); //Ali 
@@ -834,7 +841,10 @@ void SceCells::initCellNodeInfoVecs_M() {
 			allocPara_m.maxTotalNodeCount);
 
 	cellNodeInfoVecs.activeLocXApical.resize(allocPara_m.maxTotalNodeCount); //Ali 
-	cellNodeInfoVecs.activeLocYApical.resize(allocPara_m.maxTotalNodeCount); //Ali 
+	cellNodeInfoVecs.activeLocYApical.resize(allocPara_m.maxTotalNodeCount); //Ali
+
+	cellNodeInfoVecs.activeLocXBasal.resize(allocPara_m.maxTotalNodeCount); //Ali 
+	cellNodeInfoVecs.activeLocYBasal.resize(allocPara_m.maxTotalNodeCount); //Ali 
 }
 
 void SceCells::initGrowthAuxData() {
@@ -1530,22 +1540,21 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 
     assignMemNodeType();  // Ali
-    computeApicalLoc();
+    computeApicalLoc();  //Ali
 	
-	computeCenterPos_M2();
-	computeInternalAvgPos_M();
+	computeCenterPos_M2(); //Ali 
+	computeInternalAvgPos_M(); //Ali
 	//computeNucleusLoc() ;
 
  	if (curTime==(InitTimeStage+dt)) {
-		computeNucleusIniLocPercent(); 
-		cout << "time is " << curTime << endl ; 
+		computeNucleusIniLocPercent(); //Ali  
 	}
-	computeNucleusDesireLoc() ; 
+	computeNucleusDesireLoc() ; // Ali
 //	if (tmpIsInitPhase==false) {
-//		updateInternalAvgPos_M ();
+//		updateInternalAvgPosByNucleusLoc_M ();
 //	}
 	//PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
-    BC_Imp_M() ; 
+    BC_Imp_M() ;  //Ali 
 	std::cout << "     ***1.5 ***" << endl;
 	std::cout.flush();
 
@@ -1554,32 +1563,27 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	applySceCellDisc_M();
 	applyMembContraction() ;  // Ali 
 
-	//if (curTime>0) {
-	//	applyNucleusEffect() ; 
-//	}
+	//	applyNucleusEffect() ;
+	//	applyForceInteractionNucleusAsPoint() ; 
 	std::cout << "     *** 3 ***" << endl;
 	std::cout.flush();
 //Ali        
 	
-//Ali
 
 	applyMemForce_M(cellPolar,subCellPolar);
-	applyVolumeConstraint();
+	applyVolumeConstraint();  //Ali 
 
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
 	std::cout.flush();
 
-     //Ali cmment //
-//	computeCenterPos_M();
+//	computeCenterPos_M();    //Ali cmment //
 	std::cout << "     *** 5 ***" << endl;
 	std::cout.flush();
-     //Ali cmment //
-	if (curTime>0) {
-		growAtRandom_M(dt);
-		std::cout << "     *** 6 ***" << endl;
-		std::cout.flush();
-	}
+	
+	growAtRandom_M(dt);
+	std::cout << "     *** 6 ***" << endl;
+	std::cout.flush();
 
 	enterMitoticCheckForDivAxisCal() ; 
     relaxCount=relaxCount+1 ; 
@@ -3187,7 +3191,8 @@ void SceCells::assignMemNodeType() {
 										thrust::make_zip_iterator(
 											thrust::make_tuple(
 									   			nodes->getInfoVecs().memNodeType1.begin(),
-												nodes->getInfoVecs().nodeIsApicalMem.begin()))
+												nodes->getInfoVecs().nodeIsApicalMem.begin(),
+												nodes->getInfoVecs().nodeIsBasalMem.begin()))
 												,AssignMemNodeType());
 
 }
@@ -3301,7 +3306,7 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 //	for (int i= 0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 //		cout <<"num of apical nodes for cell " <<i << " is " << cellInfoVecs.apicalNodeCount[i] << endl ;  
 //	}
-
+       //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
 		for (int i=0 ; i<allocPara_m.currentActiveCellCount-1 ; i++) {  // if the cell with 0 apical node is at the end, we are fine.
 			if (cellInfoVecs.apicalNodeCount[i]==0) {
 				cout << " I am inside complicated loop" << endl ; 
@@ -3321,7 +3326,7 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 
 }
 
-
+// this function is not currently active. It is useful when the level of growth needs to be related to nucleus location.
 void SceCells::computeNucleusLoc() {
 
 		thrust::transform(
@@ -3350,6 +3355,148 @@ void SceCells::computeNucleusLoc() {
 //}
 
 }
+
+
+// This function is written with the assumption that there is at least one basal point for each cell.
+
+void SceCells::computeBasalLoc() {
+
+	uint maxNPerCell = allocPara_m.maxAllNodePerCell;
+	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+			* allocPara_m.maxAllNodePerCell;
+	thrust::counting_iterator<uint> iBegin(0);
+	thrust::counting_iterator<uint> countingEnd(totalNodeCountForActiveCells);
+
+thrust::reduce_by_key(
+			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
+			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))
+					+ totalNodeCountForActiveCells,
+			nodes->getInfoVecs().nodeIsBasalMem.begin(),  // it is an integer 0,1
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			cellInfoVecs.basalNodeCount.begin(),
+			thrust::equal_to<uint>(), thrust::plus<int>());
+
+
+int* basalNodeCountAddr = thrust::raw_pointer_cast(
+			&(cellInfoVecs.basalNodeCount[0]));
+
+//for (int i=0 ; i<allocPara_m.currentActiveCellCount; i++) {
+//	cout << " the number of apical nodes for cell " << i << " is "<<cellInfoVecs.apicalNodeCount[i] << endl ;   
+//}
+
+
+
+	uint totalBasalNodeCount = thrust::reduce(
+			cellInfoVecs.basalNodeCount.begin(),
+			cellInfoVecs.basalNodeCount.begin()
+					+ allocPara_m.currentActiveCellCount);
+
+	thrust::copy_if(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							make_transform_iterator(iBegin,
+									DivideFunctor(
+											allocPara_m.maxAllNodePerCell)),
+							nodes->getInfoVecs().nodeLocX.begin(),
+							nodes->getInfoVecs().nodeLocY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							make_transform_iterator(iBegin,
+									DivideFunctor(
+											allocPara_m.maxAllNodePerCell)),
+							nodes->getInfoVecs().nodeLocX.begin(),
+							nodes->getInfoVecs().nodeLocY.begin()))
+					+ totalNodeCountForActiveCells,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().nodeIsActive.begin(),
+							nodes->getInfoVecs().memNodeType1.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellNodeInfoVecs.cellRanks.begin(),
+							cellNodeInfoVecs.activeLocXBasal.begin(),     // although the length is total node count but it is filled consequently with basal membrane node 
+							cellNodeInfoVecs.activeLocYBasal.begin())),
+			ActiveAndBasal());
+
+
+//for (int i=sizeApical-40 ; i<sizeApical ; i++) {
+//	cout << " the location of apical node " << i << " is "<<cellNodeInfoVecs.activeLocXApical[i] << " and " << cellNodeInfoVecs.activeLocYApical[i] << endl ;   
+//}
+
+
+	thrust::reduce_by_key(cellNodeInfoVecs.cellRanks.begin(),
+			cellNodeInfoVecs.cellRanks.begin() + totalBasalNodeCount,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellNodeInfoVecs.activeLocXBasal.begin(),
+									   cellNodeInfoVecs.activeLocYBasal.begin())),
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),   //upto here baslLocX is not correct
+					            	   cellInfoVecs.basalLocY.begin())),
+			thrust::equal_to<uint>(), CVec2Add());
+// up to here apicalLocX and apicalLocY are the summation. We divide them if at lease one apical node exist.
+// 0,0 location for apical node indicates that there is no apical node.
+
+	int  NumCellsWithBasalNode=0 ; 
+	for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+		if (cellInfoVecs.basalNodeCount[i]!=0) {
+			NumCellsWithBasalNode=NumCellsWithBasalNode +1; 
+		}
+	}
+
+	cout << "num of cells with basal node is " << NumCellsWithBasalNode << endl ; 
+	thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							           cellInfoVecs.basalLocY.begin(),
+			                           cellInfoVecs.cellRanksTmpStorage.begin()
+									   )),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							           cellInfoVecs.basalLocY.begin(),
+			                           cellInfoVecs.cellRanksTmpStorage.begin()
+									   ))
+					+ NumCellsWithBasalNode,  // if there is a cell where there is no basal node. it will be divided by zero.   
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							           cellInfoVecs.basalLocY.begin())), BasalLocCal(basalNodeCountAddr));
+
+	//for (int i= 0 ; i<NumCellsWithApicalNode ; i++) {
+
+	//	cout << "apical location in x for modified id " << i << " is " << cellInfoVecs.apicalLocX[i] << endl ; 
+	//	cout << "apical location in y for modified id " << i << " is " << cellInfoVecs.apicalLocY[i] << endl ; 
+
+//	}
+
+//	for (int i= 0 ; i<allocPara_m.currentActiveCellCount ; i++) {
+//		cout <<"num of apical nodes for cell " <<i << " is " << cellInfoVecs.apicalNodeCount[i] << endl ;  
+//	}
+       //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
+	for (int i=0 ; i<allocPara_m.currentActiveCellCount-1 ; i++) {  // if the cell with 0 apical node is at the end, we are fine.
+			if (cellInfoVecs.basalNodeCount[i]==0) {
+				cout << " I am inside complicated loop" << endl ; 
+				for (int j=allocPara_m.currentActiveCellCount-2 ; j>=i ; j--) {
+					cellInfoVecs.basalLocX[j+1]=cellInfoVecs.basalLocX[j] ;
+					cellInfoVecs.basalLocY[j+1]=cellInfoVecs.basalLocY[j] ;
+				}
+				cellInfoVecs.basalLocX[i]=0 ;
+				cellInfoVecs.basalLocY[i]=0 ; 
+			}
+		}
+
+		if (cellInfoVecs.basalNodeCount[allocPara_m.currentActiveCellCount-1]==0) { // if the cell with 0 apical node is at the end, no rearrngment is required
+			cellInfoVecs.basalLocX[allocPara_m.currentActiveCellCount-1]=0 ;
+			cellInfoVecs.basalLocY[allocPara_m.currentActiveCellCount-1]=0 ; 
+		}
+
+
+
+
+}
+
+
+
+
+
 
 void SceCells::computeNucleusDesireLoc() {
 
@@ -3402,8 +3549,8 @@ for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 
 }
 
-
-void SceCells::updateInternalAvgPos_M () {
+// this function is not currently active. It is used when 1) internal nodes are used to represent the nucleus 2) we wanted to force the internal nodes to be at desired location. The problem with this method is that it will create net unphysical force on the cell.
+void SceCells::updateInternalAvgPosByNucleusLoc_M () {
 
 	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
@@ -5993,7 +6140,8 @@ CellsStatsData SceCells::outputPolyCountData() {
         cout << " I am after cells area" << endl ;
 
         calCellPerim();//AAMIRI
-		calCellPressure() ; // Ali  
+		calCellPressure() ; // Ali 
+    	computeBasalLoc();  //Ali
 	CellsStatsData result;
 
         cout << " I am after result" << endl ; 
@@ -6027,10 +6175,12 @@ CellsStatsData SceCells::outputPolyCountData() {
 			cellInfoVecs.activeIntnlNodeCounts.begin()
 					+ allocPara_m.currentActiveCellCount,
 			activeIntnlNodeCountHost.begin());
+//////////////
 	thrust::host_vector<double> centerCoordXHost(
 			allocPara_m.currentActiveCellCount);
 	thrust::host_vector<double> centerCoordYHost(
 			allocPara_m.currentActiveCellCount);
+	
 	thrust::copy(cellInfoVecs.centerCoordX.begin(),
 			cellInfoVecs.centerCoordX.begin()
 					+ allocPara_m.currentActiveCellCount,
@@ -6039,6 +6189,63 @@ CellsStatsData SceCells::outputPolyCountData() {
 			cellInfoVecs.centerCoordY.begin()
 					+ allocPara_m.currentActiveCellCount,
 			centerCoordYHost.begin());
+/////////////
+
+
+///////////////
+	thrust::host_vector<double> apicalLocXHost(
+			allocPara_m.currentActiveCellCount);
+	thrust::host_vector<double> apicalLocYHost(
+			allocPara_m.currentActiveCellCount);
+
+	thrust::copy(cellInfoVecs.apicalLocX.begin(),
+			cellInfoVecs.apicalLocX.begin()
+					+ allocPara_m.currentActiveCellCount,
+			apicalLocXHost.begin());
+	thrust::copy(cellInfoVecs.apicalLocY.begin(),
+			cellInfoVecs.apicalLocY.begin()
+					+ allocPara_m.currentActiveCellCount,
+			apicalLocYHost.begin());
+
+///////////
+
+///////////////
+	thrust::host_vector<double> basalLocXHost(
+			allocPara_m.currentActiveCellCount);
+	thrust::host_vector<double> basalLocYHost(
+			allocPara_m.currentActiveCellCount);
+
+	thrust::copy(cellInfoVecs.basalLocX.begin(),
+			cellInfoVecs.basalLocX.begin()
+					+ allocPara_m.currentActiveCellCount,
+			basalLocXHost.begin());
+	thrust::copy(cellInfoVecs.basalLocY.begin(),
+			cellInfoVecs.basalLocY.begin()
+					+ allocPara_m.currentActiveCellCount,
+			basalLocYHost.begin());
+
+///////////
+
+
+
+
+//////
+	thrust::host_vector<double> InternalAvgXHost(
+			allocPara_m.currentActiveCellCount);
+	thrust::host_vector<double> InternalAvgYHost(
+			allocPara_m.currentActiveCellCount);
+
+	thrust::copy(cellInfoVecs.InternalAvgX.begin(),
+			cellInfoVecs.InternalAvgX.begin()
+					+ allocPara_m.currentActiveCellCount,
+			InternalAvgXHost.begin());
+	thrust::copy(cellInfoVecs.InternalAvgY.begin(),
+			cellInfoVecs.InternalAvgY.begin()
+					+ allocPara_m.currentActiveCellCount,
+			InternalAvgYHost.begin());
+/////
+
+
 
 	thrust::host_vector<double> cellAreaHost(
 			allocPara_m.currentActiveCellCount);
@@ -6143,6 +6350,14 @@ CellsStatsData SceCells::outputPolyCountData() {
 		cellStatsData.membrGrowthProgress = growthProMembrVecHost[i];
 		cellStatsData.cellCenter = CVector(centerCoordXHost[i],
 				centerCoordYHost[i], 0);
+
+		cellStatsData.cellApicalLoc= CVector(apicalLocXHost[i],
+				apicalLocYHost[i], 0);  //Ali
+
+		cellStatsData.cellBasalLoc= CVector(basalLocXHost[i],
+				basalLocYHost[i], 0);  //Ali
+		cellStatsData.cellNucleusLoc = CVector(InternalAvgXHost[i],
+				InternalAvgYHost[i], 0);  // Ali
 		cellStatsData.cellArea = cellAreaHost[i];
         cellStatsData.cellPerim = cellPerimHost[i];//AAMIRI
         cellStatsData.cellPressure = cellPressureHost[i];//Ali
@@ -6417,8 +6632,8 @@ void SceCells::applyMembContraction() {
 
 
 
-
-void SceCells::applyNucleusEffect() {
+// this function is not currently active. it was useful when nucleus is modeled as one point node and then force interaction between nucleus and other nodes was implemented in this function. The force interaction is one-way so only effect of nucleus on other nodes.
+void SceCells::applyForceInteractionNucleusAsPoint() {
 	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
 	uint maxAllNodePerCell = allocPara_m.maxAllNodePerCell;

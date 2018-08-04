@@ -543,10 +543,10 @@ void CellStats::printToFile(ofstream& ofs) {
 	ofs << "    CurrentActiveMembrNodes:" << currentActiveMembrNodes
 			<< std::endl;
 	ofs << "    CellCenter:" << cellCenter << std::endl;
-	//ofs << "    CellApicalLoc:" << cellApicalLoc << std::endl;
-	//ofs << "    CellBasalLoc:" << cellBasalLoc << std::endl;
-	//ofs << "    CellNucleusLoc:" << cellNucleusLoc << std::endl;
-	ofs << "    CellPressure:" << cellPressure << std::endl;
+	ofs << "    CellApicalLoc:" << cellApicalLoc << std::endl;  //Ali 
+	ofs << "    CellBasalLoc:" << cellBasalLoc << std::endl;
+	ofs << "    CellNucleusLoc:" << cellNucleusLoc << std::endl; //Ali
+	ofs << "    CellPressure:" << cellPressure << std::endl;  //Ali 
 	ofs << std::endl;
 }
 

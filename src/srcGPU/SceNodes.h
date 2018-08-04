@@ -191,6 +191,23 @@ struct ActiveAndApical {
 	}
 };
 
+//Ali 
+struct ActiveAndBasal {
+	__device__
+	bool operator()(const thrust::tuple<bool, MembraneType1> &bm) {
+		bool isActive = thrust::get<0>(bm);
+		MembraneType1  type = thrust::get<1>(bm);
+		if (isActive == true && type == basal1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+};
+
+
+
+
 
 /**
  * Functor predicate see if a boolean varible is true(seems unnecessary but still required).
@@ -1037,6 +1054,7 @@ public:
 	//thrust::device_vector<bool> nodeIsBasalMem;//Ali
 	//thrust::device_vector<bool> nodeIsLateralMem;//Ali
 	thrust::device_vector<int> nodeIsApicalMem;//Ali it only gets 0 and 1
+	thrust::device_vector<int> nodeIsBasalMem;//Ali it only gets 0 and 1
 	//thrust::device_vector<bool> nodeIsLateralMemHost;//Ali
 	thrust::device_vector<int>  nodeCellRankFront;//Ali it is cell size
 	thrust::device_vector<int>  nodeCellRankBehind;//Ali it is cell size

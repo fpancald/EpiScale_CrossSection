@@ -29,7 +29,7 @@ typedef thrust::tuple<double, uint, uint, uint, double, double> DUiUiUiDD;
 typedef thrust::tuple<double, uint, double, double,uint, uint, double, double, double, double> DUiDDUiUiDDDD;
 typedef thrust::tuple<double, int, int ,uint, uint, double, double > DIIUiUiDD;
 typedef thrust::tuple<ECellType,uint, double, MembraneType1 ,bool,uint, uint> ActinData; //Ali
-typedef thrust::tuple<MembraneType1,int> TI; //Ali
+typedef thrust::tuple<MembraneType1,int,int> TII; //Ali
 typedef thrust::tuple<bool,MembraneType1,uint ,uint> BTUiUi; //Ali
 typedef thrust::tuple<ECellType,uint,double,uint ,MembraneType1, double, double> TUiDUiTDD; //Ali
 //Ali 
@@ -768,15 +768,40 @@ struct ApicalLocCal: public thrust::unary_function<CVec2Int,CVec2> {
 	}
 }; 
 
+//Ali 
+struct BasalLocCal: public thrust::unary_function<CVec2Int,CVec2> {
+	int * _basalNodeCountAddr ; 	
 
-struct AssignMemNodeType: public thrust::unary_function<BTUiUi, TI> {
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__host__ __device__ BasalLocCal(int * basalNodeCountAddr): _basalNodeCountAddr(basalNodeCountAddr){
+		
+		}
+	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
+	__host__  __device__ CVec2 operator()(const CVec2Int &cVec2Int) const {
+		double   basalX=  thrust::get<0>(cVec2Int) ;
+		double   basalY = thrust::get<1>(cVec2Int);
+		uint      cellRank = thrust::get<2>(cVec2Int);
+
+         
+			return thrust::make_tuple( basalX/_basalNodeCountAddr[cellRank],
+									   basalY/_basalNodeCountAddr[cellRank] ) ; 
+
+	}
+}; 
+
+
+
+
+
+
+struct AssignMemNodeType: public thrust::unary_function<BTUiUi, TII> {
 	
 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__ AssignMemNodeType(){
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__host__  __device__ TI  operator()(const BTUiUi &bTUiUi) const {
+	__host__  __device__ TII  operator()(const BTUiUi &bTUiUi) const {
 		bool            isActive=  thrust::get<0>(bTUiUi) ; 
 		MembraneType1   nodeType= thrust::get<1>(bTUiUi); 
 		uint            nodeRank = thrust::get<2>(bTUiUi) ; // node rank in each cell 
@@ -796,10 +821,15 @@ struct AssignMemNodeType: public thrust::unary_function<BTUiUi, TI> {
 */
 
 		if(nodeType==apical1) { 
-			return thrust::make_tuple( nodeType,1) ;
+			return thrust::make_tuple( nodeType,1,0) ;
+		}
+
+		else if (nodeType==basal1) {
+
+			return thrust::make_tuple( nodeType,0,1) ;
 		}
 		else {
-			return thrust::make_tuple( nodeType,0) ;
+			return thrust::make_tuple( nodeType,0,0) ;
 
 		}
 		/*
@@ -1706,7 +1736,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 
 
 
-
+// This structure is currently not being used. It was used when the nucleus was modeled as a point and force interaction between nucleus and other elements were considered.
 struct AddNucleusForce: public thrust::unary_function<DDDBDDDD, CVec2> {
 	double _grthPrgrCriVal_M;
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
@@ -3312,7 +3342,11 @@ struct CellInfoVecs {
 	thrust::device_vector<double> tmpShiftVecY;
 	thrust::device_vector<double> centerCoordZ;
 	thrust::device_vector<double> apicalLocX; //Ali 
-	thrust::device_vector<double> apicalLocY; //Ali 
+	thrust::device_vector<double> apicalLocY; //Ali
+
+	thrust::device_vector<double> basalLocX; //Ali 
+	thrust::device_vector<double> basalLocY; //Ali 
+
 	thrust::device_vector<double> nucleusLocX; //Ali 
 	thrust::device_vector<double> nucleusLocY; //Ali
 	thrust::device_vector<double> nucleusDesireLocX; //Ali 
@@ -3324,6 +3358,7 @@ struct CellInfoVecs {
 	thrust::device_vector<double> sumLagrangeFN; //Ali 
 	thrust::device_vector<double> sumF_MI_M_N; //Ali 
 	thrust::device_vector<int> apicalNodeCount; //Ali 
+	thrust::device_vector<int> basalNodeCount; //Ali 
 	thrust::device_vector<int> ringApicalId; //Ali 
 	thrust::device_vector<int> ringBasalId; //Ali 
 
@@ -3370,6 +3405,8 @@ struct CellNodeInfoVecs {
 	thrust::device_vector<double> activeLocXApical; //Ali 
 	thrust::device_vector<double> activeLocYApical; //Ali 
 
+	thrust::device_vector<double> activeLocXBasal; //Ali 
+	thrust::device_vector<double> activeLocYBasal; //Ali 
 // temp value for holding a node direction to its corresponding center
 	thrust::device_vector<double> distToCenterAlongGrowDir;
 };
@@ -3732,11 +3769,12 @@ class SceCells {
 
 	void assignMemNodeType();  //Ali 
 	void computeApicalLoc();  //Ali 
+	void computeBasalLoc();  //Ali 
 	void computeNucleusLoc();  //Ali 
 	void computeNucleusDesireLoc();  //Ali 
 	void computeNucleusIniLocPercent();  //Ali 
-	void applyNucleusEffect();  //Ali 
-	void updateInternalAvgPos_M();  //Ali 
+	void applyForceInteractionNucleusAsPoint() ; //Ali 
+	void updateInternalAvgPosByNucleusLoc_M();  //Ali 
 	void PlotNucleus(int & lastPrintNucleus, int & outputFrameNucleus);  //Ali 
 
 	void enterMitoticCheckForDivAxisCal();
