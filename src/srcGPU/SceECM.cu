@@ -625,9 +625,11 @@ PrintECM(curTime);
 
 void  SceECM:: PrintECM(double curTime) {
 		lastPrintECM=lastPrintECM+1 ; 
-               if (lastPrintECM>=freqPlotData) { 
+        if (lastPrintECM>=freqPlotData) { 
 			outputFrameECM++ ; 
-			lastPrintECM=0 ; 
+			lastPrintECM=0 ;
+
+			// First ECM output file for paraview //
 			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
@@ -659,14 +661,7 @@ void  SceECM:: PrintECM(double curTime) {
 			for (uint i = 0; i < nodeECMLocX.size(); i++) {
 				ECMOut<<linSpringAvgTension[i] <<endl ; 
 			}
-//			ECMOut << "POINT_DATA "<<nodeECMLocX.size() <<endl ; 
-///			ECMOut << "SCALARS Avg_Tension2 " << "float"<< endl;
-//			ECMOut << "LOOKUP_TABLE " << "default"<< endl;
-//			for (uint i = 0; i < nodeECMLocX.size(); i++) {
-//				ECMOut<<linSpringAvgTension[i] <<endl ; 
-//			}
-
-//			ECMOut << "POINT_DATA "<<nodeECMLocX.size() <<endl ; 
+			
 			ECMOut << "SCALARS Node_Type " << "float"<< endl;
 			ECMOut << "LOOKUP_TABLE " << "default"<< endl;
 			for (uint i = 0; i < nodeECMLocX.size(); i++) {
@@ -674,15 +669,18 @@ void  SceECM:: PrintECM(double curTime) {
 			}
 
 			ECMOut.close();
+
+
+
 			// second output file for curvature estimation //
-			std::string txtFileName = "./ECMFolder/ECMExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
-			ofstream ECMExport ;
-			ECMExport.open(txtFileName.c_str());
+			std::string txtFileName = "./ECMFolder/ECMLocationExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			ofstream ECMLocationExport ;
+			ECMLocationExport.open(txtFileName.c_str());
 			//ECMExport << "ECM pouch coordinates" << std::endl;
 
 			for (uint i = 0; i < nodeECMLocX.size(); i++) {
 				if (peripORexcm[i]==excm) {
-					ECMExport<< nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
+					ECMLocationExport<< nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
 					<< 0.0 << std::endl;
 				}
 			}
@@ -690,13 +688,27 @@ void  SceECM:: PrintECM(double curTime) {
 			//ECMExport << "ECM lumen side coordinates" << std::endl;
 			for (uint i = 0; i < nodeECMLocX.size(); i++) {
 				if (peripORexcm[i]==perip) {
-					ECMExport << nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
+					ECMLocationExport << nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
 					<< 0.0 << std::endl;
 				}
 			}
 
-			ECMExport.close();
-			
+			ECMLocationExport.close();
+		
+
+			//Third write file for ECM
+			txtFileName = "./ECMFolder/ECMTensionExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			ofstream ECMTensionExport ;
+			ECMTensionExport.open(txtFileName.c_str());
+
+			for (uint i = 0; i < nodeECMLocX.size(); i++) {
+					ECMTensionExport<< linSpringAvgTension[i]<< " " << peripORexcm[i]<< std::endl;
+				}
+
+			ECMTensionExport.close();
+
+			///
+			//Fourth write file for ECM 
 			double totalEnergyECM=0.5*(totalMorseEnergyCell+totalMorseEnergy)+ 0.5*(totalAdhEnergyCell+totalAdhEnergy)+ 0.5*totalLinSpringEnergy ;
 
 
@@ -708,7 +720,7 @@ void  SceECM:: PrintECM(double curTime) {
 			EnergyExport <<curTime<<","<<totalMorseEnergyCell << "," << totalAdhEnergyCell<< "," << totalMorseEnergy<< "," << totalAdhEnergy<< "," << totalLinSpringEnergy <<"," << totalEnergyECM << std::endl;
 
 
-			}
+		}
 
 }
 
