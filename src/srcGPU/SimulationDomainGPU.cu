@@ -24,7 +24,8 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 		std::vector<uint> &initActiveMembrNodeCounts,
 		std::vector<uint> &initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
-		std::vector<ECellType> & eCellTypeV1 ,double InitTimeStage) {  //Ali
+		std::vector<ECellType> & eCellTypeV1 ,
+		std::vector<MembraneType1> & mTypeV,double InitTimeStage) {  //Ali
 	/*
 	 * Initialize SceNodes by constructor. first two parameters come from input parameters
 	 * while the last four parameters come from Config file.
@@ -32,7 +33,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 	std::cout << "Initializing nodes ...... " << std::endl;
 	uint initTmpNumActiveCells ; //Ali  
     initTmpNumActiveCells=initActiveMembrNodeCounts.size() ;   //Ali size of this vector is the initial number of active cells 
-	nodes = SceNodes(memPara.maxCellInDomain, memPara.maxAllNodePerCell,initTmpNumActiveCells);  // Ali 
+	nodes = SceNodes(memPara.maxCellInDomain, memPara.maxAllNodePerCell,initTmpNumActiveCells);  // Ali // this function includes giving initial size to GPU vectors for node values 
 	//nodes = SceNodes(memPara.maxCellInDomain, memPara.maxAllNodePerCell);  // Ali 
 
 	//std::cout << "break point 1 " << std::endl;
@@ -64,7 +65,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 	//std::cout << "break point 3 " << std::endl;
 	//std::cout.flush();
 
-	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes);
+	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
 
 	//std::cout << "break point 4 " << std::endl;
 	//std::cout.flush();
@@ -81,12 +82,15 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 	//std::cout.flush();
 }
 
+
+// This function is called by the main function of the code, discMain_M.cpp
 void SimulationDomainGPU::initialize_v2_M(SimulationInitData_V2_M& initData, double  InitTimeStage) {   //Ali 
 	std::cout << "Start initializing simulation domain ......" << std::endl;
 	memPara.isStab = initData.isStab;
 	initializeNodes_M(initData.nodeTypes, initData.initIsActive,
 			initData.initNodeVec, initData.initActiveMembrNodeCounts,
-			initData.initActiveIntnlNodeCounts, initData.initGrowProgVec, initData.eCellTypeV1, InitTimeStage);  // Ali
+			initData.initActiveIntnlNodeCounts, initData.initGrowProgVec, 
+			initData.eCellTypeV1,               initData.mTypeV, InitTimeStage);  // Ali
 	std::cout << "Finished initializing nodes positions" << std::endl;
 	nodes.initDimension(domainPara.minX, domainPara.maxX, domainPara.minY,
 			domainPara.maxY, domainPara.gridSpacing);

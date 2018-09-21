@@ -1,3 +1,4 @@
+//Notes:  infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodes
 // the algorithm of adhesion won't work if there is not apical node.
 #include "SceNodes.h"
 
@@ -177,10 +178,10 @@ void SceNodes::readMechPara() {
 	}
 }
 
+// This constructor is not active Ali 
 SceNodes::SceNodes(uint totalBdryNodeCount, uint maxProfileNodeCount,
 		uint maxCartNodeCount, uint maxTotalECMCount, uint maxNodeInECM,
 		uint maxTotalCellCount, uint maxNodeInCell, bool isStab) {
-	// This constructor is not active Ali 
 	initControlPara(isStab);
 	readDomainPara();
 	uint maxTotalNodeCount;
@@ -694,10 +695,11 @@ void SceNodes::initValues(std::vector<CVector>& initBdryCellNodePos,
 	thrust::fill(infoVecs.nodeCellType.begin() + beginAddressOfMX,
 			infoVecs.nodeCellType.begin() + beginAddressOfMX + MXNodeCount, MX);
 }
-
+// It copies the information of node locations from CPU to GPU
 void SceNodes::initValues_M(std::vector<bool>& initIsActive,
 		std::vector<CVector>& initCellNodePos,
-		std::vector<SceNodeType>& nodeTypes) {
+		std::vector<SceNodeType>& nodeTypes,
+		std::vector<MembraneType1>& mTypeV) {
 
 	std::vector<double> initCellNodePosX = getArrayXComp(initCellNodePos);
 
@@ -709,6 +711,8 @@ void SceNodes::initValues_M(std::vector<bool>& initIsActive,
 			infoVecs.nodeLocY.begin() + allocPara_M.bdryNodeCount);
 	thrust::copy(nodeTypes.begin(), nodeTypes.end(),
 			infoVecs.nodeCellType.begin() + allocPara_M.bdryNodeCount);
+	thrust::copy(mTypeV.begin(), mTypeV.end(),
+			infoVecs.memNodeType1.begin() ); // Ali 
 	thrust::copy(initIsActive.begin(), initIsActive.end(),
 			infoVecs.nodeIsActive.begin() + allocPara_M.bdryNodeCount);
 
@@ -2217,7 +2221,8 @@ void SceNodes::applySceForcesDisc() {
 
 void SceNodes::applySceForcesDisc_M() {
 	if (adhUpdate) {
-		adhUpdate=false ; 
+		adhUpdate=false ;
+		int numAdh=10 ; 
      	thrust :: copy (infoVecs.nodeLocX.begin(),infoVecs.nodeLocX.end(),infoVecs.nodeLocXHost.begin()) ; // Ali	
      	thrust :: copy (infoVecs.nodeLocY.begin(),infoVecs.nodeLocY.end(),infoVecs.nodeLocYHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeIsActive.begin(),infoVecs.nodeIsActive.end(),infoVecs.nodeIsActiveHost.begin()) ; // Ali 	
@@ -2271,9 +2276,9 @@ void SceNodes::applySceForcesDisc_M() {
 					if ( (i%maxNodePerCell)==(activeMemCount[cellRank]-1)) {  // if the node is the last node of cell's membrane
 						iNext=iNext-activeMemCount [cellRank] ;
 					}
-					if (infoVecs.memNodeType1Host[i]==lateralR && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
+					if ( infoVecs.memNodeType1Host[i]==lateralA && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
 						firstApiLat[cellRank]=i ; // lateral node 
-						for (int j=0 ; j<70 ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
+						for (int j=0 ; j<numAdh ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
 							jJunction=firstApiLat[cellRank]-j ; 
 							if (jJunction <(cellRank*maxNodePerCell)) {
 								jJunction=jJunction + activeMemCount [cellRank] ;
@@ -2282,6 +2287,8 @@ void SceNodes::applySceForcesDisc_M() {
 		 					infoVecs.isSubApicalJunctionHost[jJunction]=true ;
 
 							if (cellRank !=cellRankOld) {
+
+								cout << " for cell rank= " << cellRank << " subapicalInfo has been created." << endl ; 
 								subApicalInfo.push_back(SubApicalInfoEachCell()); 
 								cellRankOld=cellRank ; 
 							}
@@ -2303,9 +2310,9 @@ void SceNodes::applySceForcesDisc_M() {
 					if ( (i%maxNodePerCell)==(activeMemCount [cellRank]-1)) {
 						iNext=iNext-activeMemCount [cellRank]  ; 
 					}
-					if (infoVecs.memNodeType1Host[i]==apical1 && infoVecs.memNodeType1Host[iNext]==lateralL ) {
+					if (infoVecs.memNodeType1Host[i]==apical1 && ( infoVecs.memNodeType1Host[iNext]==lateralB ) ) {
 						secondApiLat[cellRank]=iNext ; 
-						for (int j=0 ; j<70 ; j++) {   //find junction nodes
+						for (int j=0 ; j<numAdh ; j++) {   //find junction nodes
 							jJunction=secondApiLat[cellRank]+j ; 
 							if (jJunction>=(cellRank*maxNodePerCell+activeMemCount [cellRank]) ) {
 								jJunction=jJunction - activeMemCount [cellRank];
@@ -2327,45 +2334,46 @@ void SceNodes::applySceForcesDisc_M() {
 		 //	}
 	//	}
 
-	cout << " size of vector storing information of apical junctions is " << subApicalInfo.size() << endl ; 
-	if (subApicalInfo.size() != 0 ) {  // to pass the first time step in which the membrane node type is not defined.
+		cout << " size of vector storing information of apical junctions is " << subApicalInfo.size() << endl ; 
+		if (subApicalInfo.size() != 0 ) {  // to pass the first time step in which the membrane node type is not defined.
 		// Switched the behind and front subapical nodes if the assumption is not correct. none of two models of adhsion will be active
-		for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
-			int idFirst=firstApiLat[i]; 
-			int idSecond=secondApiLat[i]; 
-			if (infoVecs.nodeLocXHost[idFirst]<infoVecs.nodeLocXHost[idSecond]) {
-				for (int j=0 ; j<70 ; j++) {   
-					int tmp=subApicalInfo[i].nodeIdFront[j]; 
-					subApicalInfo[i].nodeIdFront[j]=subApicalInfo[i].nodeIdBehind[j] ; 
-					subApicalInfo[i].nodeIdBehind[j]=tmp; 
-				}
-			}
-		}
+		// Note this switch function works only if the cells are in one relatively horizontal line, since it is based on x location comparison
+		//	for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
+		//		int idFirst=firstApiLat[i]; 
+		//		int idSecond=secondApiLat[i]; 
+		//		if (infoVecs.nodeLocXHost[idFirst]<infoVecs.nodeLocXHost[idSecond]) {
+		//			for (int j=0 ; j<numAdh ; j++) {   
+		//				int tmp=subApicalInfo[i].nodeIdFront[j]; 
+		//				subApicalInfo[i].nodeIdFront[j]=subApicalInfo[i].nodeIdBehind[j] ; 
+		//				subApicalInfo[i].nodeIdBehind[j]=tmp; 
+		//			}
+		//		}
+		//	}
 
-		// Find the pair nodes		
-		cout << " I am finding the pair nodes" << endl ; 
-		for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
+			// Find the pair nodes		
+			cout << " I am finding the pair nodes" << endl ; 
+			for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
 				
-			for ( int j=0 ; j<70 ; j++) {
-				int idFront=subApicalInfo[i].nodeIdFront[j] ;
-				int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
+				for ( int j=0 ; j<numAdh ; j++) {
+					int idFront=subApicalInfo[i].nodeIdFront[j] ;
+					int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
 
-				int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
-				int cellRankBehind=infoVecs.nodeCellRankBehindHost[i] ;
+					int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
+					int cellRankBehind=infoVecs.nodeCellRankBehindHost[i] ;
 				
-				infoVecs.nodeMemMirrorIndexHost[idFront]=idBehind ;
-				infoVecs.nodeMemMirrorIndexHost[idBehind]=idFront ;
+					infoVecs.nodeMemMirrorIndexHost[idFront]=idBehind ;
+					infoVecs.nodeMemMirrorIndexHost[idBehind]=idFront ;
 
 
-				if (cellRankFront  != -1) {
-					infoVecs.nodeAdhereIndexHost[idFront]=subApicalInfo[cellRankFront].nodeIdBehind[j] ;
-				}
-				if (cellRankBehind != -1) {
-					infoVecs.nodeAdhereIndexHost[idBehind]=subApicalInfo[cellRankBehind].nodeIdFront[j] ;
-				}
+					if (cellRankFront  != -1) {
+						infoVecs.nodeAdhereIndexHost[idFront]=subApicalInfo[cellRankFront].nodeIdBehind[j] ;
+					}
+					if (cellRankBehind != -1) {
+						infoVecs.nodeAdhereIndexHost[idBehind]=subApicalInfo[cellRankBehind].nodeIdFront[j] ;
+					}
 	
+				}
 			}
-		}
 
 /////////////////////////////////// start adhesion for other lateral cells which are not subapical
 			/*
@@ -2417,14 +2425,14 @@ void SceNodes::applySceForcesDisc_M() {
 /////////////////////////////////// end adhesion for other lateral cells which are not subapical
 		
 	
-  	} // finish if of bypassing the first time
+  		} // finish if of bypassing the first time
 		// copy back to GPU 
-	thrust::copy(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), infoVecs.nodeAdhereIndex.begin()) ;  //Ali
-	thrust::copy(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), infoVecs.nodeMemMirrorIndex.begin()) ;  //Ali
-    thrust::copy(infoVecs.isSubApicalJunctionHost.begin(),infoVecs.isSubApicalJunctionHost.end(), infoVecs.isSubApicalJunction.begin()) ;  //Ali
+		thrust::copy(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), infoVecs.nodeAdhereIndex.begin()) ;  //Ali
+		thrust::copy(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), infoVecs.nodeMemMirrorIndex.begin()) ;  //Ali
+    	thrust::copy(infoVecs.isSubApicalJunctionHost.begin(),infoVecs.isSubApicalJunctionHost.end(), infoVecs.isSubApicalJunction.begin()) ;  //Ali
  
 
-} // finish the if condition for finding the pair node
+	} // finish the if condition for finding the pair node
 
 	uint* valueAddress = thrust::raw_pointer_cast(
 			&auxVecs.bucketValuesIncludingNeighbor[0]);
@@ -2778,8 +2786,8 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	thrust:: transform(tmp2.begin(),tmp2.begin()+currentActiveCellCount,
 	                   infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.begin(),thrust::plus<int>()) ; //Ali
 					  
-	infoVecs.nodeCellRankBehind[0]=-1 ; //currentActiveCellCount-1 ; 
-	infoVecs.nodeCellRankFront[currentActiveCellCount-1]=-1 ; //0 ;
+	infoVecs.nodeCellRankBehind[0]=currentActiveCellCount-1 ; 
+	infoVecs.nodeCellRankFront[currentActiveCellCount-1]=0 ;
 
     	cout << " I am here 3   " << maxNumCells << endl ;  
 

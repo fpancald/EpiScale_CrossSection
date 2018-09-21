@@ -104,11 +104,11 @@ typedef thrust::tuple<uint, uint, uint, double, double,int ,int > TuuuddII;
 
 struct SubApicalInfoEachCell{
 
-	int nodeIdFront[70];
-	int nodeIdBehind[70] ; 
+	int nodeIdFront[10];
+	int nodeIdBehind[10] ; 
 
 	SubApicalInfoEachCell() {
-		for (int i=0 ; i<70 ; i++) {
+		for (int i=0 ; i<10 ; i++) {
 			nodeIdFront[i]= 0 ; 
 			nodeIdBehind[i]= 0 ; 
 		}
@@ -1245,7 +1245,8 @@ public:
 	 */
 	void initValues_M(std::vector<bool>& initIsActive,
 			std::vector<CVector> &initCellNodePos,
-			std::vector<SceNodeType>& nodeTypes);
+			std::vector<SceNodeType>& nodeTypes,
+			std::vector<MembraneType1>& mTypeV);
 
 	/**
 	 * this method contains all preparation work for SCE force calculation.

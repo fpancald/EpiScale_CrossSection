@@ -11,7 +11,7 @@ typedef thrust ::tuple<int,int,double,double,bool,MembraneType1> IIDDBT ;
 typedef thrust ::tuple<double,double> DD ; 
 typedef thrust ::tuple<double,double,double,double> DDDD ; 
 typedef thrust ::tuple<double,double,bool> DDB ; 
-typedef thrust ::tuple<double,double,MembraneType1,int,double,double> DDTIDD ; 
+typedef thrust ::tuple<double,double,int,double,double> DDIDD ; 
 typedef thrust ::tuple<double,double,double,double,double,double> DDDDDD ;
 typedef thrust ::tuple<double,double,double,double,int,EType> DDDDIT ; 
 
@@ -215,7 +215,7 @@ struct DivideFunctor2: public thrust::unary_function <int,int>{
 
 
 
-struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDTIDD> {
+struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 	 double  *_locXAddr_ECM; 
          double  *_locYAddr_ECM; 
         uint _maxMembrNodePerCell ; 
@@ -230,13 +230,13 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDTIDD> {
 				_locXAddr_ECM(locXAddr_ECM),_locYAddr_ECM(locYAddr_ECM),_maxMembrNodePerCell(maxMembrNodePerCell),_numNodes_ECM(numNodes_ECM),_dt(dt),
 			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime), _activeCellCount (activeCellCount)	{
 	}
-	__device__ DDTIDD  operator()(const IIDDBT & iIDDBT) const {
+	__device__ DDIDD  operator()(const IIDDBT & iIDDBT) const {
 	int cellRank=					thrust::get<0>(iIDDBT) ; 
 	int nodeRankInOneCell=          thrust::get<1>(iIDDBT) ; 
 	double            locX=         thrust::get<2>(iIDDBT) ; 
 	double            locY=         thrust::get<3>(iIDDBT) ; 
 	bool              nodeIsActive= thrust::get<4>(iIDDBT) ; 
-	MembraneType1     nodeType=     thrust::get<5>(iIDDBT) ; 
+	MembraneType1     mNodeType=     thrust::get<5>(iIDDBT) ; 
 	
 	double locX_ECM, locY_ECM ; 
 	double dist ;
@@ -269,19 +269,12 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDTIDD> {
 				fTotalMorseY=fTotalMorseY+fMorse*(locY_ECM-locY)/dist ; 
 				fTotalMorse=fTotalMorse+fMorse ; 
 				if ( dist < distMin) {
-					if( (nodeType==basal1 || nodeType==apical1) ) {  //adhesion only for basal and apical nodes
+					if( mNodeType==basal1  ) {  //adhesion only for basal nodes
 						distMin=dist ; 
 						distMinX=(locX_ECM-locX) ;
 						distMinY=(locY_ECM-locY) ; 
 						iPair=i ; 
 					}
-					else if (  (cellRank==0 && nodeType==lateralL) || (cellRank==(_activeCellCount-1) && nodeType==lateralR)  )  {
-						distMin=dist ; 
-						distMinX=(locX_ECM-locX) ;
-						distMinY=(locY_ECM-locY) ; 
-						iPair=i ; 
-					}
-
 				}
 			}
 			if (IsValidAdhPairForNotInitPhase(distMin)&& iPair!=-1) {
@@ -297,7 +290,7 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDTIDD> {
 
 	 return thrust::make_tuple ((locX+(fTotalMorseX+fAdhMemECMX)*_dt/_Damp_Coef),
 	 							(locY+(fTotalMorseY+fAdhMemECMY)*_dt/_Damp_Coef),
-								 nodeType,adhPairECM,eMorseCell,eAdhCell )  ; 
+								 adhPairECM,eMorseCell,eAdhCell )  ; 
 		
 }
 	

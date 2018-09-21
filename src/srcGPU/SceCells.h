@@ -1,3 +1,6 @@
+//NOte: How hard the volume conservation should be imposed is an input in the AddLagrnagian Strcture
+//      Stiffness of different locations of cells and different cells are input in ActinLevel strcture
+
 #ifndef SCECELLS_H_
 #define SCECELLS_H_
 
@@ -554,7 +557,7 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 		*/			
 
 			if (_subMembPolar) { // if # 6 s
-				if ( (cellType==pouch && memType==lateralL) || (cellType==pouch && memType==lateralR)  ) { 
+				if ( (cellType==pouch && memType==lateralB) || (cellType==pouch && memType==lateralA)  ) { 
 					actinLevel=3.0*kStiff ;  //0.5
 				}
 		        if (cellType==pouch &&  memType==apical1) {
@@ -564,19 +567,19 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 					 actinLevel=1.5*kStiff ; // 0.55
 				}
 
-				/*
-				if  (cellType==peri && memType==lateral1) {
-					  actinLevel=1.2*kStiff ;
+				
+				if ( (cellType==peri && memType==lateralB) || (cellType==peri && memType==lateralA)  ) { 
+					  actinLevel=3.0*kStiff ;
 				}
 				if   (cellType==peri && memType == apical1) {
-					  actinLevel=1*kStiff ;
+					  actinLevel=4.5*kStiff ;
 				}
 				if   (cellType==peri && memType == basal1) {
-					  actinLevel=1*kStiff ;
+					  actinLevel=1.5*kStiff ;
 				}
-				*/
+				
 
-				if ( (cellType==bc && memType==lateralL) || (cellType==bc && memType==lateralR)  ) { 
+				if ( (cellType==bc && memType==lateralB) || (cellType==bc && memType==lateralA)  ) { 
 					actinLevel=3.0*kStiff ; //1.5
 				}
 		        if (cellType==bc &&  memType==apical1) {
@@ -593,10 +596,17 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 			//	}
 			} // if #6 end
 
-			if (isSubApical) {
+		//	if (memType==lateralB) {
+		//		actinLevel=7.5*kStiff ;
+		//	}
 
-					actinLevel=3.0*kStiff ;
-			}
+		//	if (memType==lateralA) {
+		//		actinLevel=2.0*kStiff ;
+		//	}
+		//	if (isSubApical) {
+
+					//actinLevel=6.0*kStiff ;
+		//	}
 
 		    return actinLevel;
 
@@ -1174,11 +1184,11 @@ struct AddExtForce: public thrust::unary_function<TUiDUiTDD, CVec2> {
 			return thrust::make_tuple(velX, velY);
 		}else {
 			
-			if (cellType==bc && ( memNodeType==lateralL ||  memNodeType==lateralR  ) && cellCenterX> _tissueCenterX) {
+			if (cellType==bc && ( memNodeType==lateralB ||  memNodeType==lateralA  ) && cellCenterX> _tissueCenterX) {
 				fExt=0 ; // calExtForce (_time) ;  
 				velX = velX -fExt  ;
 			}
-			if (cellType==bc && ( memNodeType==lateralL ||  memNodeType==lateralR  )  && cellCenterX< _tissueCenterX) {
+			if (cellType==bc && ( memNodeType==lateralB ||  memNodeType==lateralA  )  && cellCenterX< _tissueCenterX) {
 				fExt=0 ; //calExtForce (_time) ;  
 				velX = velX +fExt  ;
 			}
@@ -1200,13 +1210,14 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 	bool* _isActiveAddr;
 	double* _cellAreaVecAddr ; 
 	double _mitoticCri;
+	ECellType*  _cellTypeAddr ; 
 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__ AddLagrangeForces(uint maxNodePerCell,
-			double* locXAddr, double* locYAddr, bool* isActiveAddr, double* cellAreaVecAddr, double mitoticCri) :
+			double* locXAddr, double* locYAddr, bool* isActiveAddr, double* cellAreaVecAddr, double mitoticCri, ECellType* cellTypeAddr) :
 			 _maxNodePerCell(maxNodePerCell), _locXAddr(
 					locXAddr), _locYAddr(locYAddr), _isActiveAddr(isActiveAddr),
-					_cellAreaVecAddr(cellAreaVecAddr), _mitoticCri(mitoticCri) {
+					_cellAreaVecAddr(cellAreaVecAddr), _mitoticCri(mitoticCri), _cellTypeAddr (cellTypeAddr) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__device__ CVec5 operator()(const DUiDDUiUiDDDD &dUiDDUiUiDDDD) const {
@@ -1272,7 +1283,7 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 			lenR = sqrt(posXR * posXR + posYR * posYR);
 				
 				
-			
+	   		/*	
 			double term1X = lenL*lenL*posX ;
 			double term1Y = lenL*lenL*posY ;
 
@@ -1287,6 +1298,7 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 
 			double term5=2*sqrt( pow(len*lenL,2)-pow(posX*posXL+posY*posYL, 2) ) ; 
 			double term6=2*sqrt( pow(len*lenR,2)-pow(posX*posXR+posY*posYR, 2) ) ; 
+			*/
 			double percent ; 
 			if (progress>_mitoticCri) {
 				percent =(progress-_mitoticCri)/(1.0-_mitoticCri) ;  
@@ -1295,7 +1307,19 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 				percent =0 ; // max ((progress-_mitoticCri)/(0.9-_mitoticCri),0.0);  
 			}
 
-			cellAreaDesire=20+ percent*20 ; 
+			if (_cellTypeAddr[cellRank]==bc) {
+				cellAreaDesire=6+ percent*6 ;
+			}
+			else if (cellRank==0 || cellRank==28) {
+				cellAreaDesire=10+ percent*10 ;
+			}
+			else if (cellRank==1 || cellRank==27) {
+				cellAreaDesire=16+ percent*16 ;
+			}
+			else {
+				cellAreaDesire=20+ percent*20 ;
+
+			}
 /*
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1X-term2X)/term5+ (term3X-term4X)/term6 ) ; 
@@ -1689,7 +1713,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
 		}
 				// means membrane node
-		if  (  (nodeType==lateralR) || (nodeType==lateralL) ) {
+		if  (  (nodeType==lateralA) || (nodeType==lateralB) ) {
 		
 			index       = cellRank * _maxNodePerCell + nodeRank;
 			locX 		= _locXAddr[index];
@@ -1717,7 +1741,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 				nodeTypeOther= _MemTypeAddr[index_Other] ;
 				if ( (nodeDistToApical>nucDistToApical)&& (nodeDistToApicalOther>nucDistToApical) ) { 
 	
-					if (  (nodeTypeOther==lateralL && nodeType==lateralR) || (nodeTypeOther==lateralR && nodeType==lateralL) )  { 
+					if (  (nodeTypeOther==lateralB && nodeType==lateralA) || (nodeTypeOther==lateralA && nodeType==lateralB) )  { 
                 		calAndAddMM_ContractRepl(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 					}
 

@@ -92,7 +92,8 @@ class SimulationDomainGPU {
 			std::vector<uint> &numOfInitActiveEpiNodeCounts,
 			std::vector<uint> &numOfInitActiveInternalNodeCounts,
 			std::vector<double> &initGrowProgVec, 
-			std::vector<ECellType> & eCellTypeV1
+			std::vector<ECellType> & eCellTypeV1,
+			std::vector<MembraneType1> & mTypeV
 			,double InitTimeStage);
 
 	NetworkInfo buildNetInfo(CellsStatsData &polyData);

@@ -122,7 +122,7 @@ EType SceECM:: ConvertStringToEType(string eNodeRead) {
 	if (eNodeRead=="perip")  {
 		return perip ; 
 	}
-	else if (eNodeRead=="bc") {
+	else if (eNodeRead=="bc2") {
 		return bc2 ; 
 	}
 	else if (eNodeRead=="excm") {
@@ -150,7 +150,7 @@ int numberNodes_ECM ;
 double tmpPosX_ECM,tmpPosY_ECM ; 
 vector<double> posXIni_ECM,posYIni_ECM ;
 vector <EType> eNodeVec ;  
-readCoord_ECM.open("./resources/coordinate_ECM15.txt") ;
+readCoord_ECM.open("./resources/coordinate_ECM16.txt") ;
 if (readCoord_ECM.is_open()) {
 	cout << "ECM coordinates file opened successfully" <<endl ; 
 }
@@ -330,29 +330,7 @@ thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
 //	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
 //}
 
-PrintECM(0.0) ; 
-for (int i=0 ; i<maxTotalNodes ; i++) {
-	int nodeRankPerCell=i%maxAllNodePerCell ;
-	if (nodeRankPerCell<35) {
-		memNodeType[i]=lateralR ;
-	}
-	else if (nodeRankPerCell<49) {
-		memNodeType[i]=apical1 ;
-	}
-	else if (nodeRankPerCell<119) {
-		memNodeType[i]=lateralL ;
-	}
-	else if (nodeRankPerCell<126) {
-		memNodeType[i]=basal1 ;
-	}
-	else if (nodeRankPerCell<161) {
-		memNodeType[i]=lateralR ;
-	}
-	else {
-		memNodeType[i]=notAssigned1;
-	}
-}
-
+PrintECM(0.0) ;
 std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str());
@@ -399,8 +377,6 @@ double* nodeECMLocYAddr= thrust::raw_pointer_cast (
 EType* peripORexcmAddr= thrust::raw_pointer_cast (
 			&peripORexcm[0]) ; 
 
-memNodeType.resize(maxTotalNodes,notAssigned1) ; 
-
 // move the nodes of epithelial cells 
 
  thrust:: transform (
@@ -430,7 +406,6 @@ memNodeType.resize(maxTotalNodes,notAssigned1) ;
 				thrust::make_tuple (
 					nodeDeviceLocX.begin(),
 					nodeDeviceLocY.begin(),
-					memNodeType.begin(),
 					adhPairECM_Cell.begin(),
 					morseEnergyCell.begin(),
 					adhEnergyCell.begin())),

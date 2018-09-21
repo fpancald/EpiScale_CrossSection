@@ -1,7 +1,7 @@
 // to do list:
 	//1-center of the tissue is manually intorduced in the obtainTwoNewCenter function to recognize if the mothe cell is in front or behind
 	//2- If two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
-	//3- In function processMemVec the lateral L and right are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
+	//3- In function processMemVec the lateralBefore  and LateralAfter are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
 	//4- If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
 
 //Notes:
@@ -1512,7 +1512,8 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 
 		eCM.Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData, uniqueSymbolOutput);
 
- 		thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCells,nodes->getInfoVecs().memNodeType1.begin()) ;
+        thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCells,eCM.memNodeType.begin()) ;
+ 		//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCells,nodes->getInfoVecs().memNodeType1.begin()) ;
 
 		cout << " I initialized the ECM module" << endl ;
 		lastPrintNucleus=10000000  ; //just a big number 
@@ -1561,7 +1562,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	applyMembContraction() ;  // Ali 
+	//applyMembContraction() ;  // Ali For now because it shoould be modified to be only effect for pouch cellls and mirror index needs to revisited
 
 	//	applyNucleusEffect() ;
 	//	applyForceInteractionNucleusAsPoint() ; 
@@ -2913,6 +2914,8 @@ void SceCells::computeLagrangeForces() {
 			&(cellInfoVecs.cellAreaVec[0]));
 	double grthPrgrCriVal_M = growthAuxData.grthPrgrCriVal_M_Ori; 
 
+	ECellType* eCellTypeV2Addr= thrust::raw_pointer_cast(
+			&(cellInfoVecs.eCellTypeV2[0]));
 
 
 thrust::transform(
@@ -2975,7 +2978,7 @@ thrust::transform(
 									   nodes->getInfoVecs().lagrangeFX.begin(),
 									   nodes->getInfoVecs().lagrangeFY.begin(),
 									   nodes->getInfoVecs().lagrangeFN.begin())),
-			AddLagrangeForces(maxAllNodePerCell,nodeLocXAddr, nodeLocYAddr, nodeIsActiveAddr,cellAreaVecAddr,grthPrgrCriVal_M));
+			AddLagrangeForces(maxAllNodePerCell,nodeLocXAddr, nodeLocYAddr, nodeIsActiveAddr,cellAreaVecAddr,grthPrgrCriVal_M, eCellTypeV2Addr));
 			
 			uint maxNPerCell = allocPara_m.maxAllNodePerCell;
 			totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
@@ -3703,15 +3706,16 @@ void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitP
     thrust:: copy (nodes->getInfoVecs().nodeLocX.begin(),nodes->getInfoVecs().nodeLocX.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeDeviceLocX.begin()) ; 
     thrust:: copy (nodes->getInfoVecs().nodeLocY.begin(),nodes->getInfoVecs().nodeLocY.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeDeviceLocY.begin()) ;
 	//assuming no boundary node exist 
-	thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeIsActive_Cell.begin()) ; 
-    thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
+	thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeIsActive_Cell.begin()) ;
+	// assuming no growth for membrane nodes
+    //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
 
 	
 	eCM.ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
 
     thrust:: copy (eCM.nodeDeviceLocX.begin(),eCM.nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 
     thrust:: copy (eCM.nodeDeviceLocY.begin(),eCM.nodeDeviceLocY.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocY.begin()) ; 
- 	thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCellsECM,nodes->getInfoVecs().memNodeType1.begin()) ;
+ 	//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCellsECM,nodes->getInfoVecs().memNodeType1.begin()) ;
 
 
 
@@ -5651,11 +5655,11 @@ void SceCells::processMemVec(std::vector<VecValT>& tmp1,
 	}
 	for (uint j = 0; j < ptsBetween1.size(); j++) {
 		divAuxData.tmp1VecMem.push_back(ptsBetween1[j]);
-		divAuxData.tmp1VecMemNodeType.push_back(lateralR); // for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
+		divAuxData.tmp1VecMemNodeType.push_back(lateralA); // for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
 	}
 	for (uint j = 0; j < ptsBetween2.size(); j++) {
 		divAuxData.tmp2VecMem.push_back(ptsBetween2[j]);
-		divAuxData.tmp2VecMemNodeType.push_back(lateralL);// for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
+		divAuxData.tmp2VecMemNodeType.push_back(lateralB);// for now I changed it to lateralR  to just make it runniing. I need to revisit that if I activate division again
 	}
 
 	assert(divAuxData.tmp1VecMem.size() <= membThreshold);
@@ -5814,7 +5818,7 @@ CVector SceCells::calDivDir_ApicalBasal(CVector center,
 //	}	
 	//return 0 ; 
 	for (uint i = 0; i < membrNodes.size(); i++) {
-		if ( (nodeTypeIndxDiv[i]!=lateralR) &&  (nodeTypeIndxDiv[i]!=lateralL) ) {
+		if ( (nodeTypeIndxDiv[i]!=lateralA) &&  (nodeTypeIndxDiv[i]!=lateralB) ) {
 			continue ; 
 		} 
 		CVector tmpDir = membrNodes[i] - center;

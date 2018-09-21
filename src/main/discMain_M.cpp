@@ -100,8 +100,11 @@ int main(int argc, char* argv[]) {
 	// initialize simulation domain.
 	SimulationDomainGPU simuDomain;
 
-        cout<< "I am in main file after simulationDomainGPU instance creation"<<endl; 
-	SimulationInitData_V2_M initData = initHelper.initInput_M(); // it will go inside cell init helper Ali 
+        cout<< "I am in main file after simulationDomainGPU instance creation"<<endl;
+
+	// comment: initInput_M() goes in cellInitHelper.cpp. There the information are read from input txt files and saved in CPU of the computer.
+	// Then initialize_v2_M will go to the simuDomain.cu and initially create some vector spaces for GPU values and then assigned the CPU values to GPU vectors either in SceNodes or SceCells. The next two functions below are the main functions for initialization of the code from txt and transfer them to GPU.
+	SimulationInitData_V2_M initData = initHelper.initInput_M(); // it will go inside cellinithelper.cpp  Ali 
 
         cout<< "I am in main file after initInput_M creation"<<endl; 
 	simuDomain.initialize_v2_M(initData,mainPara.InitTimeStage);
