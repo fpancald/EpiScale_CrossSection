@@ -1,5 +1,7 @@
 //Notes:  infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodes
 // the algorithm of adhesion won't work if there is not apical node.
+//maxNumAdh is given inside the code as a parameters in both .cu and .h file. It should become an input or I should write a function to detect that automatically
+
 #include "SceNodes.h"
 
 __constant__ double sceInterPara[5];
@@ -83,6 +85,56 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 SceNodes::SceNodes() {
 	readDomainPara();
 }
+
+int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
+	if (eCellType==peri) {
+		return 14 ; 
+	}
+	if (eCellType==bc) {
+		return 12 ; 
+	}
+	if (eCellType==pouch) {
+		if (cellRank==0){
+			return 14 ; 
+		}
+			else if ( cellRank==1) {
+				return 42 ; 
+			}
+				else if ( cellRank==28) {
+					return 42 ; 					
+				}
+					else {
+						return 70 ; 
+					}
+	}
+
+}
+
+int SceNodes::NumAdhAfter(int cellRank,ECellType eCellType) {
+	if ( eCellType==peri) {
+		return 14 ; 
+	}
+	if (eCellType==bc) {
+		return 12 ; 
+	}
+	if (eCellType==pouch) {
+		if (cellRank==28){
+			return 14 ; 
+		}
+			else if ( cellRank==27) {
+				return 42 ; 
+			}
+				else if ( cellRank==0) {
+					return 42 ; 
+				}
+					else {
+						return 70 ; 
+					}
+	}
+}
+
+
+
 
 void SceNodes::readDomainPara() {
 	domainPara.minX = globalConfigVars.getConfigValue("DOMAIN_XMIN").toDouble();
@@ -2220,9 +2272,11 @@ void SceNodes::applySceForcesDisc() {
 }
 
 void SceNodes::applySceForcesDisc_M() {
+
+	ECellType eCellType=pouch ; 
 	if (adhUpdate) {
 		adhUpdate=false ;
-		int numAdh=10 ; 
+		int maxNumAdh=70 ; 
      	thrust :: copy (infoVecs.nodeLocX.begin(),infoVecs.nodeLocX.end(),infoVecs.nodeLocXHost.begin()) ; // Ali	
      	thrust :: copy (infoVecs.nodeLocY.begin(),infoVecs.nodeLocY.end(),infoVecs.nodeLocYHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeIsActive.begin(),infoVecs.nodeIsActive.end(),infoVecs.nodeIsActiveHost.begin()) ; // Ali 	
@@ -2248,7 +2302,7 @@ void SceNodes::applySceForcesDisc_M() {
 		int cellRank, iNext, jJunction ;
 		std::vector <SubApicalInfoEachCell> subApicalInfo ; 
 		
-		
+
 		cout << "I am inside the function for finding adhesion pair" << endl ; 
 		//setup required basic parameters 
         for (int i=0 ; i< allocPara_M.currentActiveCellCount ; i++ ){
@@ -2267,7 +2321,7 @@ void SceNodes::applySceForcesDisc_M() {
 	
 		subApicalInfo.clear() ; 
 
-		//Find the subapical nodes supposingly in front of the cell
+		//Find the subapical nodes in front of the cell
 		int cellRankOld=-1 ; 
 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				if (infoVecs.nodeIsActiveHost[i]==true && (i%maxNodePerCell)<maxMembNode){ // check active and membrane
@@ -2278,7 +2332,7 @@ void SceNodes::applySceForcesDisc_M() {
 					}
 					if ( infoVecs.memNodeType1Host[i]==lateralA && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
 						firstApiLat[cellRank]=i ; // lateral node 
-						for (int j=0 ; j<numAdh ; j++) {   //find junction nodes // if the number here is changed, it should be changed in the header as well.
+						for (int j=0 ; j<NumAdhAfter(cellRank,eCellType) ; j++) {   //find junction nodes // 
 							jJunction=firstApiLat[cellRank]-j ; 
 							if (jJunction <(cellRank*maxNodePerCell)) {
 								jJunction=jJunction + activeMemCount [cellRank] ;
@@ -2302,7 +2356,7 @@ void SceNodes::applySceForcesDisc_M() {
 		}
 		cout << "first set of adhesion joints are found" << endl ; 
 		
-		//Find the subapical nodes supposingly behind the cell
+		//Find the subapical nodes supposingly behind (Before) the cell
 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				if (infoVecs.nodeIsActiveHost[i]==true && (i%maxNodePerCell)<maxMembNode){
 					cellRank=i/maxNodePerCell ; 
@@ -2312,7 +2366,7 @@ void SceNodes::applySceForcesDisc_M() {
 					}
 					if (infoVecs.memNodeType1Host[i]==apical1 && ( infoVecs.memNodeType1Host[iNext]==lateralB ) ) {
 						secondApiLat[cellRank]=iNext ; 
-						for (int j=0 ; j<numAdh ; j++) {   //find junction nodes
+						for (int j=0 ; j<NumAdhBefore(cellRank,eCellType) ; j++) {   //find junction nodes
 							jJunction=secondApiLat[cellRank]+j ; 
 							if (jJunction>=(cellRank*maxNodePerCell+activeMemCount [cellRank]) ) {
 								jJunction=jJunction - activeMemCount [cellRank];
@@ -2342,7 +2396,7 @@ void SceNodes::applySceForcesDisc_M() {
 		//		int idFirst=firstApiLat[i]; 
 		//		int idSecond=secondApiLat[i]; 
 		//		if (infoVecs.nodeLocXHost[idFirst]<infoVecs.nodeLocXHost[idSecond]) {
-		//			for (int j=0 ; j<numAdh ; j++) {   
+		//			for (int j=0 ; j<maxNumAdh ; j++) {   
 		//				int tmp=subApicalInfo[i].nodeIdFront[j]; 
 		//				subApicalInfo[i].nodeIdFront[j]=subApicalInfo[i].nodeIdBehind[j] ; 
 		//				subApicalInfo[i].nodeIdBehind[j]=tmp; 
@@ -2350,11 +2404,12 @@ void SceNodes::applySceForcesDisc_M() {
 		//		}
 		//	}
 
-			// Find the pair nodes		
+			// Find the pair nodes	
+			/*
 			cout << " I am finding the pair nodes" << endl ; 
 			for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
 				
-				for ( int j=0 ; j<numAdh ; j++) {
+				for ( int j=0 ; j<maxNumAdh ; j++) {
 					int idFront=subApicalInfo[i].nodeIdFront[j] ;
 					int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
 
@@ -2374,6 +2429,23 @@ void SceNodes::applySceForcesDisc_M() {
 	
 				}
 			}
+			*/
+			for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
+				
+				for ( int j=0 ; j<maxNumAdh ; j++) {
+					int idFront=subApicalInfo[i].nodeIdFront[j] ;
+					int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
+					int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
+					int cellRankBehind=infoVecs.nodeCellRankBehindHost[i] ;
+					if (idFront != -1) {
+						infoVecs.nodeAdhereIndexHost[idFront]=subApicalInfo[cellRankFront].nodeIdBehind[j] ;
+					}
+					if (idBehind !=-1) {
+						infoVecs.nodeAdhereIndexHost[idBehind]=subApicalInfo[cellRankBehind].nodeIdFront[j] ;
+					}
+				}
+			}
+
 
 /////////////////////////////////// start adhesion for other lateral cells which are not subapical
 			/*

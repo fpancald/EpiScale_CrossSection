@@ -109,8 +109,8 @@ struct SubApicalInfoEachCell{
 
 	SubApicalInfoEachCell() {
 		for (int i=0 ; i<10 ; i++) {
-			nodeIdFront[i]= 0 ; 
-			nodeIdBehind[i]= 0 ; 
+			nodeIdFront[i]= -1 ; 
+			nodeIdBehind[i]=-1 ; 
 		}
 	}
 }; 
@@ -1112,6 +1112,10 @@ class SceNodes {
 	 * reads domain related parameters.
 	 */
 	void readDomainPara();
+
+	// to find the number of nodes which are willing to adhere for each cell 
+	int NumAdhAfter(int cellRank ,  ECellType eCellType); 
+	int NumAdhBefore (int cellRank  , ECellType eCellType); 
 
 	/**
 	 * reads mechanics related parameters.
