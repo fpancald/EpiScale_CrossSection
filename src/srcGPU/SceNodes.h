@@ -104,14 +104,16 @@ typedef thrust::tuple<uint, uint, uint, double, double,int ,int > TuuuddII;
 
 struct SubApicalInfoEachCell{
 
-	int nodeIdFront[10];
-	int nodeIdBehind[10] ; 
 
-	SubApicalInfoEachCell() {
-		for (int i=0 ; i<10 ; i++) {
-			nodeIdFront[i]= -1 ; 
-			nodeIdBehind[i]=-1 ; 
+	vector<int> nodeIdFront;
+	vector<int> nodeIdBehind ; 
+	SubApicalInfoEachCell(int maxNum) {
+	
+		for (int i=0 ; i<maxNum ; i++) {
+			nodeIdFront.push_back(-1) ; 
+			nodeIdBehind.push_back(-1) ; 
 		}
+
 	}
 }; 
 
@@ -1096,8 +1098,10 @@ struct NodeAuxVecs {
  * 3) maximum number of uintra-cellular links per node
  * 4) maximum number of uinter-cellular links per node
  */
+class SceCells ;   // forward declaration to be used in the class SceNodes 
 class SceNodes {
 //	SceCells* cells ;
+	SceCells * cellsSceNodes ; 
 	bool adhNotSet ; 
 	SceDomainPara domainPara;
 	SceMechPara mechPara;
@@ -1227,6 +1231,10 @@ public:
 	SceNodes(uint totalBdryNodeCount, uint maxProfileNodeCount,
 			uint maxCartNodeCount, uint maxTotalECMCount, uint maxNodeInECM,
 			uint maxTotalCellCount, uint maxNodeInCell, bool isStab);
+
+	void Initialize_SceNodes(SceCells * cells) {
+		cellsSceNodes=cells ; 
+	}
 
 	/**
 	 * Override dimension data introduced by config files.

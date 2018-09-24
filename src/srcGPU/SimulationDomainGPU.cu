@@ -80,6 +80,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 
 	//std::cout << "break point 5 " << std::endl;
 	//std::cout.flush();
+	nodes.Initialize_SceNodes  ( &cells) ; 
 }
 
 

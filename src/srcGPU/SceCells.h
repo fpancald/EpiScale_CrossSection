@@ -3418,6 +3418,7 @@ struct CellInfoVecs {
     thrust::device_vector<double> cellPerimVec;//AAMIRI
     thrust::device_vector<double> cellPressure;//Ali 
     thrust::device_vector<ECellType> eCellTypeV2 ;//Ali
+    //thrust::host_vector<ECellType> eCellTypeV2Host ;//Ali
 };
 
 struct CellNodeInfoVecs {
@@ -3912,6 +3913,7 @@ class SceCells {
     void calCellPressure();//AAMIRI
 	void eCMCellInteraction(bool cellPolar, bool subCellPolar, bool tmpIsInitSetup) ; 
 public:
+
 	SceCells();
 
 	SceCells(SceNodes* nodesInput,
@@ -3923,6 +3925,10 @@ public:
 			std::vector<uint> &numOfInitActiveIntnlNodeCounts,
 			std::vector<double> &initGrowProgVec, std::vector<ECellType> &eCellTypeV1 
 			,double InitTimeStage);
+
+	CellInfoVecs &   getCellInfoVecs()  {
+			return cellInfoVecs ; 
+	}; // Ali 
 
 	void runAllCellLevelLogicsDisc(double dt);
 

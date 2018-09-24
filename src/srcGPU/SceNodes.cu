@@ -3,6 +3,7 @@
 //maxNumAdh is given inside the code as a parameters in both .cu and .h file. It should become an input or I should write a function to detect that automatically
 
 #include "SceNodes.h"
+#include "SceCells.h"
 
 __constant__ double sceInterPara[5];
 __constant__ double sceIntraPara[5];
@@ -386,7 +387,6 @@ SceNodes::SceNodes(uint maxTotalCellCount, uint maxAllNodePerCell, uint currentA
 }
 
 void SceNodes::copyParaToGPUConstMem() {
-
 	readMechPara();
 
 	cudaMemcpyToSymbol(sceInterPara, mechPara.sceInterParaCPU,
@@ -2273,16 +2273,29 @@ void SceNodes::applySceForcesDisc() {
 
 void SceNodes::applySceForcesDisc_M() {
 
-	ECellType eCellType=pouch ; 
+	ECellType eCellTypeTmp ; 
+	thrust::host_vector <ECellType> eCellTypeVHost ;
+
+	eCellTypeVHost.resize(allocPara_M.currentActiveCellCount, notActive) ; 
+	for (int i= 0 ; i<allocPara_M.currentActiveCellCount;  i++) {
+		eCellTypeTmp=cellsSceNodes->getCellInfoVecs().eCellTypeV2[i];
+		cout << "Epithelial cell type is="<<eCellTypeTmp <<endl ; 
+		//eCellTypeVHost.push_back(eCellTypeTmp) ; 
+	}
 	if (adhUpdate) {
 		adhUpdate=false ;
-		int maxNumAdh=70 ; 
+		int maxNumAdh=70 ;
+		//vector <ECellType> eCellTypeV2Host ;
+
      	thrust :: copy (infoVecs.nodeLocX.begin(),infoVecs.nodeLocX.end(),infoVecs.nodeLocXHost.begin()) ; // Ali	
      	thrust :: copy (infoVecs.nodeLocY.begin(),infoVecs.nodeLocY.end(),infoVecs.nodeLocYHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeIsActive.begin(),infoVecs.nodeIsActive.end(),infoVecs.nodeIsActiveHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeCellRankFront.begin() ,infoVecs.nodeCellRankFront.end() ,infoVecs.nodeCellRankFrontHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.end(),infoVecs.nodeCellRankBehindHost.begin()) ; // Ali 	
-     	thrust :: copy (infoVecs.memNodeType1.begin(),infoVecs.memNodeType1.end(),infoVecs.memNodeType1Host.begin()) ; // Ali 	
+     	thrust :: copy (infoVecs.memNodeType1.begin(),infoVecs.memNodeType1.end(),infoVecs.memNodeType1Host.begin()) ; // Ali 
+		cout << " I am right before cell type vector" << endl ; 
+	thrust :: copy (cellsSceNodes->getCellInfoVecs().eCellTypeV2.begin(),cellsSceNodes->getCellInfoVecs().eCellTypeV2.begin()+allocPara_M.currentActiveCellCount,					eCellTypeVHost.begin()) ;
+		cout << " I am right after cell type vector" << endl ; 
 	 	thrust::fill(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), -1) ;  //Ali it is important to reset the values
 	 	thrust::fill(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), -1) ;  //Ali it is important to reset the values
 	 	//thrust::fill(infoVecs.nodeIsLateralMemHost.begin(),infoVecs.nodeIsLateralMemHost.end(), false) ;  //Ali
@@ -2325,14 +2338,17 @@ void SceNodes::applySceForcesDisc_M() {
 		int cellRankOld=-1 ; 
 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				if (infoVecs.nodeIsActiveHost[i]==true && (i%maxNodePerCell)<maxMembNode){ // check active and membrane
-					cellRank=i/maxNodePerCell ; 
+					cellRank=i/maxNodePerCell ;
+					
+					//eCellType=eCellTypeV2Host[cellRank];
+					eCellTypeTmp=eCellTypeVHost[cellRank];
 					iNext=i+1 ; 
 					if ( (i%maxNodePerCell)==(activeMemCount[cellRank]-1)) {  // if the node is the last node of cell's membrane
 						iNext=iNext-activeMemCount [cellRank] ;
 					}
 					if ( infoVecs.memNodeType1Host[i]==lateralA && infoVecs.memNodeType1Host[iNext]==apical1 ) { // find the apical junction
 						firstApiLat[cellRank]=i ; // lateral node 
-						for (int j=0 ; j<NumAdhAfter(cellRank,eCellType) ; j++) {   //find junction nodes // 
+						for (int j=0 ; j<NumAdhAfter(cellRank,eCellTypeTmp) ; j++) {   //find junction nodes // 
 							jJunction=firstApiLat[cellRank]-j ; 
 							if (jJunction <(cellRank*maxNodePerCell)) {
 								jJunction=jJunction + activeMemCount [cellRank] ;
@@ -2342,8 +2358,9 @@ void SceNodes::applySceForcesDisc_M() {
 
 							if (cellRank !=cellRankOld) {
 
-								cout << " for cell rank= " << cellRank << " subapicalInfo has been created." << endl ; 
-								subApicalInfo.push_back(SubApicalInfoEachCell()); 
+								cout << " for cell rank= " << cellRank << " subapicalInfo has been created." << endl ;
+								SubApicalInfoEachCell subApicalInfoEachCell(maxNumAdh); 
+								subApicalInfo.push_back(subApicalInfoEachCell); 
 								cellRankOld=cellRank ; 
 							}
 							subApicalInfo[cellRank].nodeIdFront[j]=jJunction ; 
@@ -2359,14 +2376,16 @@ void SceNodes::applySceForcesDisc_M() {
 		//Find the subapical nodes supposingly behind (Before) the cell
 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				if (infoVecs.nodeIsActiveHost[i]==true && (i%maxNodePerCell)<maxMembNode){
-					cellRank=i/maxNodePerCell ; 
+					cellRank=i/maxNodePerCell ;
+					//eCellType= eCellTypeV2Host[cellRank];
+					eCellTypeTmp= eCellTypeVHost [cellRank];
 					iNext=i+1 ; 
 					if ( (i%maxNodePerCell)==(activeMemCount [cellRank]-1)) {
 						iNext=iNext-activeMemCount [cellRank]  ; 
 					}
 					if (infoVecs.memNodeType1Host[i]==apical1 && ( infoVecs.memNodeType1Host[iNext]==lateralB ) ) {
 						secondApiLat[cellRank]=iNext ; 
-						for (int j=0 ; j<NumAdhBefore(cellRank,eCellType) ; j++) {   //find junction nodes
+						for (int j=0 ; j<NumAdhBefore(cellRank,eCellTypeTmp) ; j++) {   //find junction nodes
 							jJunction=secondApiLat[cellRank]+j ; 
 							if (jJunction>=(cellRank*maxNodePerCell+activeMemCount [cellRank]) ) {
 								jJunction=jJunction - activeMemCount [cellRank];

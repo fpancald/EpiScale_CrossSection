@@ -814,6 +814,7 @@ void SceCells::initCellInfoVecs_M() {
     cellInfoVecs.sumF_MI_M_N.resize(allocPara_m.maxCellCount, 0.0);//Ali
     cellInfoVecs.sumLagrangeFN.resize(allocPara_m.maxCellCount, 0.0);//Ali
     cellInfoVecs.eCellTypeV2.resize(allocPara_m.maxCellCount, notActive);//Ali 
+    //cellInfoVecs.eCellTypeV2Host.resize(allocPara_m.maxCellCount, notActive);//Ali 
     cellInfoVecs.cellRoot.resize(allocPara_m.maxCellCount, -1);//Ali
 
 	thrust:: sequence (cellInfoVecs.cellRoot.begin(),cellInfoVecs.cellRoot.begin()+allocPara_m.currentActiveCellCount) ; //Ali
