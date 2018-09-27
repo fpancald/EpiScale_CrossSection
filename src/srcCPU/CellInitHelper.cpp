@@ -889,6 +889,7 @@ vector<CVector> CellInitHelper::generateInitCellNodes() {
 	return attemptedPoss;
 }
 
+//Active function
 vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 		double initProg) {
 	bool isSuccess = false;
@@ -956,6 +957,7 @@ vector<CVector> CellInitHelper::generateInitMembrNodes(CVector& center,
 	return initMembrNodes;
 }
 
+//I don't think it is active now
 vector<CVector> CellInitHelper::tryGenInitCellNodes() { 
 	// Not active right now 
 	double radius =
@@ -984,6 +986,7 @@ vector<CVector> CellInitHelper::tryGenInitCellNodes() {
 	return poss;
 }
 
+//It is active
 vector<CVector> CellInitHelper::tryGenInitCellNodes(uint initNodeCt) {
 	double radius =
 			globalConfigVars.getConfigValue("InitCellRadius").toDouble();
@@ -998,8 +1001,8 @@ vector<CVector> CellInitHelper::tryGenInitCellNodes(uint initNodeCt) {
 	while (foundCount < initNodeCt) {
 		bool isInCircle = false;
 		//while (!isInCircle) {
-			randX = getRandomNum(-radius, radius);
-			randY = getRandomNum(-radius, radius);
+			randX = getRandomNum(-0.3*radius, 0.3*radius);
+			randY = getRandomNum(-0.3*radius, 0.3*radius);
 			isInCircle = (sqrt(randX * randX + randY * randY) < radius);
 	//	}
                 //Ali
