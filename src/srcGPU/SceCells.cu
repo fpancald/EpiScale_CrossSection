@@ -1563,7 +1563,7 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	//applyMembContraction() ;  // Ali For now because it shoould be modified to be only effect for pouch cellls and mirror index needs to revisited
+	applyMembContraction() ;  // Ali For now because it shoould be modified to be only effect for pouch cellls and mirror index needs to revisited
 
 	//	applyNucleusEffect() ;
 	//	applyForceInteractionNucleusAsPoint() ; 

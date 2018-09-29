@@ -4,6 +4,8 @@
  *  Created on: Sep 22, 2013
  *      Author: wsun2
  */
+// To Do List: 
+// The ID of cells to which asymmetric nuclear position is assigned, is given manually. It should be updated if the number of cells are changed. It is better to be automatically detected.
 #include <fstream>
 #include "CellInitHelper.h"
 //Ali 
@@ -804,9 +806,10 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	for (uint i = 0; i < initCenters.size(); i++) {
 	//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
 	//			initGrowProg[i]);
-		initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
-				initGrowProg[i]);
-		//
+	//	initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
+	//			initGrowProg[i]);
+		initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
+				initGrowProg[i],int(i)); //Ali
 	//	initMembrPos.push_back(initMembrPosTmp);
 		initIntnlPos.push_back(initIntnlPosTmp);
 	}
@@ -939,6 +942,49 @@ double initRadius =
 	}
 	return attemptedPoss;
 }
+
+vector<CVector> CellInitHelper::generateInitIntnlNodes_M(CVector& center,
+		double initProg, int cellRank) {
+	bool isSuccess = false;
+
+	uint minInitNodeCount =
+			globalConfigVars.getConfigValue("InitCellNodeCount").toInt();
+	uint maxInitNodeCount = globalConfigVars.getConfigValue(
+			"MaxIntnlNodeCountPerCell").toInt();
+//Ali
+
+//	uint initIntnlNodeCt = minInitNodeCount ; 
+//Ali
+//Ali comment
+	uint initIntnlNodeCt = minInitNodeCount
+			+ (maxInitNodeCount - minInitNodeCount) * initProg;
+
+	vector<CVector> attemptedPoss;
+	while (!isSuccess) {
+		attemptedPoss = tryGenInitCellNodes(initIntnlNodeCt);
+		if (isPosQualify(attemptedPoss)) {
+			isSuccess = true;
+		}
+	}
+		 // Input for nuclear pattern
+	double initRadius =
+			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
+	
+	double	noiseNucleusY ; 
+	if ( cellRank>1 && cellRank<27)
+		noiseNucleusY=getRandomNum(0.4*initRadius,3.5*initRadius); 
+	else {
+		noiseNucleusY=getRandomNum(-0.2*initRadius,0.2*initRadius);  
+	}
+	center.y=center.y+ noiseNucleusY ; 
+
+
+	for (uint i = 0; i < attemptedPoss.size(); i++) {
+		attemptedPoss[i] = attemptedPoss[i] + center;
+	}
+	return attemptedPoss;
+}
+
 
 vector<CVector> CellInitHelper::generateInitMembrNodes(CVector& center,
 		double initProg) {

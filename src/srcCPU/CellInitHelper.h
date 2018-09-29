@@ -90,6 +90,7 @@ class CellInitHelper {
 	 */
 	vector<CVector> generateInitCellNodes();
 	vector<CVector> generateInitIntnlNodes(CVector& center, double initProg);
+	vector<CVector> generateInitIntnlNodes_M(CVector& center, double initProg, int cellRank); //Ali 
 
 	vector<CVector> generateInitMembrNodes(CVector& center, double initProg);
 

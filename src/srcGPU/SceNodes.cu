@@ -2340,7 +2340,6 @@ void SceNodes::applySceForcesDisc_M() {
 				if (infoVecs.nodeIsActiveHost[i]==true && (i%maxNodePerCell)<maxMembNode){ // check active and membrane
 					cellRank=i/maxNodePerCell ;
 					
-					//eCellType=eCellTypeV2Host[cellRank];
 					eCellTypeTmp=eCellTypeVHost[cellRank];
 					iNext=i+1 ; 
 					if ( (i%maxNodePerCell)==(activeMemCount[cellRank]-1)) {  // if the node is the last node of cell's membrane
@@ -2462,6 +2461,10 @@ void SceNodes::applySceForcesDisc_M() {
 					if (idBehind !=-1) {
 						infoVecs.nodeAdhereIndexHost[idBehind]=subApicalInfo[cellRankBehind].nodeIdFront[j] ;
 					}
+					if ( eCellTypeVHost[i]==pouch && NumAdhBefore(i,pouch)==NumAdhAfter(i,pouch) ) {
+						infoVecs.nodeMemMirrorIndexHost[idFront]=idBehind ;
+						infoVecs.nodeMemMirrorIndexHost[idBehind]=idFront ;
+					};
 				}
 			}
 

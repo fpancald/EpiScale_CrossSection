@@ -1713,14 +1713,17 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
 		}
 				// means membrane node
-		if  (  (nodeType==lateralA) || (nodeType==lateralB) ) {
-		
-			index       = cellRank * _maxNodePerCell + nodeRank;
+
+		index       = cellRank * _maxNodePerCell + nodeRank;
+		//if  (  (nodeType==lateralA) || (nodeType==lateralB) ) {
+		if  ( _MirrorIndexAddr[index] !=-1  ) { 
+			// This implies that this node is a lateral node of a symmetric pouch cell and because _MirrorIndexAddr is pairwise variable, then automatically action and
+			// reaction force condition is satisfied.
 			locX 		= _locXAddr[index];
 			locY 		= _locYAddr[index];
 			double nodeDistToApical=sqrt( ( locX-apicalX)*(locX-apicalX) + (locY-apicalY)*(locY-apicalY) )-2  ; // 2 is for saftey to make sure is beneath the nucleus  
 
-			index_Other =_MirrorIndexAddr[index];  // assuming all lateral nodes have an adhere index, otherwise it will ask for [-1] which is undefined.
+			index_Other =_MirrorIndexAddr[index]; 
 			locXOther   = _locXAddr[index_Other];
 			locYOther   = _locYAddr[index_Other];
 			double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) )-2 ; 
@@ -1728,8 +1731,10 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 			if ( (nodeDistToApical>nucDistToApical)&& (nodeDistToApicalOther>nucDistToApical) ) { 
             	calAndAddMM_ContractAdh(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 			}
+
 			//finished calculating adhesion force
-			// start calculating Morse force
+			// start calculating Morse force. 
+			//It assumes that if mirror index of a lateral node of cell is not equal to -1, then the mirror index of all the other lateral nodes of the same cell is not equal to -1. By this restriction the action-reaction force constrain will be automatically satisfied.
 			uint memIndxBegin = cellRank * _maxNodePerCell;
 			uint memIndxEnd   = cellRank * _maxNodePerCell +activeMembrCount-1 ;
 			for (index_Other = memIndxBegin; index_Other <= memIndxEnd;index_Other++) {
@@ -1738,10 +1743,10 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 				double nodeDistToApicalOther=sqrt( (locXOther-apicalX)*(locXOther-apicalX) + (locYOther-apicalY)*(locYOther-apicalY) )-2 ;  
 		
 			 
-				nodeTypeOther= _MemTypeAddr[index_Other] ;
+				nodeTypeOther= _MemTypeAddr[index_Other] ; 
 				if ( (nodeDistToApical>nucDistToApical)&& (nodeDistToApicalOther>nucDistToApical) ) { 
 	
-					if (  (nodeTypeOther==lateralB && nodeType==lateralA) || (nodeTypeOther==lateralA && nodeType==lateralB) )  { 
+					if (  (nodeTypeOther==lateralB && nodeType==lateralA) || (nodeTypeOther==lateralA && nodeType==lateralB) )  {
                 		calAndAddMM_ContractRepl(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
 					}
 
