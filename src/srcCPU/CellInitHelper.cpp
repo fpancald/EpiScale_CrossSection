@@ -5,7 +5,8 @@
  *      Author: wsun2
  */
 // To Do List: 
-// The ID of cells to which asymmetric nuclear position is assigned, is given manually. It should be updated if the number of cells are changed. It is better to be automatically detected.
+//1- The ID of cells to which asymmetric nuclear position is assigned, is given manually in generateInitIntnlNodes_M function. It should be updated if the number of cells are changed. It is better to be automatically detected.
+//2-The location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
 #include <fstream>
 #include "CellInitHelper.h"
 //Ali 
@@ -820,7 +821,7 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
 			"MaxMembrNodeCountPerCell").toInt();
 	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane3.txt");
+	inputc.open("./resources/coordinate_Membrane4.txt");
     //inputc.open(CellCentersFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully ";
@@ -971,10 +972,10 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes_M(CVector& center,
 			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
 	
 	double	noiseNucleusY ; 
-	if ( cellRank>1 && cellRank<27)
-		noiseNucleusY=getRandomNum(0.4*initRadius,3.5*initRadius); 
+	if ( cellRank>1 && cellRank<63)
+		noiseNucleusY=getRandomNum(-0.75*initRadius,7.25*initRadius); 
 	else {
-		noiseNucleusY=getRandomNum(-0.2*initRadius,0.2*initRadius);  
+		noiseNucleusY=getRandomNum(-0.25*initRadius,0.25*initRadius);  
 	}
 	center.y=center.y+ noiseNucleusY ; 
 

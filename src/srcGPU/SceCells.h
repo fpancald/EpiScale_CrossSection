@@ -1308,16 +1308,16 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 			}
 
 			if (_cellTypeAddr[cellRank]==bc) {
-				cellAreaDesire=6+ percent*6 ;
+				cellAreaDesire=20+ percent*20 ;
 			}
-			else if (cellRank==0 || cellRank==28) {
-				cellAreaDesire=10+ percent*10 ;
+			else if (cellRank==0 || cellRank==64) {
+				cellAreaDesire=25+ percent*25 ;
 			}
-			else if (cellRank==1 || cellRank==27) {
-				cellAreaDesire=16+ percent*16 ;
+			else if (cellRank==1 || cellRank==63) {
+				cellAreaDesire=50+ percent*50 ;
 			}
 			else {
-				cellAreaDesire=20+ percent*20 ;
+				cellAreaDesire=65+ percent*65 ;
 
 			}
 /*
