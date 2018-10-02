@@ -150,7 +150,7 @@ int numberNodes_ECM ;
 double tmpPosX_ECM,tmpPosY_ECM ; 
 vector<double> posXIni_ECM,posYIni_ECM ;
 vector <EType> eNodeVec ;  
-readCoord_ECM.open("./resources/coordinate_ECM17.txt") ;
+readCoord_ECM.open("./resources/coordinate_ECM18.txt") ;
 if (readCoord_ECM.is_open()) {
 	cout << "ECM coordinates file opened successfully" <<endl ; 
 }
