@@ -115,8 +115,8 @@ double calMorse_ECM (const double & linkLength);
 
 __device__
 double calMorseEnergy_ECM (const double & linkLength); 
-__device__
-double calWLC_ECM (const double & linkLength); 
+//__device__
+//double calWLC_ECM (const double & linkLength); 
 
 
 __device__
@@ -304,17 +304,15 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 
 struct LinSpringForceECM: public thrust::unary_function<IDD,DDDD> {
          int   _numNodes ; 	
-	 double  _restLen ; 
-	 double  _linSpringStiff ;
          double  *_locXAddr; 
          double  *_locYAddr;
 		 double *_stiffAddr; 
 		 double * _sponLenAddr ; 
 
 
-	__host__ __device__ LinSpringForceECM (double numNodes, double restLen, double linSpringStiff , double * locXAddr, double * locYAddr, 
+	__host__ __device__ LinSpringForceECM (double numNodes, double * locXAddr, double * locYAddr, 
 										   double * stiffAddr, double * sponLenAddr ) :
-	 _numNodes(numNodes),_restLen(restLen),_linSpringStiff(linSpringStiff),_locXAddr(locXAddr),_locYAddr(locYAddr),_stiffAddr (stiffAddr), _sponLenAddr (sponLenAddr) {
+	 _numNodes(numNodes),_locXAddr(locXAddr),_locYAddr(locYAddr),_stiffAddr (stiffAddr), _sponLenAddr (sponLenAddr) {
 	}
 	 __device__ DDDD operator()(const IDD & iDD) const {
 	
@@ -496,20 +494,18 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 struct MechProp: public thrust::unary_function<EType,DD> {
 
 	bool _isInitPhase ;
-	double _stiffness ; 
-	double _sponLen ; 
 
-	__host__ __device__ MechProp(bool isInitPhase, double stiffness, double sponLen): _isInitPhase(isInitPhase), _stiffness(stiffness),_sponLen (sponLen) {
+	__host__ __device__ MechProp(bool isInitPhase): _isInitPhase(isInitPhase) {
 	}
 
 	__device__ DD operator() (const EType  & nodeType) const {
 
-	double stiffness= _stiffness  ;
-	double sponLen=0 ;   ; 
-	if (_isInitPhase == false ) {
+	double stiffness ;
+	double sponLen   ;    
+	//if (_isInitPhase == false ) {
 
 		DefineECMStiffnessAndLknot (nodeType, stiffness, sponLen) ;  
-	}
+//	}
 
 	return thrust::make_tuple(stiffness,sponLen); 
 	}

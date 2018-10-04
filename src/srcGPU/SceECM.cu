@@ -2,7 +2,7 @@
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 __constant__ double sceInterCell_ECM[5]; 
-__constant__ double wLCPara_ECM[4]; 
+//__constant__ double wLCPara_ECM[4]; 
 __constant__ double restLenECMAdhSpringGPU  ;  
 __constant__ double maxLenECMAdhSpringGPU ;
 __constant__ double kAdhECMGPU ;
@@ -76,7 +76,7 @@ double calMorseEnergy_ECM(const double& linkLength ) {
 	return (energyValue) ; 
 }
 
-
+/*
 __device__
 double calWLC_ECM(const double& linkLength ) {
 
@@ -84,7 +84,7 @@ double calWLC_ECM(const double& linkLength ) {
 	return (wLCPara_ECM[1]*( 6*x+ ( x*x*(3.0-2*x))/( (1-x)*(1-x) ) )
 	       -wLCPara_ECM[2]/pow(linkLength,wLCPara_ECM[3]) ) ; 	
 }
-
+*/
 __device__
 bool IsValidAdhPair(const double& dist ) {
 		if (dist > restLenECMAdhSpringGPU  && dist < maxLenECMAdhSpringGPU){ 
@@ -184,14 +184,14 @@ else {
  	readInput_ECM>> mechPara_ECM.sceInterCellCPU_ECM[i] ; //=39.0 ; 
  }
  
- readInput_ECM>>restLenECMSpring ;
- readInput_ECM>>eCMLinSpringStiff ;    
+// readInput_ECM>>restLenECMSpring ;
+// readInput_ECM>>eCMLinSpringStiff ;    
  readInput_ECM>>restLenECMAdhSpring  ;  
  readInput_ECM>>maxLenECMAdhSpring ;
  readInput_ECM>>kAdhECM ;
- for ( int i=0 ; i<4 ; i++) {
-	readInput_ECM>>mechPara_ECM.wLCParaCPU_ECM[i] ;
- }    
+ //for ( int i=0 ; i<4 ; i++) {
+//	readInput_ECM>>mechPara_ECM.wLCParaCPU_ECM[i] ;
+// }    
 
 
 
@@ -241,23 +241,23 @@ cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ;
 
 } 
 
- cout <<"rest length of ECM spring is "<<restLenECMSpring<<endl ;   
+ //cout <<"rest length of ECM spring is "<<restLenECMSpring<<endl ;   
 
- cout <<"ECM spring stiffness is "<<eCMLinSpringStiff<<endl ; 
+// cout <<"ECM spring stiffness is "<<eCMLinSpringStiff<<endl ; 
 
  cout <<"ECM Membrane neutral adhesion length is "<<restLenECMAdhSpring<<endl ;  
  cout <<"ECM Membrane max adhesion length is "<<maxLenECMAdhSpring<<endl ;
  cout <<"ECM Membrane adhesion stiffness is "<<kAdhECM<<endl ;
  cout << "ECM only applies adhesvie force" << endl ; 
 
-for ( int i=0 ; i<4 ; i++) {
-	cout<<"wLC parameter "<< i << " is "<<mechPara_ECM.wLCParaCPU_ECM[i]<<endl ;  ;
-}    
+//for ( int i=0 ; i<4 ; i++) {
+//	cout<<"wLC parameter "<< i << " is "<<mechPara_ECM.wLCParaCPU_ECM[i]<<endl ;  ;
+//}    
 
 cudaMemcpyToSymbol(sceInterCell_ECM,mechPara_ECM.sceInterCellCPU_ECM
 			,5*sizeof(double)); 
-cudaMemcpyToSymbol(wLCPara_ECM,mechPara_ECM.wLCParaCPU_ECM
-			,4*sizeof(double)); 
+//cudaMemcpyToSymbol(wLCPara_ECM,mechPara_ECM.wLCParaCPU_ECM
+//			,4*sizeof(double)); 
 
 cudaMemcpyToSymbol(restLenECMAdhSpringGPU, &restLenECMAdhSpring,sizeof(double));
 
@@ -286,8 +286,8 @@ peripORexcm.resize(numNodesECM,perip) ;
 nodeECMLocX.resize(numNodesECM,0.0) ;
 nodeECMLocY.resize(numNodesECM,0.0) ;
 
-stiffLevel.resize(numNodesECM,eCMLinSpringStiff) ;
-sponLen.resize(numNodesECM,restLenECMSpring) ;
+stiffLevel.resize(numNodesECM) ;
+sponLen.resize(numNodesECM) ;
 
 linSpringForceECMX.resize(numNodesECM,0.0); 
 linSpringForceECMY.resize(numNodesECM,0.0); 
@@ -426,8 +426,11 @@ int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
 			&adhPairECM_Cell[0]) ; 
 
 
-thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,thrust::make_zip_iterator (thrust::make_tuple (
-											stiffLevel.begin(),sponLen.begin())),MechProp(isInitPhase,eCMLinSpringStiff,restLenECMSpring));
+thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
+                    thrust::make_zip_iterator (thrust::make_tuple (
+											                        stiffLevel.begin(),
+																	sponLen.begin()    ))
+					                           ,MechProp(isInitPhase));
 
 
 double* stiffLevelAddr=thrust::raw_pointer_cast (
@@ -454,7 +457,7 @@ thrust:: transform (
 					linSpringForceECMY.begin(),
 					linSpringAvgTension.begin(),
 					linSpringEnergy.begin())),
-				LinSpringForceECM(numNodesECM,restLenECMSpring,eCMLinSpringStiff,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
+				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
 
 
 totalLinSpringEnergy = thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
