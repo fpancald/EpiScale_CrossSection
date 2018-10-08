@@ -598,12 +598,21 @@ thrust:: transform (
 //	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
 //}
 
-//cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
-//cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
-//cout << "total adhesion energy for cell-ECM is= "<<  energyECM.totalAdhEnergyCellECM << endl ; 
-//cout << "total adhesion energy for ECM-cell  is= "<< energyECM.totalAdhEnergyECMCell << endl ; 
-assert (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)<1.0) ;
-assert (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0) ; 
+cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
+cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
+cout << "total adhesion energy for cell-ECM is= "<<  energyECM.totalAdhEnergyCellECM << endl ; 
+cout << "total adhesion energy for ECM-cell  is= "<< energyECM.totalAdhEnergyECMCell << endl ; 
+//assert (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)<1.0) ;
+//assert (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0) ;
+
+
+if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)<1.0) || 
+	  (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0)
+   ) {
+
+	cout << "Warning: Action and reaction forces in the ECM do not match each other" << endl ; 
+}
+
 PrintECM(curTime); 
 
 }
