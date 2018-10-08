@@ -3934,7 +3934,7 @@ public:
 	CellInfoVecs &   getCellInfoVecs()  {
 			return cellInfoVecs ; 
 	}; // Ali 
-
+    void UpdateTimeStepByAdaptiveMethod(double adaptiveLevelCoef, double minDt, double maxDt, double & dt) ; 
 	void runAllCellLevelLogicsDisc(double dt);
 
 //Ali	void runAllCellLogicsDisc_M(double dt);
@@ -3975,6 +3975,7 @@ public:
 	}
 
 	bool aniDebug;
+	EnergyCellInfo  energyCell ; 
 };
 
 #endif /* SCECELLS_H_ */

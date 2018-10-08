@@ -725,6 +725,48 @@ public:
         void printStressStrain(std::string FileName1,double curTime,double Init_Displace );   //Ali
         void printStressStrain_Ini(std::string FileName1); // Ali
 };
+//Ali
+class EnergyCellInfo {
+
+public:
+	double totalMembrLinSpringEnergyCell ; 
+	double totalMembrBendSpringEnergyCell ; 
+	double totalNodeIIEnergyCell ; 
+	double totalNodeIMEnergyCell ; 
+	double totalNodeEnergyCell ; 
+	double totalNodeEnergyCellOld ; 
+
+	EnergyCellInfo() {
+
+		totalNodeEnergyCell=0 ; 
+		totalNodeEnergyCellOld=0  ; 
+
+	}
+};
+//Ali
+class EnergyECMInfo {
+
+public:
+	double totalMorseEnergyCellECM ; 
+	double totalMorseEnergyECMCell ; 
+	double totalAdhEnergyCellECM ; 
+	double totalAdhEnergyECMCell ; 
+	double totalLinSpringEnergyECM ; 
+	double totalEnergyECM ; 
+	double totalEnergyPrimeECM ; 
+	double totalEnergyECMOld ; 
+
+
+	EnergyECMInfo () {
+
+		totalEnergyECM=0 ; 
+		totalEnergyECMOld=0 ; 
+	    totalEnergyPrimeECM=0 ; 
+
+	}
+};
+
+
 
 void insertCount(uint numNeighbor, std::map<uint, uint>& count);
 void printCountsToFile(std::string fileName, std::map<uint, uint>& countNormal,

@@ -45,8 +45,7 @@ double lknotECMBasal ;
 double lknotECMBC ;
 double lknotECMPerip ;
 
-
-double totalLinSpringEnergy,totalMorseEnergy, totalAdhEnergy, totalMorseEnergyCell, totalAdhEnergyCell ; 
+EnergyECMInfo energyECM ; 
 
 int outputFrameECM ;  
 int lastPrintECM ;

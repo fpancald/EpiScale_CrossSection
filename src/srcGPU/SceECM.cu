@@ -1,6 +1,7 @@
 #include "SceECM.h"
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
+//isInitPhase bool variable is not active anymore.
 __constant__ double sceInterCell_ECM[5]; 
 //__constant__ double wLCPara_ECM[4]; 
 __constant__ double restLenECMAdhSpringGPU  ;  
@@ -335,7 +336,7 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str());
 
-			EnergyExport <<"Time,"<<"TotalMorseEnergyCell," << "TotalAdhEnergyCell,"<<  "TotalMorseEnergy,"<<"TotalAdhEnergy,"<< "TotalLinSpringEnergy," <<"TotalEnergy"<< std::endl;
+			EnergyExport <<"Time,"<<"TotalMorseEnergyECM," << "TotalAdhEnergyECM,"<<"TotalLinSpringEnergy,"<<"TotalEnergy, " <<"TotalEnergyDerivative"<< std::endl;
 
 
 
@@ -411,8 +412,8 @@ EType* peripORexcmAddr= thrust::raw_pointer_cast (
 					adhEnergyCell.begin())),
 				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime,currentActiveCellCount));
 
-totalMorseEnergyCell = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
-totalAdhEnergyCell   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
+energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
+energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
 
 double* nodeCellLocXAddr= thrust::raw_pointer_cast (
 			&nodeDeviceTmpLocX[0]) ; 
@@ -460,7 +461,7 @@ thrust:: transform (
 				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
 
 
-totalLinSpringEnergy = thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
+energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -529,8 +530,8 @@ thrust:: transform (
 					adhEnergy.begin())),
 				MorseAndAdhForceECM(totalNodeCountForActiveCellsECM,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActive_CellAddr,adhPairECM_CellAddr));
 
-totalMorseEnergy = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
-totalAdhEnergy   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
+energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
+energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
 
 
 double dummy=0.0 ;
@@ -597,6 +598,12 @@ thrust:: transform (
 //	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
 //}
 
+//cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
+//cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
+//cout << "total adhesion energy for cell-ECM is= "<<  energyECM.totalAdhEnergyCellECM << endl ; 
+//cout << "total adhesion energy for ECM-cell  is= "<< energyECM.totalAdhEnergyECMCell << endl ; 
+assert (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)<1.0) ;
+assert (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0) ; 
 PrintECM(curTime); 
 
 }
@@ -684,18 +691,20 @@ void  SceECM:: PrintECM(double curTime) {
 				}
 
 			ECMTensionExport.close();
-
 			///
-			//Fourth write file for ECM 
-			double totalEnergyECM=0.5*(totalMorseEnergyCell+totalMorseEnergy)+ 0.5*(totalAdhEnergyCell+totalAdhEnergy)+ 0.5*totalLinSpringEnergy ;
-
+			//Fourth write file for ECM
+			energyECM.totalEnergyECMOld=energyECM.totalEnergyECM ; 
+			energyECM.totalEnergyECM=       energyECM.totalMorseEnergyECMCell
+			                         +      energyECM.totalAdhEnergyECMCell
+								     +      energyECM.totalLinSpringEnergyECM ;
+									 
 
 			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput+ ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str(),ofstream::app);
 			
 			//EnergyExport <<"totalMorseEnergyCell " << "totalAdhEnergyCell "<<  "totalMorseEnergy "<<"totalAdhEnergy "<< "totalLinSpringEnergy " << std::endl;
-			EnergyExport <<curTime<<","<<totalMorseEnergyCell << "," << totalAdhEnergyCell<< "," << totalMorseEnergy<< "," << totalAdhEnergy<< "," << totalLinSpringEnergy <<"," << totalEnergyECM << std::endl;
+			EnergyExport <<curTime<<","<<energyECM.totalMorseEnergyECMCell << "," << energyECM.totalAdhEnergyECMCell<< "," << energyECM.totalLinSpringEnergyECM <<"," << energyECM.totalEnergyECM <<","<<energyECM.totalEnergyPrimeECM <<std::endl;
 
 
 		}

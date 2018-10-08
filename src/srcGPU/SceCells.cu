@@ -3,7 +3,7 @@
 	//2- If two division occur at the exact same time, there is a chance of error in detecting mother and daughter cells
 	//3- In function processMemVec the lateralBefore  and LateralAfter are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
 	//4- If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
-
+	//5- two bool variables subcellularPolar and cellularPolar are given values inside the code. Although for now it is always true, it is better to be input parameters.
 //Notes:
 	// 1- Currently the nucleus position is desired location not an enforced position. So, all the functions which used "nucleusLocX" & "nucleusLocY" are not active. Instead two variables "nucleusDesireLocX" & "nucleusDesireLocY" are active and internal avg position represent where the nuclei are located.
 #include "SceCells.h"
@@ -180,11 +180,23 @@ double compDist2D(double &xPos, double &yPos, double &xPos2, double &yPos2) {
 			(xPos - xPos2) * (xPos - xPos2) + (yPos - yPos2) * (yPos - yPos2));
 }
 
+
 void SceCells::distributeBdryIsActiveInfo() {
 	thrust::fill(nodes->getInfoVecs().nodeIsActive.begin(),
 			nodes->getInfoVecs().nodeIsActive.begin()
 					+ allocPara.startPosProfile, true);
 }
+
+
+void SceCells::UpdateTimeStepByAdaptiveMethod( double adaptiveLevelCoef,double minDt,double maxDt, double & dt) {
+
+	//double energyPrime=( energyCell.totalNodeEnergyCell +eCM.energyECM.totalEnergyECM - energyCell.totalNodeEnergyCellOld - eCM.energyECM.totalEnergyECMOld)/dt ; 
+	//dt=max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(energyPrime,2))) ; 
+
+	eCM.energyECM.totalEnergyPrimeECM=( eCM.energyECM.totalEnergyECM  - eCM.energyECM.totalEnergyECMOld)/dt ; 
+	dt=dt ; // max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(eCM.energyECM.totalEnergyPrimeECM,2))) ; 
+}
+
 
 void SceCells::distributeProfileIsActiveInfo() {
 	thrust::fill(
@@ -1498,9 +1510,6 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	bool cellPolar=false ; 
 	bool subCellPolar= false  ; 
 
-	if (curTime>=0 ){
-		subCellPolar=true ; // to reach to equlibrium mimicking 35 hours AEG 
-	}
 
  	if (curTime==InitTimeStage) {
 
@@ -1523,21 +1532,24 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 		computeInternalAvgPos_M();
  		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
  		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
-		nodes->isInitPhase=true ;
+		nodes->isInitPhase=false ; // This bool variable is not active in the code anymore
 		std::string cSVFileName = "EnergyExportCell_" + uniqueSymbolOutput + ".CSV";
 		ofstream EnergyExportCell ;
 		
 		EnergyExportCell.open(cSVFileName.c_str() );
 		EnergyExportCell <<"curTime"<<","<<"totalMembrLinSpringEnergyCell" << "," <<"totalMembrBendSpringEnergyCell" <<"," <<
-		"totalNodeIIEnergyCell"<<"," <<"totalNodeIMEnergyCell"<< std::endl;
+		"totalNodeIIEnergyCell"<<"," <<"totalNodeIMEnergyCell"<<","<<"totalNodeEnergyCell"<< std::endl;
 
 	}
+	double minDt=0.002 ;
+	double maxDt=0.04 ; 
+	double adaptiveLevelCoef=0.1  ; 
+	UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ; 
+	//if (curTime>=30 ){
+	//	nodes->isInitPhase=false ; 
+	//	}
 
 	curTime = curTime + dt;
-
-	if (curTime>=30 ){
-		nodes->isInitPhase=false ; 
-	}
 	bool tmpIsInitPhase= nodes->isInitPhase ; 
 	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 
@@ -2518,25 +2530,33 @@ thrust::transform(
 							nodes->getInfoVecs().membrBendSpringEnergy.begin())),
 			CalMembrEnergy(maxAllNodePerCell,nodeLocXAddr, nodeLocYAddr, nodeIsActiveAddr,nodeActinLevelAddr, grthPrgrCriVal_M));
 
-double totalMembrLinSpringEnergyCell=thrust::reduce
+energyCell.totalMembrLinSpringEnergyCell=0.5 *(thrust::reduce
  ( nodes->getInfoVecs().membrLinSpringEnergy.begin(),
    nodes->getInfoVecs().membrLinSpringEnergy.begin()+totalNodeCountForActiveCells,
-  (double)0.0, thrust::plus<double>() ); 
+  (double)0.0, thrust::plus<double>() )); 
 
-double totalMembrBendSpringEnergyCell=thrust::reduce
+energyCell.totalMembrBendSpringEnergyCell=thrust::reduce
  ( nodes->getInfoVecs().membrBendSpringEnergy.begin(),
    nodes->getInfoVecs().membrBendSpringEnergy.begin()+totalNodeCountForActiveCells,
   (double)0.0, thrust::plus<double>() );
 
-double totalNodeIIEnergyCell=thrust::reduce
+energyCell.totalNodeIIEnergyCell=0.5*(thrust::reduce
  ( nodes->getInfoVecs().nodeIIEnergy.begin(),
    nodes->getInfoVecs().nodeIIEnergy.begin()+totalNodeCountForActiveCells,
-  (double)0.0, thrust::plus<double>() ); 
+  (double)0.0, thrust::plus<double>() )); 
 
-double totalNodeIMEnergyCell=thrust::reduce
+energyCell.totalNodeIMEnergyCell=0.5*(thrust::reduce
  ( nodes->getInfoVecs().nodeIMEnergy.begin(),
    nodes->getInfoVecs().nodeIMEnergy.begin()+totalNodeCountForActiveCells,
-  (double)0.0, thrust::plus<double>() ); 
+  (double)0.0, thrust::plus<double>() )); 
+
+
+energyCell.totalNodeEnergyCellOld=energyCell.totalNodeEnergyCell ;  
+energyCell.totalNodeEnergyCell=energyCell.totalMembrLinSpringEnergyCell + 
+						       energyCell.totalMembrBendSpringEnergyCell + 
+						       energyCell.totalNodeIIEnergyCell + 
+						       energyCell.totalNodeIMEnergyCell ; 
+
 
 
 
@@ -2551,8 +2571,8 @@ if ( (timeStep % 10000)==0 ) {
 	ofstream EnergyExportCell ;
 	EnergyExportCell.open(cSVFileName.c_str(),ofstream::app);
 
-	EnergyExportCell <<curTime<<","<<0.5*totalMembrLinSpringEnergyCell << "," <<totalMembrBendSpringEnergyCell <<
-	"," <<0.5*totalNodeIIEnergyCell<<"," <<0.5*totalNodeIMEnergyCell<< std::endl;
+	EnergyExportCell <<curTime<<","<<energyCell.totalMembrLinSpringEnergyCell << "," <<energyCell.totalMembrBendSpringEnergyCell <<
+	"," <<energyCell.totalNodeIIEnergyCell<<"," <<energyCell.totalNodeIMEnergyCell<< energyCell.totalNodeEnergyCell <<std::endl;
 }
 
 
