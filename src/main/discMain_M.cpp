@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
 	// main simulation steps.
        bool FirstData=false ; 
 	for (uint i = 0; i <= (uint) (mainPara.totalTimeSteps); i++) {
+		// this if is just for output data// 
 		if (i % mainPara.aniAuxVar == 0) {
 			std::cout << "substep 1 " << std::endl;
 			std::cout << "substep 1_confirm " << std::flush;
@@ -202,8 +203,10 @@ int main(int argc, char* argv[]) {
 			std::cout << "substep 6 " << std::endl;
 			aniFrame++;
 		}
-//Ali		simuDomain.runAllLogic_M(mainPara.dt);
+//Ali		simuDomain.runAllLogic_M(mainPara.dt); // this dt belongs to cellInitHelper
+		cout << "dt in the main function before the main function is equal to: " << mainPara.dt<< endl ; 
 		simuDomain.runAllLogic_M(mainPara.dt,mainPara.Damp_Coef,mainPara.InitTimeStage);  //Ali
+		cout << "dt in the main function after the main function is equal to: " << mainPara.dt<< endl ; 
 	}
 
 	return 0;

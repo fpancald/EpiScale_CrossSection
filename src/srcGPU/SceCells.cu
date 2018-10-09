@@ -191,10 +191,10 @@ void SceCells::distributeBdryIsActiveInfo() {
 void SceCells::UpdateTimeStepByAdaptiveMethod( double adaptiveLevelCoef,double minDt,double maxDt, double & dt) {
 
 	//double energyPrime=( energyCell.totalNodeEnergyCell +eCM.energyECM.totalEnergyECM - energyCell.totalNodeEnergyCellOld - eCM.energyECM.totalEnergyECMOld)/dt ; 
-	//dt=max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(energyPrime,2))) ; 
 
 	eCM.energyECM.totalEnergyPrimeECM=( eCM.energyECM.totalEnergyECM  - eCM.energyECM.totalEnergyECMOld)/dt ; 
-	dt=dt ; // max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(eCM.energyECM.totalEnergyPrimeECM,2))) ; 
+	//dt=dt ; // max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(eCM.energyECM.totalEnergyPrimeECM,2))) ; 
+	dt=max (minDt, maxDt/sqrt( 1 +pow(adaptiveLevelCoef*eCM.energyECM.totalEnergyPrimeECM,2))) ; 
 }
 
 
@@ -1494,7 +1494,7 @@ void SceCells::runAllCellLevelLogicsDisc(double dt) {
 }
 
 //Ali void SceCells::runAllCellLogicsDisc_M(double dt) {
-void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTimeStage) {   //Ali
+void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double InitTimeStage) {   //Ali
 	std::cout << "     *** 1 ***" << endl;
 	std::cout.flush();
 	this->dt = dt;
@@ -1507,8 +1507,8 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	growthAuxData.randomGrowthSpeedMax = growthAuxData.prolifDecay
 			* growthAuxData.randomGrowthSpeedMax_Ori;
 
-	bool cellPolar=false ; 
-	bool subCellPolar= false  ; 
+	bool cellPolar=true ; 
+	bool subCellPolar= true  ; 
 
 
  	if (curTime==InitTimeStage) {
@@ -1542,16 +1542,27 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 
 	}
 	double minDt=0.002 ;
-	double maxDt=0.04 ; 
-	double adaptiveLevelCoef=0.1  ; 
-	UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ; 
+	double maxDt=0.006 ; 
+	double adaptiveLevelCoef=0.001  ;
+
+	if (curTime>=10 ){
+		UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ; 
+	}
 	//if (curTime>=30 ){
 	//	nodes->isInitPhase=false ; 
 	//	}
 
 	curTime = curTime + dt;
-	bool tmpIsInitPhase= nodes->isInitPhase ; 
+	cout << "Current time step is eqaul to: " << dt <<endl ;
+	cout << "time derivative of ECM energy is eqaul to: " << eCM.energyECM.totalEnergyPrimeECM << endl ; 
+	bool tmpIsInitPhase= nodes->isInitPhase ;
+
+	cout << "dt before eCMCell interaction is: "<< dt << endl ;
+
+	this->dt = dt;
 	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
+	cout << "dt after eCMCell interaction is: "<< dt << endl ; 
+	cout << "dt after eCMCell interaction is: "<< this->dt << endl ; 
 
     assignMemNodeType();  // Ali
     computeApicalLoc();  //Ali
@@ -1595,7 +1606,9 @@ void SceCells::runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTi
 	std::cout << "     *** 5 ***" << endl;
 	std::cout.flush();
 	
+	cout << "dt before growthAtRandom_M is: "<< dt << endl ; 
 	growAtRandom_M(dt);
+	cout << "dt after growthAtRandom_M is: "<< dt << endl ; 
 	std::cout << "     *** 6 ***" << endl;
 	std::cout.flush();
 
@@ -2277,7 +2290,8 @@ void SceCells::moveNodes_BC_M() {
 			SaxpyFunctorDim2_BC_Damp(dt)); 
 
 cout << "I am in move_nodes and total nodes for active cells is" <<  totalNodeCountForActiveCells << endl ; 
-cout << "I am in move_nodes and bdry node count is" << allocPara_m.bdryNodeCount << endl ; 
+cout << "I am in move_nodes and dt is equal to:" << dt  << endl ; 
+//cout << "I am in move_nodes and bdry node count is" << allocPara_m.bdryNodeCount << endl ; 
 
 }
 
@@ -3647,7 +3661,7 @@ thrust::transform(
 void SceCells::growAtRandom_M(double dt) {
 	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
-
+	cout << "dt inside growAtRandom_M is: "<< dt << endl ; 
 	randomizeGrowth_M();
 
 	updateGrowthProgress_M();
@@ -3716,6 +3730,7 @@ void SceCells::divide2D_M() {
 void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitPhase) {
 
 
+	cout << " time step begining of entering the ECM is: "<<dt<< endl ; 	
 	int totalNodeCountForActiveCellsECM = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
 	int activeCellCount=allocPara_m.currentActiveCellCount ; 
@@ -3731,7 +3746,9 @@ void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitP
 	// assuming no growth for membrane nodes
     //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
 
-	
+	cout << " time step before entering the ECM is: "<<dt<< endl ; 	
+	cout << " time step before entering the ECM is: "<<this->dt<< endl ; 	
+	//cout << " time step before entering the ECM is: "<<cells.dt<< endl ; 	
 	eCM.ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
 
     thrust:: copy (eCM.nodeDeviceLocX.begin(),eCM.nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 

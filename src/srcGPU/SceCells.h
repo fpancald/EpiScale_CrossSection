@@ -556,7 +556,7 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 			}  // if # 4 ends
 		*/			
 
-			if (_subMembPolar) { // if # 6 s
+	//		if (_subMembPolar) { // if # 6 s
 				if ( (cellType==pouch && memType==lateralB) || (cellType==pouch && memType==lateralA)  ) { 
 					actinLevel=3.0*kStiff ;  //0.5
 				}
@@ -594,7 +594,7 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 			    //if   (cellType==bc) {  // bc cell type either apicalbasal or lateral
 				//	actinLevel=1*kStiff ;
 			//	}
-			} // if #6 end
+	//		} // if #6 end
 
 		//	if (memType==lateralB) {
 		//		actinLevel=7.5*kStiff ;
@@ -3938,7 +3938,7 @@ public:
 	void runAllCellLevelLogicsDisc(double dt);
 
 //Ali	void runAllCellLogicsDisc_M(double dt);
-	void runAllCellLogicsDisc_M(double dt, double Damp_Coef, double InitTimeStage);    //Ali 
+	void runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double InitTimeStage);    //Ali 
 
 	void runStretchTest(double dt);
 

@@ -123,7 +123,7 @@ void SimulationDomainGPU::runAllLogic(double dt) {
 }
 
 //Ali void SimulationDomainGPU::runAllLogic_M(double dt) {
-void SimulationDomainGPU::runAllLogic_M(double dt, double Damp_Coef, double InitTimeStage) {                          //Ali
+void SimulationDomainGPU::runAllLogic_M(double & dt, double Damp_Coef, double InitTimeStage) {                          //Ali
 #ifdef DebugModeDomain
 	cudaEvent_t start1, start2, stop;
 	float elapsedTime1, elapsedTime2;

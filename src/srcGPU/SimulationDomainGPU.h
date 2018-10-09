@@ -21,7 +21,7 @@ public:
 	int outputFrameCount;
 	int totalIterCount;
 	double bdrySpacingRatio;
-	double dt;
+	//double dt;
 	std::string outputAniName;
 };
 
@@ -132,7 +132,7 @@ public:
 	 * @param dt timestep
 	 */
 //Ali 	void runAllLogic_M(double dt);
-	void runAllLogic_M(double dt,double Damp_Coef,double InitTimeStage);
+	void runAllLogic_M(double & dt,double Damp_Coef,double InitTimeStage);
 
 	bool isDividing_ForAni();
 
