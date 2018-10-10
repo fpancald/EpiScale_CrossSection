@@ -291,6 +291,9 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 	 							(locY+(fTotalMorseY+fAdhMemECMY)*_dt/_Damp_Coef),
 								 adhPairECM,eMorseCell,eAdhCell )  ; 
 		
+	// return thrust::make_tuple ((locX),
+	 //							(locY),
+	//							 -1,eMorseCell,eAdhCell )  ; 
 }
 	
 

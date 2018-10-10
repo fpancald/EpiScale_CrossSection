@@ -821,7 +821,7 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
 			"MaxMembrNodeCountPerCell").toInt();
 	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane4.txt");
+	inputc.open("./resources/coordinate_Membrane5.txt");
     //inputc.open(CellCentersFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully ";

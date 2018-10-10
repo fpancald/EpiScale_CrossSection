@@ -1,6 +1,6 @@
 //Notes: 1-  In infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodes
 // 2- the algorithm of adhesion won't work if there is not apical node.
-// 3- maxNumAdh is given inside the code as a parameters in both .cu and .h file. It should become an input or I should write a function to detect that automatically
+// 3- maxNumAdh is given inside the code as a parameters in .cu file. It should become an input or I should write a function to detect that automatically
 // 4- In SceNodes::NumAdhAfter and SceNodes::NumAdhBefore  number of lateral nodes is given manually inside the code it should be automatically calculate from the input parameters/
 
 #include "SceNodes.h"
@@ -90,23 +90,23 @@ SceNodes::SceNodes() {
 
 int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
 	if (eCellType==peri) {
-		return 28 ; 
+		return 14 ; //#28 ; 
 	}
 	if (eCellType==bc) {
-		return 30 ; 
+		return 14 ; //30 ; 
 	}
 	if (eCellType==pouch) {
 		if (cellRank==0){
-			return 36 ; 
+			return 18 ; //36 ; 
 		}
 			else if ( cellRank==1) {
-				return 108 ; 
+				return 54 ; //108 ; 
 			}
 				else if ( cellRank==64) {
-					return 108 ; 					
+					return 54 ; //108 ; 					
 				}
 					else {
-						return 180 ; 
+						return 90 ; // 180 ; 
 					}
 	}
 
@@ -114,23 +114,23 @@ int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
 
 int SceNodes::NumAdhAfter(int cellRank,ECellType eCellType) {
 	if ( eCellType==peri) {
-		return 28 ; 
+		return 14 ; //28 ; 
 	}
 	if (eCellType==bc) {
-		return 30 ; 
+		return 14 ; //30 ; 
 	}
 	if (eCellType==pouch) {
 		if (cellRank==64){
-			return 36 ; 
+			return 18 ; // 36 ; 
 		}
 			else if ( cellRank==63) {
-				return 108 ; 
+				return 54 ; // 108 ; 
 			}
 				else if ( cellRank==0) {
-					return 108 ; 
+					return 54 ; // 108 ; 
 				}
 					else {
-						return 180 ; 
+						return 90 ; // 180 ; 
 					}
 	}
 }
@@ -2285,7 +2285,7 @@ void SceNodes::applySceForcesDisc_M() {
 	}
 	if (adhUpdate) {
 		adhUpdate=false ;
-		int maxNumAdh=180 ;
+		int maxNumAdh=90 ;
 		//vector <ECellType> eCellTypeV2Host ;
 
      	thrust :: copy (infoVecs.nodeLocX.begin(),infoVecs.nodeLocX.end(),infoVecs.nodeLocXHost.begin()) ; // Ali	

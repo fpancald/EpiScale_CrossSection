@@ -1541,6 +1541,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		"totalNodeIIEnergyCell"<<"," <<"totalNodeIMEnergyCell"<<","<<"totalNodeEnergyCell"<< std::endl;
 
 	}
+	/*
 	double minDt=0.002 ;
 	double maxDt=0.006 ; 
 	double adaptiveLevelCoef=0.001  ;
@@ -1551,7 +1552,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	//if (curTime>=30 ){
 	//	nodes->isInitPhase=false ; 
 	//	}
-
+	*/
 	curTime = curTime + dt;
 	cout << "Current time step is eqaul to: " << dt <<endl ;
 	cout << "time derivative of ECM energy is eqaul to: " << eCM.energyECM.totalEnergyPrimeECM << endl ; 
