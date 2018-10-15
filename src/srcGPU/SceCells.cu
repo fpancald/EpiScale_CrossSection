@@ -1554,40 +1554,42 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	//	}
 	*/
 	curTime = curTime + dt;
-	cout << "Current time step is eqaul to: " << dt <<endl ;
-	cout << "time derivative of ECM energy is eqaul to: " << eCM.energyECM.totalEnergyPrimeECM << endl ; 
+	//cout << "Current time step is eqaul to: " << dt <<endl ;
+	//cout << "time derivative of ECM energy is eqaul to: " << eCM.energyECM.totalEnergyPrimeECM << endl ; 
 	bool tmpIsInitPhase= nodes->isInitPhase ;
 
-	cout << "dt before eCMCell interaction is: "<< dt << endl ;
+	//cout << "dt before eCMCell interaction is: "<< dt << endl ;
 
 	this->dt = dt;
 	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
-	cout << "dt after eCMCell interaction is: "<< dt << endl ; 
-	cout << "dt after eCMCell interaction is: "<< this->dt << endl ; 
 
-    assignMemNodeType();  // Ali
+ 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
+    	assignMemNodeType();  // Ali
+		cout << " I assigned boolen values for membrane node types " << endl; 
+	}
     computeApicalLoc();  //Ali
 	
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali
 	//computeNucleusLoc() ;
 
- 	if (curTime==(InitTimeStage+dt)) {
+ 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
 		computeNucleusIniLocPercent(); //Ali  
+		cout << " I computed initial location of nucleus positions in percent" << endl; 
 	}
 	computeNucleusDesireLoc() ; // Ali
 //	if (tmpIsInitPhase==false) {
 //		updateInternalAvgPosByNucleusLoc_M ();
 //	}
 	//PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
-    BC_Imp_M() ;  //Ali 
+    //BC_Imp_M() ;  //Ali 
 	std::cout << "     ***1.5 ***" << endl;
 	std::cout.flush();
 
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	applyMembContraction() ;  // Ali For now because it shoould be modified to be only effect for pouch cellls and mirror index needs to revisited
+	applyMembContraction() ;  // Ali
 
 	//	applyNucleusEffect() ;
 	//	applyForceInteractionNucleusAsPoint() ; 
@@ -1607,19 +1609,21 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 5 ***" << endl;
 	std::cout.flush();
 	
-	cout << "dt before growthAtRandom_M is: "<< dt << endl ; 
-	growAtRandom_M(dt);
-	cout << "dt after growthAtRandom_M is: "<< dt << endl ; 
+
+ 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
+		growAtRandom_M(dt);
+		cout << "I set the growth level. Since the cells are not growing a divising for this simulation I won't go inside this function any more" << endl ; 
+	}
 	std::cout << "     *** 6 ***" << endl;
 	std::cout.flush();
 
-	enterMitoticCheckForDivAxisCal() ; 
+//	enterMitoticCheckForDivAxisCal() ; 
     relaxCount=relaxCount+1 ; 
-	if (relaxCount==10) { 
-		divide2D_M();
+	//if (relaxCount==10) { 
+	//	divide2D_M();
 
-		nodes->adhUpdate=true; 
-	}
+	//	nodes->adhUpdate=true; 
+//	}
 	std::cout << "     *** 7 ***" << endl;
 	std::cout.flush();
 	distributeCellGrowthProgress_M();
@@ -1630,14 +1634,14 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	allComponentsMove_M();
    std::cout << "     *** 9 ***" << endl;
 	std::cout.flush();
-	updateMembrGrowthProgress_M();  
-	if (relaxCount==10) { 
-		handleMembrGrowth_M();
-		std::cout << "     *** 10 ***" << endl;
-		std::cout.flush();
-		relaxCount=0 ; // Ali
-		nodes->adhUpdate=true; // Ali 
-	}
+//	updateMembrGrowthProgress_M();  
+//	if (relaxCount==10) { 
+//		handleMembrGrowth_M();
+//		std::cout << "     *** 10 ***" << endl;
+//		std::cout.flush();
+//		relaxCount=0 ; // Ali
+		//nodes->adhUpdate=true; // Ali 
+//	}
 }
 
 void SceCells::runStretchTest(double dt) {
@@ -3311,13 +3315,19 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 			thrust::equal_to<uint>(), CVec2Add());
 // up to here apicalLocX and apicalLocY are the summation. We divide them if at lease one apical node exist.
 // 0,0 location for apical node indicates that there is no apical node.
+/* // I comment this section since for now all the cells have apical node //
+// special consideration for the cells with no apical nodes
 	int  NumCellsWithApicalNode=0 ; 
 	for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 		if (cellInfoVecs.apicalNodeCount[i]!=0) {
 			NumCellsWithApicalNode=NumCellsWithApicalNode +1; 
 		}
 	}
-
+*/
+//finish commenting speical consideration for the cells with no apical node 
+//simply these two are equal
+int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ; 
+//
 	cout << "num of cells with apical node is " << NumCellsWithApicalNode << endl ; 
 	thrust::transform(
 			thrust::make_zip_iterator(
@@ -3334,18 +3344,10 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 			thrust::make_zip_iterator(
 					thrust::make_tuple(cellInfoVecs.apicalLocX.begin(),
 							           cellInfoVecs.apicalLocY.begin())), ApicalLocCal(apicalNodeCountAddr));
-
-	//for (int i= 0 ; i<NumCellsWithApicalNode ; i++) {
-
-	//	cout << "apical location in x for modified id " << i << " is " << cellInfoVecs.apicalLocX[i] << endl ; 
-	//	cout << "apical location in y for modified id " << i << " is " << cellInfoVecs.apicalLocY[i] << endl ; 
-
-//	}
-
-//	for (int i= 0 ; i<allocPara_m.currentActiveCellCount ; i++) {
-//		cout <<"num of apical nodes for cell " <<i << " is " << cellInfoVecs.apicalNodeCount[i] << endl ;  
-//	}
-       //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
+	
+/* I comment this section since for this simulation all the cells have apical node
+       // start special consideration for the cells which have no apical node
+	   //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
 		for (int i=0 ; i<allocPara_m.currentActiveCellCount-1 ; i++) {  // if the cell with 0 apical node is at the end, we are fine.
 			if (cellInfoVecs.apicalNodeCount[i]==0) {
 				cout << " I am inside complicated loop" << endl ; 
@@ -3362,7 +3364,8 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 			cellInfoVecs.apicalLocX[allocPara_m.currentActiveCellCount-1]=0 ;
 			cellInfoVecs.apicalLocY[allocPara_m.currentActiveCellCount-1]=0 ; 
 		}
-
+// finish special consideration for the cells that have not apical nodes 
+*/
 }
 
 // this function is not currently active. It is useful when the level of growth needs to be related to nucleus location.
@@ -4778,9 +4781,9 @@ void SceCells::copyInitActiveNodeCount_M(
 			cellInfoVecs.growthProgress.begin());
 	thrust::copy(eCellTypeV1.begin(), eCellTypeV1.end(),
 			cellInfoVecs.eCellTypeV2.begin());   // v2 might be bigger
-	for (int i=0 ; i<eCellTypeV1.size() ; i++ ) {
-		cout << "fourth check for cell type" << cellInfoVecs.eCellTypeV2[i] << endl ; 
-	}
+	//for (int i=0 ; i<eCellTypeV1.size() ; i++ ) {
+	//	cout << "fourth check for cell type" << cellInfoVecs.eCellTypeV2[i] << endl ; 
+//	}
 }
 
 void SceCells::myDebugFunction() {

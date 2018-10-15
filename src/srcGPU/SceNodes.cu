@@ -2278,11 +2278,11 @@ void SceNodes::applySceForcesDisc_M() {
 	thrust::host_vector <ECellType> eCellTypeVHost ;
 
 	eCellTypeVHost.resize(allocPara_M.currentActiveCellCount, notActive) ; 
-	for (int i= 0 ; i<allocPara_M.currentActiveCellCount;  i++) {
-		eCellTypeTmp=cellsSceNodes->getCellInfoVecs().eCellTypeV2[i];
-		cout << "Epithelial cell type is="<<eCellTypeTmp <<endl ; 
+	//for (int i= 0 ; i<allocPara_M.currentActiveCellCount;  i++) {
+	//	eCellTypeTmp=cellsSceNodes->getCellInfoVecs().eCellTypeV2[i];
+	//	cout << "Epithelial cell type is="<<eCellTypeTmp <<endl ; 
 		//eCellTypeVHost.push_back(eCellTypeTmp) ; 
-	}
+//	}
 	if (adhUpdate) {
 		adhUpdate=false ;
 		int maxNumAdh=90 ;
@@ -2432,7 +2432,7 @@ void SceNodes::applySceForcesDisc_M() {
 
 	
 /////////////////////////////////// start adhesion for apical nodes of pouch cells with apical nodes of peripodial cells ///////////////////////
-			
+		/*	
 	 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				cellRankTmp1=i/maxNodePerCell ;
 		 		distMinP2=10000 ; // large number
@@ -2469,7 +2469,7 @@ void SceNodes::applySceForcesDisc_M() {
 
 		 	}
 		  	cout << " I am ready to copy the data in adhesion function to the GPU " << endl ; 
-	
+	*/
 /////////////////////////////////// start adhesion for apical nodes of pouch cells with apical nodes of peripodial cells ///////////////////////
   		} // finish if of bypassing the first time
 		// copy back to GPU 
