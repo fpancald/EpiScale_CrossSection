@@ -35,12 +35,12 @@ class SimulationDomainGPU {
 	 */
 	SceNodes nodes;
 
+	SceECM   eCM ;  // Ali 
 	/**
 	 * Variable that contains information for cells.
 	 * Handles cell level logics like growth and division.
 	 */
 	SceCells cells;
-//        SceECM   eCM ;  
 	NetworkInfo netInfo;
 
 	std::vector<std::vector<PreT1State> > preT1Vec;

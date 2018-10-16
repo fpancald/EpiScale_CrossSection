@@ -1,4 +1,5 @@
 #include "SceECM.h"
+# define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
@@ -13,6 +14,7 @@ __constant__ double stiffnessECMPeripGPU ;
 __constant__ double lknotECMBasalGPU ;
 __constant__ double lknotECMBCGPU ;
 __constant__ double lknotECMPeripGPU ;
+
 
 namespace patch{
 	template <typename  T> std::string to_string (const T& n) 
@@ -314,7 +316,7 @@ fBendRightY.resize(numNodesECM,0.0);
 totalForceECMX.resize(numNodesECM,0.0); 
 totalForceECMY.resize(numNodesECM,0.0);
 
-memNodeType.resize(maxTotalNodes,notAssigned1) ; 
+//memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
 //thrust::fill (peripORexcm.begin(),peripORexcm.begin()+604,excm );
@@ -350,20 +352,38 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 
 
 void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){   
-
+#ifdef debugModeECM 
+	cudaEvent_t start1, start2, start3, start4, start5, start6, start7, start8, stop;
+	float elapsedTime1, elapsedTime2, elapsedTime3, elapsedTime4, elapsedTime5, elapsedTime6,  elapsedTime7 , elapsedTime8 ; 
+	cudaEventCreate(&start1);
+	cudaEventCreate(&start2);
+	cudaEventCreate(&start3);
+	cudaEventCreate(&start4);
+	cudaEventCreate(&start5);
+	cudaEventCreate(&start6);
+	cudaEventCreate(&start7);
+	cudaEventCreate(&start8);
+	cudaEventCreate(&stop);
+	
+	cudaEventRecord(start1, 0);
+#endif
 thrust::counting_iterator<int> iBegin(0) ; 
 nodeDeviceTmpLocX.resize(totalNodeCountForActiveCellsECM,0.0) ;
 nodeDeviceTmpLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
 //isBasalMemNode.resize(totalNodeCountForActiveCellsECM,false) ;
 adhPairECM_Cell.resize(totalNodeCountForActiveCellsECM,-1) ;
- 
 morseEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
 adhEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
-thrust::copy(nodeDeviceLocX.begin(),nodeDeviceLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
-thrust::copy(nodeDeviceLocY.begin(),nodeDeviceLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
 cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
 cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
 cout<< "I am in ECM module and dt is: " << dt << endl ; 
+#ifdef debugModeECM
+	cudaEventRecord(start2, 0);
+	cudaEventSynchronize(start2);
+	cudaEventElapsedTime(&elapsedTime1, start1, start2);
+#endif
 
 double eCMBendStiff=6.0 ; // need to be an input
 
@@ -388,10 +408,10 @@ EType* peripORexcmAddr= thrust::raw_pointer_cast (
 							DivideFunctor2(maxAllNodePerCell)),
 					make_transform_iterator (iBegin,
 							ModuloFunctor2(maxAllNodePerCell)),
-					nodeDeviceTmpLocX.begin(),
-					nodeDeviceTmpLocY.begin(), 
-					nodeIsActive_Cell.begin(),
-					memNodeType.begin()
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(), 
+					nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					nodesPointerECM->getInfoVecs().memNodeType1.begin()
 					)), 
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -399,30 +419,31 @@ EType* peripORexcmAddr= thrust::raw_pointer_cast (
 							DivideFunctor2(maxAllNodePerCell)),
 					 make_transform_iterator (iBegin,
 							ModuloFunctor2(maxAllNodePerCell)),
-					 nodeDeviceTmpLocX.begin(),
-                     nodeDeviceTmpLocY.begin(),
-					 nodeIsActive_Cell.begin(),
-					 memNodeType.begin()
+					 nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+                     nodesPointerECM->getInfoVecs().nodeLocY.begin(),
+					 nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					 nodesPointerECM->getInfoVecs().memNodeType1.begin()
 					 ))+totalNodeCountForActiveCellsECM,
 		thrust::make_zip_iterator (
 				thrust::make_tuple (
-					nodeDeviceLocX.begin(),
-					nodeDeviceLocY.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(),
 					adhPairECM_Cell.begin(),
 					morseEnergyCell.begin(),
 					adhEnergyCell.begin())),
 				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime,currentActiveCellCount));
 
+#ifdef debugModeECM
+	cudaEventRecord(start3, 0);
+	cudaEventSynchronize(start3);
+	cudaEventElapsedTime(&elapsedTime2, start2, start3);
+#endif
+/* To reduce computational cost
 energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
-
-double* nodeCellLocXAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocX[0]) ; 
-double* nodeCellLocYAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocY[0]) ;
- 
-bool* nodeIsActive_CellAddr= thrust::raw_pointer_cast (
-			&nodeIsActive_Cell[0]) ; 
+*/
+bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
+			& (nodesPointerECM->getInfoVecs().nodeIsActive[0])) ; 
 
 int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
 			&adhPairECM_Cell[0]) ; 
@@ -461,8 +482,13 @@ thrust:: transform (
 					linSpringEnergy.begin())),
 				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
 
+#ifdef debugModeECM
+	cudaEventRecord(start4, 0);
+	cudaEventSynchronize(start4);
+	cudaEventElapsedTime(&elapsedTime3, start3, start4);
+#endif
 
-energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
+//energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -484,6 +510,11 @@ thrust:: transform (
 					fBendRightY.begin())),
 				CalBendECM(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM,eCMBendStiff));
 
+#ifdef debugModeECM
+	cudaEventRecord(start5, 0);
+	cudaEventSynchronize(start5);
+	cudaEventElapsedTime(&elapsedTime4, start4, start5);
+#endif
 double* fBendLeftXAddr= thrust::raw_pointer_cast (
 			&fBendLeftX[0]) ; 
 double* fBendLeftYAddr= thrust::raw_pointer_cast (
@@ -511,6 +542,17 @@ thrust:: transform (
 					bendSpringForceECMY.begin())),
 				SumBendForce(fBendLeftXAddr,fBendLeftYAddr,fBendRightXAddr,fBendRightYAddr,numNodesECM));
 
+#ifdef debugModeECM
+	cudaEventRecord(start6, 0);
+	cudaEventSynchronize(start6);
+	cudaEventElapsedTime(&elapsedTime5, start5, start6);
+#endif
+//to make sure it is based on the distance used for action force calculation.
+double* nodeCellLocXAddr= thrust::raw_pointer_cast (
+			&nodeDeviceTmpLocX[0]) ; 
+double* nodeCellLocYAddr= thrust::raw_pointer_cast (
+			&nodeDeviceTmpLocY[0]) ;
+ 
 
 thrust:: transform (
 		thrust::make_zip_iterator (
@@ -529,11 +571,19 @@ thrust:: transform (
 					memMorseForceECMY.begin(),
 					morseEnergy.begin(),
 					adhEnergy.begin())),
-				MorseAndAdhForceECM(totalNodeCountForActiveCellsECM,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActive_CellAddr,adhPairECM_CellAddr));
+				MorseAndAdhForceECM(totalNodeCountForActiveCellsECM,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
 
+
+#ifdef debugModeECM
+	cudaEventRecord(start7, 0);
+	cudaEventSynchronize(start7);
+	cudaEventElapsedTime(&elapsedTime6, start6, start7);
+#endif
+
+/* To reduce computational cost 
 energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
-
+*/
 
 double dummy=0.0 ;
 
@@ -560,13 +610,13 @@ thrust:: transform (
 					totalForceECMY.begin())),
 				TotalECMForceCompute(dummy));
 
+#ifdef debugModeECM
+	cudaEventRecord(start8, 0);
+	cudaEventSynchronize(start8);
+	cudaEventElapsedTime(&elapsedTime7, start7, start8);
+#endif
 
 
-nodeECMTmpLocX.resize(numNodesECM,0.0) ;
-nodeECMTmpLocY.resize(numNodesECM,0.0) ;
- 
-thrust::copy(nodeECMLocX.begin(),nodeECMLocX.begin()+numNodesECM,nodeECMTmpLocX.begin()) ; 
-thrust::copy(nodeECMLocY.begin(),nodeECMLocY.begin()+numNodesECM,nodeECMTmpLocY.begin()) ; 
 
 double Damp_CoefECM=Damp_Coef ; 
 double Damp_CoefPerip=Damp_Coef ; 
@@ -574,16 +624,16 @@ double Damp_CoefPerip=Damp_Coef ;
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
-					nodeECMTmpLocX.begin(),
-					nodeECMTmpLocY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
 					totalForceECMX.begin(),
 					totalForceECMY.begin(),
 					indexECM.begin(),
 					peripORexcm.begin())),
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
-					nodeECMTmpLocX.begin(),
-					nodeECMTmpLocY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
 					totalForceECMX.begin(),
 					totalForceECMY.begin(),
 					indexECM.begin(),
@@ -594,11 +644,7 @@ thrust:: transform (
 					nodeECMLocY.begin())),
 				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM,curTime));
 
-//cout << "GPU level first updated coordinates and type of external nodes are: " << endl ; 
-//for (int i=0;  i<nodeECMLocX.size() ;  i++) {
-//	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
-//}
-
+/* To reduce computational cost
 cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
 cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
 cout << "total adhesion energy for cell-ECM is= "<<  energyECM.totalAdhEnergyCellECM << endl ; 
@@ -607,14 +653,29 @@ cout << "total adhesion energy for ECM-cell  is= "<< energyECM.totalAdhEnergyECM
 //assert (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0) ;
 
 
-if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)<1.0) || 
-	  (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  <1.0)
+if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)>1.0) || 
+	  (abs (energyECM.totalAdhEnergyCellECM-  energyECM.totalAdhEnergyECMCell)  >1.0)
    ) {
 
 	cout << "Warning: Action and reaction forces in the ECM do not match each other" << endl ; 
 }
+*/ 
 
-PrintECM(curTime); 
+# ifdef debugModeECM 
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedTime8, start8, stop);
+	std::cout << "time 1 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime1 << endl ; 
+	std::cout << "time 2 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime2 << endl ; 
+	std::cout << "time 3 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime3 << endl ; 
+	std::cout << "time 4 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime4 << endl ; 
+	std::cout << "time 5 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime5 << endl ; 
+	std::cout << "time 6 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime6 << endl ; 
+	std::cout << "time 7 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime7 << endl ; 
+	std::cout << "time 8 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
+#endif
+
+//PrintECM(curTime); 
 
 }
 

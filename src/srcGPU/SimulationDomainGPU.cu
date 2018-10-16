@@ -9,7 +9,7 @@
 
 using namespace std;
 
-//#define DebugModeDomain
+#define DebugModeDomain
 
 /**
  * Constructor.
@@ -75,12 +75,13 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 	//			<< initActiveIntnlNodeCounts[i] << ") ";
 	//}
 	//std::cout << std::endl;
-	cells = SceCells(&nodes, initActiveMembrNodeCounts,
+	cells = SceCells(&nodes, & eCM, initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1, InitTimeStage);  //Ali
 
 	//std::cout << "break point 5 " << std::endl;
 	//std::cout.flush();
-	nodes.Initialize_SceNodes  ( &cells) ; 
+	nodes.Initialize_SceNodes  ( &cells) ;
+	eCM.Initialize_SceECM(& nodes) ; 
 }
 
 

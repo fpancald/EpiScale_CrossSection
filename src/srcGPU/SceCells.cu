@@ -188,14 +188,14 @@ void SceCells::distributeBdryIsActiveInfo() {
 }
 
 
-void SceCells::UpdateTimeStepByAdaptiveMethod( double adaptiveLevelCoef,double minDt,double maxDt, double & dt) {
+//void SceCells::UpdateTimeStepByAdaptiveMethod( double adaptiveLevelCoef,double minDt,double maxDt, double & dt) {
 
 	//double energyPrime=( energyCell.totalNodeEnergyCell +eCM.energyECM.totalEnergyECM - energyCell.totalNodeEnergyCellOld - eCM.energyECM.totalEnergyECMOld)/dt ; 
 
-	eCM.energyECM.totalEnergyPrimeECM=( eCM.energyECM.totalEnergyECM  - eCM.energyECM.totalEnergyECMOld)/dt ; 
+	//eCM.energyECM.totalEnergyPrimeECM=( eCM.energyECM.totalEnergyECM  - eCM.energyECM.totalEnergyECMOld)/dt ; 
 	//dt=dt ; // max (minDt, maxDt/sqrt( 1 +adaptiveLevelCoef*pow(eCM.energyECM.totalEnergyPrimeECM,2))) ; 
-	dt=max (minDt, maxDt/sqrt( 1 +pow(adaptiveLevelCoef*eCM.energyECM.totalEnergyPrimeECM,2))) ; 
-}
+	//dt=max (minDt, maxDt/sqrt( 1 +pow(adaptiveLevelCoef*eCM.energyECM.totalEnergyPrimeECM,2))) ; 
+//}
 
 
 void SceCells::distributeProfileIsActiveInfo() {
@@ -699,7 +699,7 @@ SceCells::SceCells(SceNodes* nodesInput,
 }
 
 
-SceCells::SceCells(SceNodes* nodesInput,
+SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
 		std::vector<uint>& initActiveMembrNodeCounts,
 		std::vector<uint>& initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
@@ -726,7 +726,7 @@ SceCells::SceCells(SceNodes* nodesInput,
 
 	memNewSpacing = globalConfigVars.getConfigValue("MembrLenDiv").toDouble();
 	cout << "relax count is initialized as" << relaxCount << endl ; 
-	initialize_M(nodesInput);
+	initialize_M(nodesInput, eCMInput);
 	copyToGPUConstMem();
 	copyInitActiveNodeCount_M(initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1);
@@ -922,10 +922,11 @@ void SceCells::initialize(SceNodes* nodesInput) {
 	distributeIsCellRank();
 }
 
-void SceCells::initialize_M(SceNodes* nodesInput) {
+void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput) {
 	std::cout << "Initializing cells ...... " << std::endl;
 	//std::cout.flush();
-	nodes = nodesInput;
+	nodes = nodesInput; //pointer assigned
+	eCMPointerCells=eCMInput ; //pointer assigned  
 	allocPara_m = nodesInput->getAllocParaM();
 	// max internal node count must be even number.
 	assert(allocPara_m.maxIntnlNodePerCell % 2 == 0);
@@ -1520,9 +1521,9 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		string uniqueSymbolOutput =
 			globalConfigVars.getConfigValue("UniqueSymbol").toString();
 
-		eCM.Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData, uniqueSymbolOutput);
+		eCMPointerCells->Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData, uniqueSymbolOutput);
 
-        thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCells,eCM.memNodeType.begin()) ;
+        //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCells,eCMPointerCells->memNodeType.begin()) ;
  		//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCells,nodes->getInfoVecs().memNodeType1.begin()) ;
 
 		cout << " I initialized the ECM module" << endl ;
@@ -3734,29 +3735,26 @@ void SceCells::divide2D_M() {
 void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitPhase) {
 
 
-	cout << " time step begining of entering the ECM is: "<<dt<< endl ; 	
+	//cout << " time step begining of entering the ECM is: "<<dt<< endl ; 	
 	int totalNodeCountForActiveCellsECM = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
 	int activeCellCount=allocPara_m.currentActiveCellCount ; 
 
-	eCM.nodeDeviceLocX.resize(totalNodeCountForActiveCellsECM,0.0) ; 
-    eCM.nodeDeviceLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
-    eCM.nodeIsActive_Cell.resize(totalNodeCountForActiveCellsECM,false) ;
+	//eCMPointerCells->nodeDeviceLocX.resize(totalNodeCountForActiveCellsECM,0.0) ; 
+    //eCMPointerCells->nodeDeviceLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
+    //eCMPointerCells->nodeIsActive_Cell.resize(totalNodeCountForActiveCellsECM,false) ;
 
-    thrust:: copy (nodes->getInfoVecs().nodeLocX.begin(),nodes->getInfoVecs().nodeLocX.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeDeviceLocX.begin()) ; 
-    thrust:: copy (nodes->getInfoVecs().nodeLocY.begin(),nodes->getInfoVecs().nodeLocY.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeDeviceLocY.begin()) ;
+    //thrust:: copy (nodes->getInfoVecs().nodeLocX.begin(),nodes->getInfoVecs().nodeLocX.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeDeviceLocX.begin()) ; 
+    //thrust:: copy (nodes->getInfoVecs().nodeLocY.begin(),nodes->getInfoVecs().nodeLocY.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeDeviceLocY.begin()) ;
 	//assuming no boundary node exist 
-	thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCM.nodeIsActive_Cell.begin()) ;
+	//thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeIsActive_Cell.begin()) ;
 	// assuming no growth for membrane nodes
     //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
 
-	cout << " time step before entering the ECM is: "<<dt<< endl ; 	
-	cout << " time step before entering the ECM is: "<<this->dt<< endl ; 	
-	//cout << " time step before entering the ECM is: "<<cells.dt<< endl ; 	
-	eCM.ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
+	eCMPointerCells->ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
 
-    thrust:: copy (eCM.nodeDeviceLocX.begin(),eCM.nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 
-    thrust:: copy (eCM.nodeDeviceLocY.begin(),eCM.nodeDeviceLocY.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocY.begin()) ; 
+    //thrust:: copy (eCMPointerCells->nodeDeviceLocX.begin(),eCMPointerCells->nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 
+    //thrust:: copy (eCMPointerCells->nodeDeviceLocY.begin(),eCMPointerCells->nodeDeviceLocY.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocY.begin()) ; 
  	//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCellsECM,nodes->getInfoVecs().memNodeType1.begin()) ;
 
 

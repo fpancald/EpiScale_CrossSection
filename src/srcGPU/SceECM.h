@@ -28,10 +28,18 @@ class SceECM {
 //	SceNodes* nodes;
 
 public:
+
+void Initialize_SceECM(SceNodes * nodes) {
+		nodesPointerECM =nodes ; 
+	}
+
+
+
         void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
 		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
 		EType ConvertStringToEType (string eNodeRead) ;
-		void PrintECM(double curTime); 
+		void PrintECM(double curTime);
+SceNodes * nodesPointerECM ; 
 double restLenECMSpring ;
 double eCMLinSpringStiff ; 
 double restLenECMAdhSpring ; 
@@ -67,11 +75,11 @@ thrust::device_vector<double> nodeECMVelY ;
 thrust::device_vector<double> nodeECMTmpLocX ; 
 thrust::device_vector<double> nodeECMTmpLocY ; 
 
-thrust::device_vector<double> nodeDeviceLocX ; 
-thrust::device_vector<double> nodeDeviceLocY ; 
+//thrust::device_vector<double> nodeDeviceLocX ; 
+//thrust::device_vector<double> nodeDeviceLocY ; 
 thrust::device_vector<double> nodeDeviceTmpLocX ; 
 thrust::device_vector<double> nodeDeviceTmpLocY ;
-thrust::device_vector<MembraneType1> memNodeType ;
+//thrust::device_vector<MembraneType1> memNodeType ;
 thrust::device_vector<int>   adhPairECM_Cell ;
  
 thrust::device_vector<bool> nodeIsActive_Cell ; 

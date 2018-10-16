@@ -3580,7 +3580,7 @@ struct MembrPara {
  */
 class SceCells {
 	SceNodes* nodes;
-	SceECM  eCM;
+	SceECM  *eCMPointerCells;  //Ali 
 	NodeAllocPara allocPara;
 	SceMiscPara miscPara;
 	SceBioPara bioPara;
@@ -3633,7 +3633,7 @@ class SceCells {
 	void initGrowthAuxData_M();
 
 	void initialize(SceNodes* nodesInput);
-	void initialize_M(SceNodes* nodesInput);
+	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput);
 
 	void distributeBdryIsActiveInfo();
 	void distributeProfileIsActiveInfo();
@@ -3925,7 +3925,7 @@ public:
 			std::vector<uint> &numOfInitActiveNodesOfCells,
 			std::vector<SceNodeType> &cellTypes);
 
-	SceCells(SceNodes* nodesInput,
+	SceCells(SceNodes* nodesInput, SceECM * eCMInput,
 			std::vector<uint> &numOfInitActiveMembrNodeCounts,
 			std::vector<uint> &numOfInitActiveIntnlNodeCounts,
 			std::vector<double> &initGrowProgVec, std::vector<ECellType> &eCellTypeV1 
@@ -3934,7 +3934,7 @@ public:
 	CellInfoVecs &   getCellInfoVecs()  {
 			return cellInfoVecs ; 
 	}; // Ali 
-    void UpdateTimeStepByAdaptiveMethod(double adaptiveLevelCoef, double minDt, double maxDt, double & dt) ; 
+    //void UpdateTimeStepByAdaptiveMethod(double adaptiveLevelCoef, double minDt, double maxDt, double & dt) ; 
 	void runAllCellLevelLogicsDisc(double dt);
 
 //Ali	void runAllCellLogicsDisc_M(double dt);
