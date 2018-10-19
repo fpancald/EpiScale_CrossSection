@@ -1513,34 +1513,21 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 
  	if (curTime==InitTimeStage) {
-
-		totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
-			* allocPara_m.maxAllNodePerCell;
-        uint maxTotalNodes=nodes->getInfoVecs().nodeLocX.size() ; 
-		cout << " in the initial time step the total number of nodes in the domain is equal to " << maxTotalNodes << endl ;
-		string uniqueSymbolOutput =
-			globalConfigVars.getConfigValue("UniqueSymbol").toString();
-
-		eCMPointerCells->Initialize(allocPara_m.maxAllNodePerCell, allocPara_m.maxMembrNodePerCell,maxTotalNodes, freqPlotData, uniqueSymbolOutput);
-
-        //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCells,eCMPointerCells->memNodeType.begin()) ;
- 		//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCells,nodes->getInfoVecs().memNodeType1.begin()) ;
-
-		cout << " I initialized the ECM module" << endl ;
 		lastPrintNucleus=10000000  ; //just a big number 
 		outputFrameNucleus=0 ;
-
 		computeInternalAvgPos_M();
  		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
  		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
 		nodes->isInitPhase=false ; // This bool variable is not active in the code anymore
+
+		string uniqueSymbolOutput =
+			globalConfigVars.getConfigValue("UniqueSymbol").toString();
+
 		std::string cSVFileName = "EnergyExportCell_" + uniqueSymbolOutput + ".CSV";
 		ofstream EnergyExportCell ;
-		
 		EnergyExportCell.open(cSVFileName.c_str() );
 		EnergyExportCell <<"curTime"<<","<<"totalMembrLinSpringEnergyCell" << "," <<"totalMembrBendSpringEnergyCell" <<"," <<
 		"totalNodeIIEnergyCell"<<"," <<"totalNodeIMEnergyCell"<<","<<"totalNodeEnergyCell"<< std::endl;
-
 	}
 	/*
 	double minDt=0.002 ;
@@ -1569,6 +1556,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		cout << " I assigned boolen values for membrane node types " << endl; 
 	}
     computeApicalLoc();  //Ali
+    computeBasalLoc();  //Ali
 	
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali
@@ -3241,6 +3229,88 @@ void SceCells::assignMemNodeType() {
 
 }
 
+// This function is written with the assumption that there is at least one basal point for each cell.
+void SceCells::computeBasalLoc() {
+
+	uint maxNPerCell = allocPara_m.maxAllNodePerCell;
+	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+			* allocPara_m.maxAllNodePerCell;
+	thrust::counting_iterator<uint> iBegin(0);
+	thrust::counting_iterator<uint> countingEnd(totalNodeCountForActiveCells);
+	int* basalNodeCountAddr = thrust::raw_pointer_cast(
+			&(cellInfoVecs.basalNodeCount[0]));
+
+	thrust::reduce_by_key(
+			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
+			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))
+					+ totalNodeCountForActiveCells,
+			nodes->getInfoVecs().nodeIsBasalMem.begin(),
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			cellInfoVecs.basalNodeCount.begin(),
+			thrust::equal_to<uint>(), thrust::plus<int>());
+
+
+	uint totalBasalNodeCount = thrust::reduce(
+			cellInfoVecs.basalNodeCount.begin(),
+			cellInfoVecs.basalNodeCount.begin()
+					+ allocPara_m.currentActiveCellCount);
+
+	thrust::copy_if(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							make_transform_iterator(iBegin,
+									DivideFunctor(
+											allocPara_m.maxAllNodePerCell)),
+							nodes->getInfoVecs().nodeLocX.begin(),
+							nodes->getInfoVecs().nodeLocY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							make_transform_iterator(iBegin,
+									DivideFunctor(
+											allocPara_m.maxAllNodePerCell)),
+							nodes->getInfoVecs().nodeLocX.begin(),
+							nodes->getInfoVecs().nodeLocY.begin()))
+					+ totalNodeCountForActiveCells,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().nodeIsActive.begin(),
+							nodes->getInfoVecs().memNodeType1.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellNodeInfoVecs.cellRanks.begin(),
+							cellNodeInfoVecs.activeLocXBasal.begin(),
+							cellNodeInfoVecs.activeLocYBasal.begin())),
+			ActiveAndBasal());
+
+	thrust::reduce_by_key(cellNodeInfoVecs.cellRanks.begin(),
+			cellNodeInfoVecs.cellRanks.begin() + totalBasalNodeCount,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellNodeInfoVecs.activeLocXBasal.begin(),
+									   cellNodeInfoVecs.activeLocYBasal.begin())),
+			cellInfoVecs.cellRanksTmpStorage.begin(),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+					            	   cellInfoVecs.basalLocY.begin())),
+			thrust::equal_to<uint>(), CVec2Add());
+	// up to here basaLocX and basalLocY are the summation. We divide them //
+	thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							           cellInfoVecs.basalLocY.begin(),
+			                           cellInfoVecs.cellRanksTmpStorage.begin()
+									   )),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							           cellInfoVecs.basalLocY.begin(),
+			                           cellInfoVecs.cellRanksTmpStorage.begin()
+									   ))
+					+ allocPara_m.currentActiveCellCount,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
+							      cellInfoVecs.basalLocY.begin())), BasalLocCal(basalNodeCountAddr));
+	
+}
+
+
 void SceCells::computeApicalLoc() {
 
 	uint maxNPerCell = allocPara_m.maxAllNodePerCell;
@@ -3251,7 +3321,7 @@ void SceCells::computeApicalLoc() {
 	int* apicalNodeCountAddr = thrust::raw_pointer_cast(
 			&(cellInfoVecs.apicalNodeCount[0]));
 
-thrust::reduce_by_key(
+	thrust::reduce_by_key(
 			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
 			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))
 					+ totalNodeCountForActiveCells,
@@ -3259,11 +3329,11 @@ thrust::reduce_by_key(
 			cellInfoVecs.cellRanksTmpStorage.begin(),
 			cellInfoVecs.apicalNodeCount.begin(),
 			thrust::equal_to<uint>(), thrust::plus<int>());
-int sizeApical=cellInfoVecs.apicalNodeCount.size() ; 
+	int sizeApical=cellInfoVecs.apicalNodeCount.size() ; 
 
-//for (int i=0 ; i<allocPara_m.currentActiveCellCount; i++) {
-//	cout << " the number of apical nodes for cell " << i << " is "<<cellInfoVecs.apicalNodeCount[i] << endl ;   
-//}
+	//for (int i=0 ; i<allocPara_m.currentActiveCellCount; i++) {
+	//	cout << " the number of apical nodes for cell " << i << " is "<<cellInfoVecs.apicalNodeCount[i] << endl ;   
+	//}
 
 
 
@@ -3299,9 +3369,9 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 			ActiveAndApical());
 
 
-//for (int i=sizeApical-40 ; i<sizeApical ; i++) {
-//	cout << " the location of apical node " << i << " is "<<cellNodeInfoVecs.activeLocXApical[i] << " and " << cellNodeInfoVecs.activeLocYApical[i] << endl ;   
-//}
+	//for (int i=sizeApical-40 ; i<sizeApical ; i++) {
+	//	cout << " the location of apical node " << i << " is "<<cellNodeInfoVecs.activeLocXApical[i] << " and " << cellNodeInfoVecs.activeLocYApical[i] << endl ;   
+	//}
 
 
 	thrust::reduce_by_key(cellNodeInfoVecs.cellRanks.begin(),
@@ -3314,21 +3384,21 @@ int sizeApical=cellInfoVecs.apicalNodeCount.size() ;
 					thrust::make_tuple(cellInfoVecs.apicalLocX.begin(),
 					            	   cellInfoVecs.apicalLocY.begin())),
 			thrust::equal_to<uint>(), CVec2Add());
-// up to here apicalLocX and apicalLocY are the summation. We divide them if at lease one apical node exist.
-// 0,0 location for apical node indicates that there is no apical node.
-/* // I comment this section since for now all the cells have apical node //
-// special consideration for the cells with no apical nodes
+	// up to here apicalLocX and apicalLocY are the summation. We divide them if at lease one apical node exist.
+	// 0,0 location for apical node indicates that there is no apical node.
+	/* // I comment this section since for now all the cells have apical node //
+	// special consideration for the cells with no apical nodes
 	int  NumCellsWithApicalNode=0 ; 
 	for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
 		if (cellInfoVecs.apicalNodeCount[i]!=0) {
 			NumCellsWithApicalNode=NumCellsWithApicalNode +1; 
 		}
 	}
-*/
-//finish commenting speical consideration for the cells with no apical node 
-//simply these two are equal
-int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ; 
-//
+	*/
+	//finish commenting speical consideration for the cells with no apical node 
+	//simply these two are equal
+	int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ; 
+	//
 	cout << "num of cells with apical node is " << NumCellsWithApicalNode << endl ; 
 	thrust::transform(
 			thrust::make_zip_iterator(
@@ -3346,7 +3416,7 @@ int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ;
 					thrust::make_tuple(cellInfoVecs.apicalLocX.begin(),
 							           cellInfoVecs.apicalLocY.begin())), ApicalLocCal(apicalNodeCountAddr));
 	
-/* I comment this section since for this simulation all the cells have apical node
+	/* I comment this section since for this simulation all the cells have apical node
        // start special consideration for the cells which have no apical node
 	   //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
 		for (int i=0 ; i<allocPara_m.currentActiveCellCount-1 ; i++) {  // if the cell with 0 apical node is at the end, we are fine.
@@ -3365,8 +3435,8 @@ int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ;
 			cellInfoVecs.apicalLocX[allocPara_m.currentActiveCellCount-1]=0 ;
 			cellInfoVecs.apicalLocY[allocPara_m.currentActiveCellCount-1]=0 ; 
 		}
-// finish special consideration for the cells that have not apical nodes 
-*/
+	// finish special consideration for the cells that have not apical nodes 
+	*/
 }
 
 // this function is not currently active. It is useful when the level of growth needs to be related to nucleus location.
@@ -3398,144 +3468,6 @@ void SceCells::computeNucleusLoc() {
 //}
 
 }
-
-
-// This function is written with the assumption that there is at least one basal point for each cell.
-
-void SceCells::computeBasalLoc() {
-
-	uint maxNPerCell = allocPara_m.maxAllNodePerCell;
-	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
-			* allocPara_m.maxAllNodePerCell;
-	thrust::counting_iterator<uint> iBegin(0);
-	thrust::counting_iterator<uint> countingEnd(totalNodeCountForActiveCells);
-
-thrust::reduce_by_key(
-			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell)),
-			make_transform_iterator(iBegin, DivideFunctor(maxNPerCell))
-					+ totalNodeCountForActiveCells,
-			nodes->getInfoVecs().nodeIsBasalMem.begin(),  // it is an integer 0,1
-			cellInfoVecs.cellRanksTmpStorage.begin(),
-			cellInfoVecs.basalNodeCount.begin(),
-			thrust::equal_to<uint>(), thrust::plus<int>());
-
-
-int* basalNodeCountAddr = thrust::raw_pointer_cast(
-			&(cellInfoVecs.basalNodeCount[0]));
-
-//for (int i=0 ; i<allocPara_m.currentActiveCellCount; i++) {
-//	cout << " the number of apical nodes for cell " << i << " is "<<cellInfoVecs.apicalNodeCount[i] << endl ;   
-//}
-
-
-
-	uint totalBasalNodeCount = thrust::reduce(
-			cellInfoVecs.basalNodeCount.begin(),
-			cellInfoVecs.basalNodeCount.begin()
-					+ allocPara_m.currentActiveCellCount);
-
-	thrust::copy_if(
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							make_transform_iterator(iBegin,
-									DivideFunctor(
-											allocPara_m.maxAllNodePerCell)),
-							nodes->getInfoVecs().nodeLocX.begin(),
-							nodes->getInfoVecs().nodeLocY.begin())),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							make_transform_iterator(iBegin,
-									DivideFunctor(
-											allocPara_m.maxAllNodePerCell)),
-							nodes->getInfoVecs().nodeLocX.begin(),
-							nodes->getInfoVecs().nodeLocY.begin()))
-					+ totalNodeCountForActiveCells,
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							nodes->getInfoVecs().nodeIsActive.begin(),
-							nodes->getInfoVecs().memNodeType1.begin())),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellNodeInfoVecs.cellRanks.begin(),
-							cellNodeInfoVecs.activeLocXBasal.begin(),     // although the length is total node count but it is filled consequently with basal membrane node 
-							cellNodeInfoVecs.activeLocYBasal.begin())),
-			ActiveAndBasal());
-
-
-//for (int i=sizeApical-40 ; i<sizeApical ; i++) {
-//	cout << " the location of apical node " << i << " is "<<cellNodeInfoVecs.activeLocXApical[i] << " and " << cellNodeInfoVecs.activeLocYApical[i] << endl ;   
-//}
-
-
-	thrust::reduce_by_key(cellNodeInfoVecs.cellRanks.begin(),
-			cellNodeInfoVecs.cellRanks.begin() + totalBasalNodeCount,
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellNodeInfoVecs.activeLocXBasal.begin(),
-									   cellNodeInfoVecs.activeLocYBasal.begin())),
-			cellInfoVecs.cellRanksTmpStorage.begin(),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),   //upto here baslLocX is not correct
-					            	   cellInfoVecs.basalLocY.begin())),
-			thrust::equal_to<uint>(), CVec2Add());
-// up to here apicalLocX and apicalLocY are the summation. We divide them if at lease one apical node exist.
-// 0,0 location for apical node indicates that there is no apical node.
-
-	int  NumCellsWithBasalNode=0 ; 
-	for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++) {
-		if (cellInfoVecs.basalNodeCount[i]!=0) {
-			NumCellsWithBasalNode=NumCellsWithBasalNode +1; 
-		}
-	}
-
-	cout << "num of cells with basal node is " << NumCellsWithBasalNode << endl ; 
-	thrust::transform(
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
-							           cellInfoVecs.basalLocY.begin(),
-			                           cellInfoVecs.cellRanksTmpStorage.begin()
-									   )),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
-							           cellInfoVecs.basalLocY.begin(),
-			                           cellInfoVecs.cellRanksTmpStorage.begin()
-									   ))
-					+ NumCellsWithBasalNode,  // if there is a cell where there is no basal node. it will be divided by zero.   
-			thrust::make_zip_iterator(
-					thrust::make_tuple(cellInfoVecs.basalLocX.begin(),
-							           cellInfoVecs.basalLocY.begin())), BasalLocCal(basalNodeCountAddr));
-
-	//for (int i= 0 ; i<NumCellsWithApicalNode ; i++) {
-
-	//	cout << "apical location in x for modified id " << i << " is " << cellInfoVecs.apicalLocX[i] << endl ; 
-	//	cout << "apical location in y for modified id " << i << " is " << cellInfoVecs.apicalLocY[i] << endl ; 
-
-//	}
-
-//	for (int i= 0 ; i<allocPara_m.currentActiveCellCount ; i++) {
-//		cout <<"num of apical nodes for cell " <<i << " is " << cellInfoVecs.apicalNodeCount[i] << endl ;  
-//	}
-       //reargment to also include the cell which have not apical cells and assign the location for them as 0,0
-	for (int i=0 ; i<allocPara_m.currentActiveCellCount-1 ; i++) {  // if the cell with 0 apical node is at the end, we are fine.
-			if (cellInfoVecs.basalNodeCount[i]==0) {
-				cout << " I am inside complicated loop" << endl ; 
-				for (int j=allocPara_m.currentActiveCellCount-2 ; j>=i ; j--) {
-					cellInfoVecs.basalLocX[j+1]=cellInfoVecs.basalLocX[j] ;
-					cellInfoVecs.basalLocY[j+1]=cellInfoVecs.basalLocY[j] ;
-				}
-				cellInfoVecs.basalLocX[i]=0 ;
-				cellInfoVecs.basalLocY[i]=0 ; 
-			}
-		}
-
-		if (cellInfoVecs.basalNodeCount[allocPara_m.currentActiveCellCount-1]==0) { // if the cell with 0 apical node is at the end, no rearrngment is required
-			cellInfoVecs.basalLocX[allocPara_m.currentActiveCellCount-1]=0 ;
-			cellInfoVecs.basalLocY[allocPara_m.currentActiveCellCount-1]=0 ; 
-		}
-
-
-
-
-}
-
 
 
 
@@ -3733,34 +3665,10 @@ void SceCells::divide2D_M() {
 }
 
 void SceCells::eCMCellInteraction(bool cellPolar,bool subCellPolar, bool isInitPhase) {
-
-
-	//cout << " time step begining of entering the ECM is: "<<dt<< endl ; 	
 	int totalNodeCountForActiveCellsECM = allocPara_m.currentActiveCellCount
 			* allocPara_m.maxAllNodePerCell;
-	int activeCellCount=allocPara_m.currentActiveCellCount ; 
-
-	//eCMPointerCells->nodeDeviceLocX.resize(totalNodeCountForActiveCellsECM,0.0) ; 
-    //eCMPointerCells->nodeDeviceLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
-    //eCMPointerCells->nodeIsActive_Cell.resize(totalNodeCountForActiveCellsECM,false) ;
-
-    //thrust:: copy (nodes->getInfoVecs().nodeLocX.begin(),nodes->getInfoVecs().nodeLocX.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeDeviceLocX.begin()) ; 
-    //thrust:: copy (nodes->getInfoVecs().nodeLocY.begin(),nodes->getInfoVecs().nodeLocY.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeDeviceLocY.begin()) ;
-	//assuming no boundary node exist 
-	//thrust:: copy (nodes->getInfoVecs().nodeIsActive.begin(),nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCellsECM,eCMPointerCells->nodeIsActive_Cell.begin()) ;
-	// assuming no growth for membrane nodes
-    //thrust:: copy (nodes->getInfoVecs().memNodeType1.begin(),nodes->getInfoVecs().memNodeType1.begin()+ totalNodeCountForActiveCellsECM,eCM.memNodeType.begin()) ;
-
-	eCMPointerCells->ApplyECMConstrain(activeCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
-
-    //thrust:: copy (eCMPointerCells->nodeDeviceLocX.begin(),eCMPointerCells->nodeDeviceLocX.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocX.begin()) ; 
-    //thrust:: copy (eCMPointerCells->nodeDeviceLocY.begin(),eCMPointerCells->nodeDeviceLocY.begin()+ totalNodeCountForActiveCellsECM,nodes->getInfoVecs().nodeLocY.begin()) ; 
- 	//thrust:: copy (eCM.memNodeType.begin(),   eCM.memNodeType.begin()+    totalNodeCountForActiveCellsECM,nodes->getInfoVecs().memNodeType1.begin()) ;
-
-
-
-
-}
+	eCMPointerCells->ApplyECMConstrain(allocPara_m.currentActiveCellCount,totalNodeCountForActiveCellsECM,curTime,dt,Damp_Coef,cellPolar,subCellPolar,isInitPhase);
+   }
 
 
 
@@ -6185,7 +6093,7 @@ CellsStatsData SceCells::outputPolyCountData() {
 
         calCellPerim();//AAMIRI
 		calCellPressure() ; // Ali 
-    	computeBasalLoc();  //Ali
+    	//computeBasalLoc();  //Ali  we call it here to compute the length of the cells
 	CellsStatsData result;
 
         cout << " I am after result" << endl ; 

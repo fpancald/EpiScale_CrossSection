@@ -1053,7 +1053,6 @@ public:
 	thrust::device_vector<double> membrBendLeftY;
 	thrust::device_vector<double> membrBendRightX;
 	thrust::device_vector<double> membrBendRightY;
-	//thrust::device_vector<bool> nodeIsBasalMem;//Ali
 	//thrust::device_vector<bool> nodeIsLateralMem;//Ali
 	thrust::device_vector<int> nodeIsApicalMem;//Ali it only gets 0 and 1
 	thrust::device_vector<int> nodeIsBasalMem;//Ali it only gets 0 and 1

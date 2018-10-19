@@ -36,8 +36,6 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 	nodes = SceNodes(memPara.maxCellInDomain, memPara.maxAllNodePerCell,initTmpNumActiveCells);  // Ali // this function includes giving initial size to GPU vectors for node values 
 	//nodes = SceNodes(memPara.maxCellInDomain, memPara.maxAllNodePerCell);  // Ali 
 
-	//std::cout << "break point 1 " << std::endl;
-	//std::cout.flush();
 	// array size of cell type array
 	uint nodeTypeSize = nodeTypes.size();
 	// array size of initial active node count of cells array.
@@ -49,8 +47,6 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 			memPara.maxCellInDomain * memPara.maxAllNodePerCell
 					== nodeTypes.size());
 
-	//std::cout << "break point 2 " << std::endl;
-	//std::cout.flush();
 	/*
 	 * second part: actual initialization
 	 * copy data from main system memory to GPU memory
@@ -62,24 +58,26 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 					== initMembrNodeCountSize);
 	nodes.setAllocParaM(para);
 
-	//std::cout << "break point 3 " << std::endl;
-	//std::cout.flush();
 
 	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
 
-	//std::cout << "break point 4 " << std::endl;
-	//std::cout.flush();
+	double simulationTotalTime =
+			globalConfigVars.getConfigValue("SimulationTotalTime").toDouble();
 
-	//for (uint i = 0; i < initActiveMembrNodeCounts.size(); i++) {
-	//	std::cout << " (" << initActiveMembrNodeCounts[i] << ", "
-	//			<< initActiveIntnlNodeCounts[i] << ") ";
-	//}
-	//std::cout << std::endl;
+	double simulationTimeStep =
+			globalConfigVars.getConfigValue("SimulationTimeStep").toDouble();
+	int TotalNumOfOutputFrames =
+			globalConfigVars.getConfigValue("TotalNumOfOutputFrames").toInt();
+	string uniqueSymbolOutput =
+			globalConfigVars.getConfigValue("UniqueSymbol").toString();
+
+	int 	freqPlotData=int ( (simulationTotalTime-InitTimeStage)/(simulationTimeStep*TotalNumOfOutputFrames) ) ;
+
+	eCM.Initialize(memPara.maxAllNodePerCell, memPara.maxMembrNodePerCell,memPara.maxAllNodePerCell*memPara.maxCellInDomain, freqPlotData, uniqueSymbolOutput);
+
 	cells = SceCells(&nodes, & eCM, initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1, InitTimeStage);  //Ali
 
-	//std::cout << "break point 5 " << std::endl;
-	//std::cout.flush();
 	nodes.Initialize_SceNodes  ( &cells) ;
 	eCM.Initialize_SceECM(& nodes) ; 
 }
