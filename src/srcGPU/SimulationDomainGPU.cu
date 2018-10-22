@@ -79,7 +79,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1, InitTimeStage);  //Ali
 
 	nodes.Initialize_SceNodes  ( &cells) ;
-	eCM.Initialize_SceECM(& nodes) ; 
+	eCM.Initialize_SceECM(& nodes, & cells) ; 
 }
 
 

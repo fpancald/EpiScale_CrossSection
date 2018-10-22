@@ -1,7 +1,7 @@
 #ifndef SimulationDomainGPU_H_
 #define SimulationDomainGPU_H_
 
-#include "SceNodes.h"
+//#include "SceNodes.h"
 //#include "SceECM.h"
 #include "SceCells.h"
 #include "commonData.h"

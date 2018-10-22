@@ -1,4 +1,5 @@
 #include "SceECM.h"
+#include "SceCells.h"
 # define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
@@ -386,6 +387,8 @@ double eCMBendStiff=6.0 ; // need to be an input
 //if (cellPolar) {eCMLinSpringStiff=100 ; }
 //if (subCellPolar) {eCMLinSpringStiff=100 ; }
 
+cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
+cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
 
 double* nodeECMLocXAddr= thrust::raw_pointer_cast (
 			&nodeECMLocX[0]) ; 

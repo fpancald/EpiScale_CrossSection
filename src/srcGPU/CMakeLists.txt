@@ -9,7 +9,7 @@ CUDA_ADD_LIBRARY(SceGPU
 	SceNodes.h
 	SceNodes.cu
 	SceECM.h
-        SceECM.cu
+    SceECM.cu
 	SceCells.h
 	SceCells.cu
 	SimulationDomainGPU.h

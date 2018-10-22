@@ -1,5 +1,9 @@
+#ifndef SCEECM_H
+#define SCEECM_H
+
 #include "commonData.h"
 #include "SceNodes.h" 
+//#include "SceCells.h" 
 #include <string>
 #include <sstream>
 #include <fstream>  
@@ -23,14 +27,15 @@ struct MechPara_ECM {
 	double linSpringRestLenCPU_ECM ; 
 }; 
 
-
+class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
 
 public:
 
-void Initialize_SceECM(SceNodes * nodes) {
+void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
 		nodesPointerECM =nodes ; 
+		cellsPointerECM= cells ;  
 	}
 
 
@@ -40,6 +45,7 @@ void Initialize_SceECM(SceNodes * nodes) {
 		EType ConvertStringToEType (string eNodeRead) ;
 		void PrintECM(double curTime);
 SceNodes * nodesPointerECM ; 
+SceCells * cellsPointerECM ; 
 double restLenECMSpring ;
 double eCMLinSpringStiff ; 
 double restLenECMAdhSpring ; 
@@ -663,4 +669,4 @@ struct SumBendForce: public thrust::unary_function<IDD,DD> {
 }; 
 
 
-
+#endif
