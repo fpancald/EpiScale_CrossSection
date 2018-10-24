@@ -3375,6 +3375,7 @@ struct CellInfoVecs {
 
 	thrust::device_vector<double> basalLocX; //Ali 
 	thrust::device_vector<double> basalLocY; //Ali 
+	thrust::device_vector<int>    eCMNeighborId; //Ali 
 
 	thrust::device_vector<double> nucleusLocX; //Ali 
 	thrust::device_vector<double> nucleusLocY; //Ali
@@ -3931,7 +3932,7 @@ public:
 			std::vector<double> &initGrowProgVec, std::vector<ECellType> &eCellTypeV1 
 			,double InitTimeStage);
 
-	CellInfoVecs &   getCellInfoVecs()  {
+	CellInfoVecs  &  getCellInfoVecs()   {
 			return cellInfoVecs ; 
 	}; // Ali 
     //void UpdateTimeStepByAdaptiveMethod(double adaptiveLevelCoef, double minDt, double maxDt, double & dt) ; 

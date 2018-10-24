@@ -277,7 +277,7 @@ cudaMemcpyToSymbol(lknotECMBCGPU, & lknotECMBC,sizeof(double));
 cudaMemcpyToSymbol(lknotECMBasalGPU, & lknotECMBasal,sizeof(double));
 
 
-
+counter=100000 ; //large number
 lastPrintECM=1000000 ; // large number 
 outputFrameECM=0 ; 
 numNodesECM= numberNodes_ECM ; //(eCMMaxX-eCMMinX)/eCMMinDist ; 
@@ -289,6 +289,9 @@ peripORexcm.resize(numNodesECM,perip) ;
 
 nodeECMLocX.resize(numNodesECM,0.0) ;
 nodeECMLocY.resize(numNodesECM,0.0) ;
+
+
+cellNeighborId.resize(numNodesECM,-1) ;
 
 stiffLevel.resize(numNodesECM) ;
 sponLen.resize(numNodesECM) ;
@@ -390,6 +393,9 @@ double eCMBendStiff=6.0 ; // need to be an input
 cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
 cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
 
+
+
+
 double* nodeECMLocXAddr= thrust::raw_pointer_cast (
 			&nodeECMLocX[0]) ; 
 double* nodeECMLocYAddr= thrust::raw_pointer_cast (
@@ -399,10 +405,55 @@ EType* peripORexcmAddr= thrust::raw_pointer_cast (
 			&peripORexcm[0]) ; 
 
 // move the nodes of epithelial cells 
+//// find the closest ECM node to each each cell //
 
+ int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+counter ++ ; 
+if (counter>=100 || curTime<(100*dt)) {
+	counter=0 ; 
+	thrust:: transform (
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+						cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+						cellsPointerECM->getCellInfoVecs().basalLocY.begin())),
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+					 	cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+                     	cellsPointerECM->getCellInfoVecs().basalLocY.begin()))+numCells, 
+	    cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+		FindECMNeighborPerCell(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM ));
+
+ 	double * basalCellLocXAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
+ 	double * basalCellLocYAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
+	// int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+ 	cout << " Number of cells in ECM class is equal to " << numCells << endl; 
+	thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 nodeECMLocX.begin(),
+                     nodeECMLocY.begin()))+numNodesECM,
+	    cellNeighborId.begin(),
+		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
+}
+
+
+
+
+thrust::counting_iterator<int> iBegin2(0) ; 
+//////////////////////////////////////////
  thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
 					make_transform_iterator (iBegin,
 							DivideFunctor2(maxAllNodePerCell)),
 					make_transform_iterator (iBegin,
@@ -414,6 +465,11 @@ EType* peripORexcmAddr= thrust::raw_pointer_cast (
 					)), 
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
 					make_transform_iterator (iBegin,
 							DivideFunctor2(maxAllNodePerCell)),
 					 make_transform_iterator (iBegin,
@@ -480,6 +536,20 @@ thrust:: transform (
 					linSpringAvgTension.begin(),
 					linSpringEnergy.begin())),
 				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
+
+//////////////////////////////////// find the closest Cell to each ECM node ///////////
+
+
+
+///////////////////////////////////
+
+cout << " I am after FindCellNeighbor functor" << endl ; 
+
+
+
+
+
+
 
 #ifdef debugModeECM
 	cudaEventRecord(start4, 0);
@@ -558,20 +628,23 @@ thrust:: transform (
 				thrust:: make_tuple (
 					indexECM.begin(),
 					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
+					nodeECMLocY.begin(),
+					cellNeighborId.begin())), 
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
 					 indexECM.begin(),
 					 nodeECMLocX.begin(),
-                                         nodeECMLocY.begin()))+numNodesECM,
+                     nodeECMLocY.begin(),
+					 cellNeighborId.begin()))+numNodesECM,
 		thrust::make_zip_iterator (
 				thrust::make_tuple (
 					memMorseForceECMX.begin(),
 					memMorseForceECMY.begin(),
 					morseEnergy.begin(),
 					adhEnergy.begin())),
-				MorseAndAdhForceECM(totalNodeCountForActiveCellsECM,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
+				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
 
+cout << " I am after MorseAndAdhForceECM functor" << endl ; 
 
 #ifdef debugModeECM
 	cudaEventRecord(start7, 0);
@@ -674,7 +747,7 @@ if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)
 	std::cout << "time 8 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
 #endif
 
-//PrintECM(curTime); 
+PrintECM(curTime); 
 
 }
 

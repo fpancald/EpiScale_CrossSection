@@ -11,7 +11,8 @@
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 
-typedef thrust ::tuple<int,int,double,double,bool,MembraneType1> IIDDBT ; 
+typedef thrust ::tuple<int,double,double,int> IDDI ; 
+typedef thrust ::tuple<int,int,int,double,double,bool,MembraneType1> IIIDDBT ; 
 typedef thrust ::tuple<double,double> DD ; 
 typedef thrust ::tuple<double,double,double,double> DDDD ; 
 typedef thrust ::tuple<double,double,bool> DDB ; 
@@ -60,7 +61,7 @@ double lknotECMBC ;
 double lknotECMPerip ;
 
 EnergyECMInfo energyECM ; 
-
+int counter ; 
 int outputFrameECM ;  
 int lastPrintECM ;
 int numNodesECM ;
@@ -73,6 +74,7 @@ string uniqueSymbolOutput ;
 MechPara_ECM mechPara_ECM ; 
  
 thrust::device_vector<int> indexECM ;
+thrust::device_vector<int> cellNeighborId ;
 thrust::device_vector<double> nodeECMLocX ; 
 thrust::device_vector<double> nodeECMLocY ; 
 thrust::device_vector<double> nodeECMVelX ; 
@@ -226,9 +228,68 @@ struct DivideFunctor2: public thrust::unary_function <int,int>{
 	} 
 } ; 
 
+struct FindCellNeighborPerECMNode: public thrust::unary_function<DD,int> {
+
+	double * _basalCellLocX;
+	double * _basalCellLocY;
+	int _numCells ; 
+
+	__host__ __device__ FindCellNeighborPerECMNode(double * basalCellLocX, double * basalCellLocY, int numCells): _basalCellLocX(basalCellLocX), _basalCellLocY(basalCellLocY), _numCells (numCells)  {
+	}
+
+	__device__ int  operator() (const DD  & dD) const {
+		double  eCMLocX=	thrust::get<0>(dD) ; 
+		double  eCMLocY=    thrust::get<1>(dD) ; 
+		double  distMin= 1000000 ;  // large number
+		int idMin=-1 ;
+		double dist ; 
+		for ( int i=0 ;  i<_numCells ; i++) { 
+			dist=sqrt((eCMLocX-_basalCellLocX[i])*(eCMLocX-_basalCellLocX[i])+
+		    	      (eCMLocY-_basalCellLocY[i])*(eCMLocY-_basalCellLocY[i])) ;
+			if (dist <distMin) {
+				idMin=i ;
+				distMin=dist ; 
+			}
+		}
+
+		return idMin ; 
+	}
+}; 
+
+struct FindECMNeighborPerCell: public thrust::unary_function<DD,int> {
+
+	double * _eCMLocX;
+	double * _eCMLocY;
+	int _numECMNodes ; 
+
+	__host__ __device__ FindECMNeighborPerCell(double * eCMLocX, double * eCMLocY, int numECMNodes): _eCMLocX(eCMLocX), _eCMLocY(eCMLocY), _numECMNodes (numECMNodes)  {
+	}
+
+	__device__ int  operator() (const DD  & dD) const {
+		double  basalCellLocX=    thrust::get<0>(dD) ; 
+		double  basalCellLocY=    thrust::get<1>(dD) ; 
+		double  distMin= 1000000 ;  // large number
+		int idMin=-1 ;
+		double dist ; 
+		for ( int i=0 ;  i<_numECMNodes ; i++) { 
+			dist=sqrt((basalCellLocX-_eCMLocX[i])*(basalCellLocX-_eCMLocX[i])+
+		    	      (basalCellLocY-_eCMLocY[i])*(basalCellLocY-_eCMLocY[i])) ;
+			if (dist <distMin) {
+				idMin=i ;
+				distMin=dist ; 
+			}
+		}
+
+		return idMin ; 
+	}
+}; 
 
 
-struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
+
+
+
+
+struct MoveNodes2_Cell: public thrust::unary_function<IIIDDBT,DDIDD> {
 	 double  *_locXAddr_ECM; 
          double  *_locYAddr_ECM; 
         uint _maxMembrNodePerCell ; 
@@ -243,13 +304,14 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 				_locXAddr_ECM(locXAddr_ECM),_locYAddr_ECM(locYAddr_ECM),_maxMembrNodePerCell(maxMembrNodePerCell),_numNodes_ECM(numNodes_ECM),_dt(dt),
 			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime), _activeCellCount (activeCellCount)	{
 	}
-	__device__ DDIDD  operator()(const IIDDBT & iIDDBT) const {
-	int cellRank=					thrust::get<0>(iIDDBT) ; 
-	int nodeRankInOneCell=          thrust::get<1>(iIDDBT) ; 
-	double            locX=         thrust::get<2>(iIDDBT) ; 
-	double            locY=         thrust::get<3>(iIDDBT) ; 
-	bool              nodeIsActive= thrust::get<4>(iIDDBT) ; 
-	MembraneType1     mNodeType=     thrust::get<5>(iIDDBT) ; 
+	__device__ DDIDD  operator()(const IIIDDBT & iIIDDBT) const {
+	int eCMNeighborId=				thrust::get<0>(iIIDDBT) ; 
+	int cellRank=					thrust::get<1>(iIIDDBT) ; 
+	int nodeRankInOneCell=          thrust::get<2>(iIIDDBT) ; 
+	double            locX=         thrust::get<3>(iIIDDBT) ; 
+	double            locY=         thrust::get<4>(iIIDDBT) ; 
+	bool              nodeIsActive= thrust::get<5>(iIIDDBT) ; 
+	MembraneType1     mNodeType=     thrust::get<6>(iIIDDBT) ; 
 	
 	double locX_ECM, locY_ECM ; 
 	double dist ;
@@ -270,11 +332,20 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 	int    adhPairECM=-1 ; //no adhere Pair
 	int   iPair=-1 ;
 	double smallNumber=0.000001;
+	int eCMId ; 
 		
 		if ( nodeIsActive && nodeRankInOneCell<_maxMembrNodePerCell ) {
-			for (int i=0 ; i<_numNodes_ECM ; i++) {
-				locX_ECM=_locXAddr_ECM[i]; 
-				locY_ECM=_locYAddr_ECM[i];
+			//for (int i=0 ; i<_numNodes_ECM ; i++) {
+			for (int i=eCMNeighborId-150 ; i<eCMNeighborId+150 ; i++) {
+				eCMId=i ; 
+				if (eCMId>_numNodes_ECM){
+					eCMId=eCMId-_numNodes_ECM ;
+				}
+				if (eCMId<0){
+					eCMId=eCMId+_numNodes_ECM ;
+				}
+				locX_ECM=_locXAddr_ECM[eCMId]; 
+				locY_ECM=_locYAddr_ECM[eCMId];
 				dist=sqrt((locX-locX_ECM)*(locX-locX_ECM)+(locY-locY_ECM)*(locY-locY_ECM)) ;
 				fMorse=calMorse_ECM(dist);
 				eMorseCell=eMorseCell + calMorseEnergy_ECM(dist);  
@@ -286,7 +357,7 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIDDBT,DDIDD> {
 						distMin=dist ; 
 						distMinX=(locX_ECM-locX) ;
 						distMinY=(locY_ECM-locY) ; 
-						iPair=i ; 
+						iPair=eCMId ; 
 					}
 				}
 			}
@@ -418,29 +489,28 @@ struct LinSpringForceECM: public thrust::unary_function<IDD,DDDD> {
 } ;
 
  
- struct MorseAndAdhForceECM: public thrust::unary_function<IDD,DDDD> {
-         int  _numActiveNodes_Cell ; 	
+ struct MorseAndAdhForceECM: public thrust::unary_function<IDDI,DDDD> {
+         int  _numCells ; 	
          uint  _maxNodePerCell ; 	
          uint  _maxMembrNodePerCell ; 	
          double  *_locXAddr_Cell; 
          double  *_locYAddr_Cell; 
 	 bool    *_nodeIsActive_Cell ;  
 	 int     *_adhPairECM_Cell ; 
-	__host__ __device__ MorseAndAdhForceECM (int numActiveNodes_Cell, uint maxNodePerCell, uint maxMembrNodePerCell, double * locXAddr_Cell, double * locYAddr_Cell, bool * nodeIsActive_Cell, int * adhPairECM_Cell) :
-	_numActiveNodes_Cell(numActiveNodes_Cell), _maxNodePerCell(maxNodePerCell), _maxMembrNodePerCell(maxMembrNodePerCell),_locXAddr_Cell(locXAddr_Cell),_locYAddr_Cell(locYAddr_Cell),_nodeIsActive_Cell(nodeIsActive_Cell),_adhPairECM_Cell(adhPairECM_Cell) {
+	__host__ __device__ MorseAndAdhForceECM (int numCells, uint maxNodePerCell, uint maxMembrNodePerCell, double * locXAddr_Cell, double * locYAddr_Cell, bool * nodeIsActive_Cell, int * adhPairECM_Cell) :
+	_numCells(numCells), _maxNodePerCell(maxNodePerCell), _maxMembrNodePerCell(maxMembrNodePerCell),_locXAddr_Cell(locXAddr_Cell),_locYAddr_Cell(locYAddr_Cell),_nodeIsActive_Cell(nodeIsActive_Cell),_adhPairECM_Cell(adhPairECM_Cell) {
 	}
 	 __device__ 
-	DDDD operator()(const IDD & iDD) const {
+	DDDD operator()(const IDDI & iDDI) const {
 	
-	int     index=    thrust::get<0>(iDD) ; 
-	double  locX=     thrust::get<1>(iDD) ; 
-	double  locY=     thrust::get<2>(iDD) ; 
+	int     index=    thrust::get<0>(iDDI) ; 
+	double  locX=     thrust::get<1>(iDDI) ; 
+	double  locY=     thrust::get<2>(iDDI) ; 
+	int   cellId=     thrust::get<3>(iDDI) ; 
 
 	double fMorse ; 
 	double locX_C, locY_C ; 
 	double dist ;
-	double distMin=100000 ; //large number
-	double distMinX,distMinY ; 
 	double fAdhX=0 ; 
 	double fAdhY=0 ; 
 	double eAdh=0 ; 
@@ -452,12 +522,58 @@ struct LinSpringForceECM: public thrust::unary_function<IDD,DDDD> {
 	//double distAdhSpon=0.0625 ; // need to take out 
 	//double distAdhMax=0.78125 ; // need to take out
 	double fAdh ; 
-	// we are already in active cells. Two more conditions: 1-it is membrane 2-it is active node 
-        for (int i=0 ; i<_numActiveNodes_Cell ; i++) {
+	// we are already in active cells. Two more conditions: 1-it is membrane 2-it is active node
+
+	int cellIdAfter=cellId +1 ; 
+	if (cellIdAfter>_numCells-1) {
+		cellIdAfter=0 ; 
+	}
+	int cellIdBefore=cellId -1 ;  
+	if (cellIdBefore<0) {
+		cellIdBefore=_numCells-1 ; 
+	}
+
+    for (int i=cellIdBefore*_maxNodePerCell ; i<(cellIdBefore+1)*_maxNodePerCell ; i++) {
+    //for (int i=0 ; i<_numCells*_maxNodePerCell ; i++) {
 		if (_nodeIsActive_Cell[i] && (i%_maxNodePerCell)<_maxMembrNodePerCell){
-		//if (_nodeIsActive_Cell[i]){
-		
-		 
+			locX_C=_locXAddr_Cell[i]; 
+			locY_C=_locYAddr_Cell[i];
+			dist=sqrt((locX-locX_C)*(locX-locX_C)+(locY-locY_C)*(locY-locY_C)) ;
+			fMorse=calMorse_ECM(dist);  
+			eMorse=eMorse + calMorseEnergy_ECM(dist);  
+			fTotalMorseX=fTotalMorseX+fMorse*(locX_C-locX)/dist ; 
+			fTotalMorseY=fTotalMorseY+fMorse*(locY_C-locY)/dist ; 
+			fTotalMorse=fTotalMorse+fMorse ;
+			if (_adhPairECM_Cell[i]==index) {
+				fAdh=CalAdhECM(dist) ; 
+				eAdh=eAdh+CalAdhEnergy(dist) ; 
+				fAdhX=fAdhX+fAdh*(locX_C-locX)/dist ; 
+				fAdhY=fAdhY+fAdh*(locY_C-locY)/dist ; 
+			}			 
+		}
+	}
+	
+	for (int i=cellId*_maxNodePerCell ; i<(cellId+1)*_maxNodePerCell ; i++) {
+		if (_nodeIsActive_Cell[i] && (i%_maxNodePerCell)<_maxMembrNodePerCell){
+			locX_C=_locXAddr_Cell[i]; 
+			locY_C=_locYAddr_Cell[i];
+			dist=sqrt((locX-locX_C)*(locX-locX_C)+(locY-locY_C)*(locY-locY_C)) ;
+			fMorse=calMorse_ECM(dist);  
+			eMorse=eMorse + calMorseEnergy_ECM(dist);  
+			fTotalMorseX=fTotalMorseX+fMorse*(locX_C-locX)/dist ; 
+			fTotalMorseY=fTotalMorseY+fMorse*(locY_C-locY)/dist ; 
+			fTotalMorse=fTotalMorse+fMorse ;
+			if (_adhPairECM_Cell[i]==index) {
+				fAdh=CalAdhECM(dist) ; 
+				eAdh=eAdh+CalAdhEnergy(dist) ; 
+				fAdhX=fAdhX+fAdh*(locX_C-locX)/dist ; 
+				fAdhY=fAdhY+fAdh*(locY_C-locY)/dist ; 
+			}			 
+		}
+	}
+
+	for (int i=cellIdAfter*_maxNodePerCell ; i<(cellIdAfter+1)*_maxNodePerCell ; i++) {
+		if (_nodeIsActive_Cell[i] && (i%_maxNodePerCell)<_maxMembrNodePerCell){
 			locX_C=_locXAddr_Cell[i]; 
 			locY_C=_locYAddr_Cell[i];
 			dist=sqrt((locX-locX_C)*(locX-locX_C)+(locY-locY_C)*(locY-locY_C)) ;
@@ -476,6 +592,9 @@ struct LinSpringForceECM: public thrust::unary_function<IDD,DDDD> {
 		}
 	}
 	
+
+
+
 	return thrust::make_tuple(fTotalMorseX+fAdhX,fTotalMorseY+fAdhY,eMorse,eAdh) ;
 
 	}

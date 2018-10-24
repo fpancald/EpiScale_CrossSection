@@ -787,6 +787,7 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.apicalLocY.resize(allocPara_m.maxCellCount); //Ali 
 	cellInfoVecs.basalLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.basalLocY.resize(allocPara_m.maxCellCount); //Ali 
+	cellInfoVecs.eCMNeighborId.resize(allocPara_m.maxCellCount,-1); //Ali 
 	cellInfoVecs.nucleusLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.nucleusDesireLocX.resize(allocPara_m.maxCellCount);  //Ali 
 	cellInfoVecs.nucleusDesireLocY.resize(allocPara_m.maxCellCount); //Ali 
@@ -1549,7 +1550,6 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	//cout << "dt before eCMCell interaction is: "<< dt << endl ;
 
 	this->dt = dt;
-	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 
  	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
     	assignMemNodeType();  // Ali
@@ -1558,6 +1558,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
 	
+	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali
 	//computeNucleusLoc() ;
