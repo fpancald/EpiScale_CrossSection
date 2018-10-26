@@ -1,5 +1,5 @@
 //Notes: 1-  In infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodes
-// 2- the algorithm of adhesion won't work if there is not apical node.
+// 2- the algorithm of adhesion won't work if there is no  apical node.
 // 3- maxNumAdh is given inside the code as a parameters in .cu file. It should become an input or I should write a function to detect that automatically
 // 4- In SceNodes::NumAdhAfter and SceNodes::NumAdhBefore  number of lateral nodes is given manually inside the code it should be automatically calculate from the input parameters/
 

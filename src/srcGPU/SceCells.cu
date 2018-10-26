@@ -4,8 +4,12 @@
 	//3- In function processMemVec the lateralBefore  and LateralAfter are not carefully assigned. If the code wanted to be used again for the cases where division is happening, this should be revisited.
 	//4- If the code wanted to be used again for the case where node deletion is active then the function for calculating cell pressure (void SceCells::calCellPressure()) need to be revisited.
 	//5- two bool variables subcellularPolar and cellularPolar are given values inside the code. Although for now it is always true, it is better to be input parameters.
+	//6-the value of L0 in the function calAndAddMM_ContractAdh is directly inside the function. It should be an input of the code 
+//7- In the function calAndAddMM_ContractRepl, the values of Morse potential are equal to the values of sceIIDiv_M[i] in the input file. it should be an input of the code.
 //Notes:
 	// 1- Currently the nucleus position is desired location not an enforced position. So, all the functions which used "nucleusLocX" & "nucleusLocY" are not active. Instead two variables "nucleusDesireLocX" & "nucleusDesireLocY" are active and internal avg position represent where the nuclei are located.
+
+
 #include "SceCells.h"
 #include <cmath>
 
@@ -776,11 +780,11 @@ void SceCells::initCellInfoVecs_M() {
 	cellInfoVecs.isCellActive.resize(allocPara_m.maxCellCount, false);//AAMIRI
 	cellInfoVecs.centerCoordX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.InternalAvgX.resize(allocPara_m.maxCellCount);
-	cellInfoVecs.InternalAvgIniX.resize(allocPara_m.maxCellCount);
+	//cellInfoVecs.InternalAvgIniX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.tmpShiftVecX.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.centerCoordY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.InternalAvgY.resize(allocPara_m.maxCellCount);
-	cellInfoVecs.InternalAvgIniY.resize(allocPara_m.maxCellCount);
+	//cellInfoVecs.InternalAvgIniY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.tmpShiftVecY.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.centerCoordZ.resize(allocPara_m.maxCellCount);
 	cellInfoVecs.apicalLocX.resize(allocPara_m.maxCellCount);  //Ali 
@@ -1503,7 +1507,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
         this->Damp_Coef=Damp_Coef ; //Ali 
         this->InitTimeStage=InitTimeStage   ;  //A & A 
 	growthAuxData.prolifDecay = exp(-curTime * miscPara.prolifDecayCoeff);
-        cout<< "The important curTime used in simulation is here which is"<<curTime <<endl; 
+        cout<< "Current Time in simulation is: "<<curTime <<endl; 
 	growthAuxData.randomGrowthSpeedMin = growthAuxData.prolifDecay
 			* growthAuxData.randomGrowthSpeedMin_Ori;
 	growthAuxData.randomGrowthSpeedMax = growthAuxData.prolifDecay
@@ -1516,9 +1520,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
  	if (curTime==InitTimeStage) {
 		lastPrintNucleus=10000000  ; //just a big number 
 		outputFrameNucleus=0 ;
-		computeInternalAvgPos_M();
- 		thrust:: copy (cellInfoVecs.InternalAvgX.begin(),   cellInfoVecs.InternalAvgX.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniX.begin()) ;
- 		thrust:: copy (cellInfoVecs.InternalAvgY.begin(),   cellInfoVecs.InternalAvgY.begin()+  allocPara_m.currentActiveCellCount,cellInfoVecs.InternalAvgIniY.begin()) ;
+	//	computeInternalAvgPos_M();
 		nodes->isInitPhase=false ; // This bool variable is not active in the code anymore
 
 		string uniqueSymbolOutput =
@@ -1536,20 +1538,17 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	double adaptiveLevelCoef=0.001  ;
 
 	if (curTime>=10 ){
-		UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ; 
+		UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ;
+		this->dt = dt;
 	}
 	//if (curTime>=30 ){
 	//	nodes->isInitPhase=false ; 
 	//	}
 	*/
 	curTime = curTime + dt;
-	//cout << "Current time step is eqaul to: " << dt <<endl ;
-	//cout << "time derivative of ECM energy is eqaul to: " << eCM.energyECM.totalEnergyPrimeECM << endl ; 
 	bool tmpIsInitPhase= nodes->isInitPhase ;
 
-	//cout << "dt before eCMCell interaction is: "<< dt << endl ;
 
-	this->dt = dt;
 
  	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
     	assignMemNodeType();  // Ali
@@ -1560,7 +1559,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	
 	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 	computeCenterPos_M2(); //Ali 
-	computeInternalAvgPos_M(); //Ali
+	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
 
  	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
