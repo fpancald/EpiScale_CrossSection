@@ -90,23 +90,23 @@ SceNodes::SceNodes() {
 
 int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
 	if (eCellType==peri) {
-		return 14 ; //#28 ; 
+		return 28 ; 
 	}
 	if (eCellType==bc) {
-		return 14 ; //30 ; 
+		return 30 ; 
 	}
 	if (eCellType==pouch) {
 		if (cellRank==0){
-			return 18 ; //36 ; 
+			return 36 ; 
 		}
 			else if ( cellRank==1) {
-				return 54 ; //108 ; 
+				return 108 ; 
 			}
 				else if ( cellRank==64) {
-					return 54 ; //108 ; 					
+					return 108 ; 					
 				}
 					else {
-						return 90 ; // 180 ; 
+						return 180 ; 
 					}
 	}
 
@@ -114,23 +114,23 @@ int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
 
 int SceNodes::NumAdhAfter(int cellRank,ECellType eCellType) {
 	if ( eCellType==peri) {
-		return 14 ; //28 ; 
+		return 28 ; 
 	}
 	if (eCellType==bc) {
-		return 14 ; //30 ; 
+		return 30 ; 
 	}
 	if (eCellType==pouch) {
 		if (cellRank==64){
-			return 18 ; // 36 ; 
+			return 36 ; 
 		}
 			else if ( cellRank==63) {
-				return 54 ; // 108 ; 
+				return 108 ; 
 			}
 				else if ( cellRank==0) {
-					return 54 ; // 108 ; 
+					return 108 ; 
 				}
 					else {
-						return 90 ; // 180 ; 
+						return 180 ; 
 					}
 	}
 }
@@ -2285,7 +2285,7 @@ void SceNodes::applySceForcesDisc_M() {
 //	}
 	if (adhUpdate) {
 		adhUpdate=false ;
-		int maxNumAdh=90 ;
+		int maxNumAdh=180 ;
 		//vector <ECellType> eCellTypeV2Host ;
 
      	thrust :: copy (infoVecs.nodeLocX.begin(),infoVecs.nodeLocX.end(),infoVecs.nodeLocXHost.begin()) ; // Ali	
