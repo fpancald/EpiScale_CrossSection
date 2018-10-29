@@ -807,19 +807,18 @@ void  SceECM:: PrintECM(double curTime) {
 			//ECMExport << "ECM pouch coordinates" << std::endl;
 
 			for (uint i = 0; i < nodeECMLocX.size(); i++) {
-				if (peripORexcm[i]==excm) {
-					ECMLocationExport<< nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
-					<< 0.0 << std::endl;
-				}
+		//		if (peripORexcm[i]==excm) {
+					ECMLocationExport<< nodeECMLocX[i] << " " << nodeECMLocY[i] << " " << 0.0 << " "<< peripORexcm[i]<<std::endl;
+		//		}
 			}
 
 			//ECMExport << "ECM lumen side coordinates" << std::endl;
-			for (uint i = 0; i < nodeECMLocX.size(); i++) {
-				if (peripORexcm[i]==perip) {
-					ECMLocationExport << nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
-					<< 0.0 << std::endl;
-				}
-			}
+		//	for (uint i = 0; i < nodeECMLocX.size(); i++) {
+		//		if (peripORexcm[i]==perip) {
+		//			ECMLocationExport << nodeECMLocX[i] << " " << nodeECMLocY[i] << " "
+		//			<< 0.0 << std::endl;
+		//		}
+		//	}
 
 			ECMLocationExport.close();
 		
