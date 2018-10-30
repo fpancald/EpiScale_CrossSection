@@ -4,10 +4,10 @@
 include_directories(${COMMON_INCLUDES})
 
 add_library(SceInit
-        MeshGen.cpp
-        MeshGen.h
-        UnstructMesh2D.cpp
-        UnstructMesh2D.h
+#        MeshGen.cpp
+#        MeshGen.h
+#        UnstructMesh2D.cpp
+#        UnstructMesh2D.h
         CellInitHelper.h
         CellInitHelper.cpp
         ${COMMON_INCLUDES}/Point2D.cpp

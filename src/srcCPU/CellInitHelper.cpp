@@ -70,7 +70,7 @@ CellInitHelper::CellInitHelper() {
 	int type = globalConfigVars.getConfigValue("SimulationType").toInt();
 	simuType = parseTypeFromConfig(type);
 	if (simuType == Beak) {
-		initInternalBdry();
+		//initInternalBdry();  // Beak simulation is not active and I want to remove the dependency of the code on CGAL
 	}
 }
 
@@ -80,6 +80,7 @@ CVector CellInitHelper::getPointGivenAngle(double currentAngle, double r,
 	double yPos = centerPos.y + r * sin(currentAngle);
 	return CVector(xPos, yPos, 0);
 }
+/*Beak simulation is not active and I want to remove the dependency of the code on CGAL
 
 RawDataInput CellInitHelper::generateRawInputWithProfile(
 		std::vector<CVector> &cellCenterPoss, bool isInnerBdryIncluded) {
@@ -139,6 +140,8 @@ RawDataInput CellInitHelper::generateRawInputWithProfile(
 
 	return rawData;
 }
+*/
+/* DiskMain and laser ablation projects are not active and I want to remove the dependency of the code on CGAL
 
 RawDataInput CellInitHelper::generateRawInput_simu(
 		std::vector<CVector>& cellCenterPoss) {
@@ -171,7 +174,7 @@ RawDataInput CellInitHelper::generateRawInput_simu(
 				InvalidInput);
 	}
 }
-
+*/
 void CellInitHelper::transformRawCartData(CartilageRawData& cartRawData,
 		CartPara& cartPara, std::vector<CVector>& initNodePos) {
 	// step 1, switch tip node1 to pos 0
@@ -529,7 +532,7 @@ vector<CVector> CellInitHelper::rotate2D(vector<CVector> &initECMNodePoss,
 	}
 	return result;
 }
-
+/* CGAL Deactivation
 RawDataInput CellInitHelper::generateRawInput_stab() {
 	RawDataInput rawData;
 	rawData.simuType = simuType;
@@ -579,7 +582,7 @@ RawDataInput CellInitHelper::generateRawInput_stab() {
 	rawData.isStab = true;
 	return rawData;
 }
-
+*/
 RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function in cell inithelper
 	RawDataInput_M rawData;
 
@@ -595,11 +598,11 @@ RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function
 	//This function read the cells centers coordinates and their type
     ForReadingData_M2 ForReadingData2 = ReadFile_M2(CellCentersFileName);
 
-	//not used for now  Ali 
     GEOMETRY::Point2D Point2D1[ForReadingData2.CellNumber];
-	GEOMETRY::MeshGen meshGen;
-	GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DFromFile(
-			bdryInputFileName);
+	//not used for now  Ali 
+	//GEOMETRY::MeshGen meshGen;
+	//GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DFromFile(
+	//		bdryInputFileName);
 	////////////////////////
 
          //Ali
@@ -1106,19 +1109,21 @@ bool CellInitHelper::isMXType(CVector position) {
 	return true;
 }
 
+/* beak simulation is not active and I want to remove dependency of the code on CGAL
 void CellInitHelper::initInternalBdry() {
 	GEOMETRY::MeshGen meshGen;
 	GEOMETRY::MeshInput input = meshGen.obtainMeshInput();
 	internalBdryPts = input.internalBdryPts;
 }
-
+*/
+/* This function is used for DiskMain project which is not active and I want to remove the dependency of the code on CGAL
 SimulationInitData_V2 CellInitHelper::initStabInput() {
 	RawDataInput rawInput = generateRawInput_stab();
 	SimulationInitData_V2 initData = initInputsV3(rawInput);
 	initData.isStab = true;
 	return initData;
 }
-
+*/
 //RawDataInput rawInput = generateRawInput_stab();
 SimulationInitData_V2_M CellInitHelper::initInput_M() {   //Ali: This function is called by the main function of the code which is discMain_M.cpp
 	RawDataInput_M rawInput_m = generateRawInput_M();     //Ali: This function includes reading cell centers and membrane nodes locations
@@ -1126,15 +1131,15 @@ SimulationInitData_V2_M CellInitHelper::initInput_M() {   //Ali: This function i
 	initData.isStab = false;
 	return initData;
 }
-
+/* this function is needed for laserAblation and discMain. cpp which none of them are acitve and I want to remove dependency on CGAL
 SimulationInitData_V2 CellInitHelper::initSimuInput(
 		std::vector<CVector> &cellCenterPoss) {
-	RawDataInput rawInput = generateRawInput_simu(cellCenterPoss);
+	RawDataInput rawInput = generateRawInput_simu(cellCenterPoss);  //This function call MeshGen which is heavily using CGAL
 	SimulationInitData_V2 simuInitData = initInputsV3(rawInput);
 	simuInitData.isStab = false;
 	return simuInitData;
 }
-
+*/
 void SimulationGlobalParameter::initFromConfig() {
 	int type = globalConfigVars.getConfigValue("SimulationType").toInt();
 	SimulationType simuType = parseTypeFromConfig(type);
@@ -1187,7 +1192,7 @@ void SimulationGlobalParameter::initFromConfig() {
 	}
 
 }
-
+/* CGAL DEACTIVATION
 RawDataInput CellInitHelper::generateRawInput_singleCell() {
 	RawDataInput rawData;
 	rawData.simuType = simuType;
@@ -1209,10 +1214,12 @@ RawDataInput CellInitHelper::generateRawInput_singleCell() {
 	rawData.isStab = true;
 	return rawData;
 }
-
+*/
+/* CGAL deactivation
 SimulationInitData_V2 CellInitHelper::initSingleCellTest() {
 	RawDataInput rawInput = generateRawInput_singleCell();
 	SimulationInitData_V2 initData = initInputsV3(rawInput);
 	initData.isStab = true;
 	return initData;
 }
+*/
