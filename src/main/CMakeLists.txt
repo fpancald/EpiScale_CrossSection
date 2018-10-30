@@ -1,9 +1,9 @@
 include_directories(${GOOGLETEST_DIR}/include/ ${COMMON_INCLUDES} ${GPU_SOURCE_DIR} ${CPU_SOURCE_DIR})
 
-find_package(CGAL REQUIRED)
-if(CGAL_FOUND)
-        include(${CGAL_USE_FILE})
-endif (CGAL_FOUND)
+#find_package(CGAL REQUIRED)
+#if(CGAL_FOUND)
+#        include(${CGAL_USE_FILE})
+#endif (CGAL_FOUND)
 
 #set(DISK_PROJECT_NAME runDiscSimulation)
 #MESSAGE("Now building " ${DISK_PROJECT_NAME})
@@ -98,8 +98,8 @@ if(NOT WIN32)
                 ${GOOGLETEST_DIR}/libgtest.a
                 ${GOOGLETEST_DIR}/libgtest_main.a
         )
-        target_link_libraries(${DISK_M_PROJECT_NAME}
-                        ${CGAL_LIBRARY}
-                        ${CGAL_3RD_PARTY_LIBRARIES} )
+        target_link_libraries(${DISK_M_PROJECT_NAME})
+                       # ${CGAL_LIBRARY}
+                       # ${CGAL_3RD_PARTY_LIBRARIES} )
 endif()
 
