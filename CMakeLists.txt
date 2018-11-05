@@ -57,9 +57,9 @@ SET(STL_INCLUDE_PATH "${STDIO_INCLUDE_PATH}/c++")
 SET(CMAKE_ECLIPSE_GENERATE_SOURCE_PROJECT TRUE)
 include_directories(${STL_INCLUDE_PATH} ${STDIO_INCLUDE_PATH})
 
-find_package(CGAL QUIET COMPONENTS Core)
-include(${CGAL_USE_FILE})
-include_directories(${CGAL_INCLUDE_DIRS})
+#find_package(CGAL QUIET COMPONENTS Core)
+#include(${CGAL_USE_FILE})
+#include_directories(${CGAL_INCLUDE_DIRS})
 
 if(CUDA_FOUND)
         include_directories(${CUDA_INCLUDE_DIRS})

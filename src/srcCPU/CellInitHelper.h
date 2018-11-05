@@ -13,11 +13,12 @@
 #include <cmath>
 #include "commonData.h"
 #include "ConfigParser.h"
+#include "Point2D.h"
 #include <assert.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string>
-#include "MeshGen.h"
+//#include "MeshGen.h"
 
 using namespace std;
 

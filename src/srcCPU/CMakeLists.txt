@@ -4,10 +4,10 @@
 include_directories(${COMMON_INCLUDES})
 
 add_library(SceInit
-        MeshGen.cpp
-        MeshGen.h
-        UnstructMesh2D.cpp
-        UnstructMesh2D.h
+#        MeshGen.cpp
+#        MeshGen.h
+#        UnstructMesh2D.cpp
+#        UnstructMesh2D.h
         CellInitHelper.h
         CellInitHelper.cpp
         ${COMMON_INCLUDES}/Point2D.cpp
@@ -23,11 +23,11 @@ add_library(SceInit
 #not supported by old version of g++.
 #Therefore, These CGAL related lines cannot be placed before building 
 #SceInit lib.
-find_package(CGAL REQUIRED)
-if(CGAL_FOUND)
-        include(${CGAL_USE_FILE})
-endif (CGAL_FOUND)
+#find_package(CGAL REQUIRED)
+#if(CGAL_FOUND)
+#        include(${CGAL_USE_FILE})
+#endif (CGAL_FOUND)
 
-target_link_libraries(SceInit 
-                        ${CGAL_LIBRARIES}
-                        ${CGAL_3RD_PARTY_LIBRARIES} )
+#target_link_libraries(SceInit 
+#                        ${CGAL_LIBRARIES}
+#                        ${CGAL_3RD_PARTY_LIBRARIES} )
