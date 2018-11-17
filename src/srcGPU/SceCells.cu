@@ -1507,7 +1507,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
         this->Damp_Coef=Damp_Coef ; //Ali 
         this->InitTimeStage=InitTimeStage   ;  //A & A 
 	growthAuxData.prolifDecay = exp(-curTime * miscPara.prolifDecayCoeff);
-        cout<< "Current Time in simulation is: "<<curTime <<endl; 
+        //cout<< "Current Time in simulation is: "<<curTime <<endl; 
 	growthAuxData.randomGrowthSpeedMin = growthAuxData.prolifDecay
 			* growthAuxData.randomGrowthSpeedMin_Ori;
 	growthAuxData.randomGrowthSpeedMax = growthAuxData.prolifDecay
@@ -2286,8 +2286,8 @@ void SceCells::moveNodes_BC_M() {
 							nodes->getInfoVecs().nodeLocY.begin())),
 			SaxpyFunctorDim2_BC_Damp(dt)); 
 
-cout << "I am in move_nodes and total nodes for active cells is" <<  totalNodeCountForActiveCells << endl ; 
-cout << "I am in move_nodes and dt is equal to:" << dt  << endl ; 
+//cout << "I am in move_nodes and total nodes for active cells is" <<  totalNodeCountForActiveCells << endl ; 
+//cout << "I am in move_nodes and dt is equal to:" << dt  << endl ; 
 //cout << "I am in move_nodes and bdry node count is" << allocPara_m.bdryNodeCount << endl ; 
 
 }
@@ -2323,13 +2323,13 @@ void SceCells::applyMemForce_M(bool cellPolar,bool subCellPolar) {
         MaxX= *MaxX_Itr ; 
         MinY= *MinY_Itr ; 
         MaxY= *MaxY_Itr ;  
-        cout<< "# of boundary nodes"<< allocPara_m.bdryNodeCount<<endl ;
-        cout<< "# of total active nodes"<<totalNodeCountForActiveCells <<endl ;
+        //cout<< "# of boundary nodes"<< allocPara_m.bdryNodeCount<<endl ;
+        //cout<< "# of total active nodes"<<totalNodeCountForActiveCells <<endl ;
 
-        cout<<"The minimum location in X is="<<MinX<< endl;  
-        cout<<"The maximum location in X is="<<MaxX<< endl;  
-        cout<<"The minimum location in Y is="<<MinY<< endl;  
-        cout<<"The maximum location in Y is="<<MaxY<< endl;  
+        //cout<<"The minimum location in X is="<<MinX<< endl;  
+        //cout<<"The maximum location in X is="<<MaxX<< endl;  
+        //cout<<"The minimum location in Y is="<<MinY<< endl;  
+        //cout<<"The maximum location in Y is="<<MaxY<< endl;  
         //Ali
 
  		
@@ -3402,7 +3402,7 @@ void SceCells::computeApicalLoc() {
 	//simply these two are equal
 	int NumCellsWithApicalNode=allocPara_m.currentActiveCellCount ; 
 	//
-	cout << "num of cells with apical node is " << NumCellsWithApicalNode << endl ; 
+	//cout << "num of cells with apical node is " << NumCellsWithApicalNode << endl ; 
 	thrust::transform(
 			thrust::make_zip_iterator(
 					thrust::make_tuple(cellInfoVecs.apicalLocX.begin(),
