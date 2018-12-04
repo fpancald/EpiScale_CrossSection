@@ -2432,7 +2432,7 @@ void SceNodes::applySceForcesDisc_M() {
 
 	
 /////////////////////////////////// start adhesion for apical nodes of pouch cells with apical nodes of peripodial cells ///////////////////////
-		/*	
+			
 	 		for (int i=0 ; i<totalActiveNodes ;  i++) {
 				cellRankTmp1=i/maxNodePerCell ;
 		 		distMinP2=10000 ; // large number
@@ -2468,7 +2468,7 @@ void SceNodes::applySceForcesDisc_M() {
 				}
 
 		 	}
-		*/
+		
 		  	cout << " I am ready to copy the data in adhesion function to the GPU " << endl ; 
 	
 /////////////////////////////////// start adhesion for apical nodes of pouch cells with apical nodes of peripodial cells ///////////////////////

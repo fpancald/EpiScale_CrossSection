@@ -1611,11 +1611,11 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 //	enterMitoticCheckForDivAxisCal() ; 
     relaxCount=relaxCount+1 ; 
-//	if (relaxCount==1000) { 
+	if (relaxCount==1000) { 
 	//	divide2D_M();
 
-//		nodes->adhUpdate=true; 
-//	}
+		nodes->adhUpdate=true; 
+	}
 	std::cout << "     *** 7 ***" << endl;
 	std::cout.flush();
 	distributeCellGrowthProgress_M();
