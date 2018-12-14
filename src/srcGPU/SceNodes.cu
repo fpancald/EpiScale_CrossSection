@@ -752,6 +752,7 @@ void SceNodes::initValues(std::vector<CVector>& initBdryCellNodePos,
 void SceNodes::initValues_M(std::vector<bool>& initIsActive,
 		std::vector<CVector>& initCellNodePos,
 		std::vector<SceNodeType>& nodeTypes,
+		std::vector<double>& mDppV,
 		std::vector<MembraneType1>& mTypeV) {
 
 	std::vector<double> initCellNodePosX = getArrayXComp(initCellNodePos);
@@ -764,6 +765,10 @@ void SceNodes::initValues_M(std::vector<bool>& initIsActive,
 			infoVecs.nodeLocY.begin() + allocPara_M.bdryNodeCount);
 	thrust::copy(nodeTypes.begin(), nodeTypes.end(),
 			infoVecs.nodeCellType.begin() + allocPara_M.bdryNodeCount);
+	cout << " before copy dpp to GPU " << endl ; 
+	thrust::copy(mDppV.begin(), mDppV.end(),
+			infoVecs.dppLevel.begin() ); // Ali 
+	cout << " after copy dpp to GPU " << endl ; 
 	thrust::copy(mTypeV.begin(), mTypeV.end(),
 			infoVecs.memNodeType1.begin() ); // Ali 
 	thrust::copy(initIsActive.begin(), initIsActive.end(),
@@ -1875,14 +1880,14 @@ void attemptToAdhere(bool& isSuccess, uint& index, double& dist,
 __device__
 void handleAdhesionForce_M(int& adhereIndex, double& xPos, double& yPos,
 		double& curAdherePosX, double& curAdherePosY, double& xRes,
-		double& yRes, double& alpha) {
+		double& yRes, double& alpha, double & beta) {
 	double curLen = computeDist2D(xPos, yPos, curAdherePosX, curAdherePosY);
 	//if (curLen > maxAdhBondLen_M) {
 	//	adhereIndex = -1;
 	//	return;
 //	} else {
 		if (curLen > minAdhBondLen_M) {
-			double forceValue = (curLen - minAdhBondLen_M) * (bondStiff_M * alpha + bondStiff_Mitotic * (1.0-alpha) );
+			double forceValue = beta*(curLen - minAdhBondLen_M) * (bondStiff_M * alpha + bondStiff_Mitotic * (1.0-alpha) );
 			xRes = xRes + forceValue * (curAdherePosX - xPos) / curLen;
 			yRes = yRes + forceValue * (curAdherePosY - yPos) / curLen;
 		}
@@ -2440,6 +2445,7 @@ void SceNodes::applySceForcesDisc_M() {
 				if (eCellTypeVHost[cellRankTmp1]==pouch && infoVecs.memNodeType1Host[i]==apical1) { 
 		 			for (int j=0 ; j<totalActiveNodes ; j++) {
 						cellRankTmp2=j/maxNodePerCell ; 
+					//	if ( cellRankTmp2>=74 && cellRankTmp2<=76 && infoVecs.memNodeType1Host[i]==apical1) { 
 						if (eCellTypeVHost[cellRankTmp2]==peri && infoVecs.memNodeType1Host[j]==apical1   ) {
 							distP2=pow( infoVecs.nodeLocXHost[i]-infoVecs.nodeLocXHost[j],2)+
 			         	    	   pow( infoVecs.nodeLocYHost[i]-infoVecs.nodeLocYHost[j],2) ;
@@ -2805,6 +2811,7 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.membrBendLeftY.resize(maxTotalNodeCount, 0);
 		infoVecs.membrBendRightX.resize(maxTotalNodeCount, 0);
 		infoVecs.membrBendRightY.resize(maxTotalNodeCount, 0);
+		infoVecs.dppLevel.resize(maxTotalNodeCount, 0.0); //Ali 
 		infoVecs.memNodeType1.resize(maxTotalNodeCount, notAssigned1); //Ali 
 		infoVecs.memNodeType1Host.resize(maxTotalNodeCount, notAssigned1); //Ali 
 		infoVecs.isSubApicalJunction.resize(maxTotalNodeCount, false); //Ali 
@@ -2977,9 +2984,9 @@ void SceNodes::applyMembrAdh_M() {
 			* allocPara_M.maxAllNodePerCell;
 	double* nodeLocXAddress = thrust::raw_pointer_cast(&infoVecs.nodeLocX[0]);
 	double* nodeLocYAddress = thrust::raw_pointer_cast(&infoVecs.nodeLocY[0]);
-	double* nodeGrowProAddr = thrust::raw_pointer_cast(
-			&infoVecs.nodeGrowPro[0]);
+	double* nodeGrowProAddr = thrust::raw_pointer_cast(&infoVecs.nodeGrowPro[0]);
 	int* nodeAdhAddr = thrust::raw_pointer_cast(&infoVecs.nodeAdhereIndex[0]);
+	double* nodedppLevelAddr = thrust::raw_pointer_cast(&infoVecs.dppLevel[0]);
 	//thrust::counting_iterator<uint> iBegin_node(0); 
 
 	thrust::transform(
@@ -2987,16 +2994,18 @@ void SceNodes::applyMembrAdh_M() {
 					thrust::make_tuple(infoVecs.nodeIsActive.begin(),
 							infoVecs.nodeAdhereIndex.begin(), iBegin,
 							infoVecs.nodeVelX.begin(),
-							infoVecs.nodeVelY.begin())),
+							infoVecs.nodeVelY.begin(),
+							infoVecs.memNodeType1.begin())),
 			thrust::make_zip_iterator(
 					thrust::make_tuple(infoVecs.nodeIsActive.begin(),
 							infoVecs.nodeAdhereIndex.begin(), iBegin,
 							infoVecs.nodeVelX.begin(),
-							infoVecs.nodeVelY.begin())) + maxTotalNode,
+							infoVecs.nodeVelY.begin(),
+							infoVecs.memNodeType1.begin())) + maxTotalNode,
 			thrust::make_zip_iterator(
 					thrust::make_tuple(infoVecs.nodeVelX.begin(),
 							infoVecs.nodeVelY.begin())),
-			ApplyAdh(nodeLocXAddress, nodeLocYAddress, nodeGrowProAddr,nodeAdhAddr));
+			ApplyAdh(nodeLocXAddress, nodeLocYAddress, nodeGrowProAddr,nodeAdhAddr,nodedppLevelAddr));
 		//for (int i=0 ; i<140 ; i++){
 		//	cout <<"adhesion index for "<<i << " is "<<infoVecs.nodeAdhereIndex[i]<< endl ; 
 //		}

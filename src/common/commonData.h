@@ -463,6 +463,7 @@ struct RawDataInput_M {
 	std::vector<CVector> initCellCenters;
 	std::vector<double> cellGrowProgVec;
 	std::vector<ECellType> cellsTypeCPU; //Ali 
+	std::vector<std::vector<double> > mDppV2; //Ali 
 	std::vector<std::vector<MembraneType1> > mTypeV2; //Ali 
 	std::vector<std::vector<CVector> > initIntnlNodePoss;
 	std::vector<std::vector<CVector> > initMembrNodePoss;
@@ -521,6 +522,7 @@ struct SimulationInitData_V2_M {
 	std::vector<CVector> initNodeVec;
 	std::vector<bool> initIsActive;
 	std::vector<ECellType> eCellTypeV1;  //Ali 
+	std::vector<double> mDppV;  //Ali 
 	std::vector<MembraneType1> mTypeV;  //Ali 
 };
 
