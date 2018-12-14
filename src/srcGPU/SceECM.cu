@@ -1,6 +1,6 @@
 #include "SceECM.h"
 #include "SceCells.h"
-# define debugModeECM 
+//# define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
@@ -376,9 +376,9 @@ morseEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0);
 adhEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
 thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
 thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
-cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
-cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
-cout<< "I am in ECM module and dt is: " << dt << endl ; 
+//cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
+//cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
+//cout<< "I am in ECM module and dt is: " << dt << endl ; 
 #ifdef debugModeECM
 	cudaEventRecord(start2, 0);
 	cudaEventSynchronize(start2);
@@ -390,8 +390,8 @@ double eCMBendStiff=6.0 ; // need to be an input
 //if (cellPolar) {eCMLinSpringStiff=100 ; }
 //if (subCellPolar) {eCMLinSpringStiff=100 ; }
 
-cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
-cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
+//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
+//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
 
 
 
