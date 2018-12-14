@@ -765,10 +765,8 @@ void SceNodes::initValues_M(std::vector<bool>& initIsActive,
 			infoVecs.nodeLocY.begin() + allocPara_M.bdryNodeCount);
 	thrust::copy(nodeTypes.begin(), nodeTypes.end(),
 			infoVecs.nodeCellType.begin() + allocPara_M.bdryNodeCount);
-	cout << " before copy dpp to GPU " << endl ; 
 	thrust::copy(mDppV.begin(), mDppV.end(),
 			infoVecs.dppLevel.begin() ); // Ali 
-	cout << " after copy dpp to GPU " << endl ; 
 	thrust::copy(mTypeV.begin(), mTypeV.end(),
 			infoVecs.memNodeType1.begin() ); // Ali 
 	thrust::copy(initIsActive.begin(), initIsActive.end(),
