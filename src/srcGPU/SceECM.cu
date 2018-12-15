@@ -427,7 +427,7 @@ if (counter>=100 || curTime<(100*dt)) {
  	double * basalCellLocXAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
  	double * basalCellLocYAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
 	// int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
- 	cout << " Number of cells in ECM class is equal to " << numCells << endl; 
+ 	//cout << " Number of cells in ECM class is equal to " << numCells << endl; 
 	thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -543,7 +543,7 @@ thrust:: transform (
 
 ///////////////////////////////////
 
-cout << " I am after FindCellNeighbor functor" << endl ; 
+//cout << " I am after FindCellNeighbor functor" << endl ; 
 
 
 
@@ -644,7 +644,7 @@ thrust:: transform (
 					adhEnergy.begin())),
 				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
 
-cout << " I am after MorseAndAdhForceECM functor" << endl ; 
+//cout << " I am after MorseAndAdhForceECM functor" << endl ; 
 
 #ifdef debugModeECM
 	cudaEventRecord(start7, 0);
