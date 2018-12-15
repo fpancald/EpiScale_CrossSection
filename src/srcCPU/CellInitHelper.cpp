@@ -447,6 +447,7 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 	initData.simuType = rawData_m.simuType;
 
 	initData.nodeTypes.resize(maxNodeInDomain);
+	initData.mDppV.resize(maxNodeInDomain); // Ali 
 	initData.mTypeV.resize(maxNodeInDomain); // Ali 
 	initData.initNodeVec.resize(initMaxNodeCount);
 	initData.initIsActive.resize(initMaxNodeCount, false);
@@ -488,9 +489,11 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 				initData.initNodeVec[i] =
 						rawData_m.initMembrNodePoss[cellRank][nodeRank];
 				initData.initIsActive[i] = true;
+				initData.mDppV[i]=rawData_m.mDppV2[cellRank][nodeRank] ;  //Ali
 				initData.mTypeV[i]=rawData_m.mTypeV2[cellRank][nodeRank] ;  //Ali
 			} else {
 				initData.initIsActive[i] = false;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			}
 		} else {
@@ -499,9 +502,11 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 				initData.initNodeVec[i] =
 				rawData_m.initIntnlNodePoss[cellRank][intnlIndex];
 				initData.initIsActive[i] = true;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			} else {
 				initData.initIsActive[i] = false;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			}
 		}
@@ -659,10 +664,10 @@ RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function
 		std::cout << "    ";
 		centerPos.Print();
 	}
-	// This functions reads membrane nodes coordinates and types, and generates internal nodes coordinates
+	// This functions reads membrane nodes coordinates, dpp levels and types, and generates internal nodes coordinates
 	generateCellInitNodeInfo_v3(rawData.initCellCenters,
 			rawData.cellGrowProgVec, rawData.initMembrNodePoss,
-			rawData.initIntnlNodePoss, rawData.mTypeV2); 
+			rawData.initIntnlNodePoss, rawData.mDppV2,rawData.mTypeV2); 
 
 	//std::cout << "finished generate raw data" << std::endl;
 	//std::cout.flush();
@@ -802,10 +807,13 @@ void CellInitHelper::generateCellInitNodeInfo_v2(vector<CVector>& initPos) {
 
 void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,   //This function is called Ali 
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
-		vector<vector<CVector> >& initIntnlPos,vector<vector<MembraneType1> >& mTypeV2 ) {
+		vector<vector<CVector> >& initIntnlPos, 
+		vector<vector<double> >& mDppV2, 
+		vector<vector<MembraneType1> >& mTypeV2 ) {
 	assert(initCenters.size() == initGrowProg.size());
 	vector<CVector> initMembrPosTmp;
 	vector<CVector> initIntnlPosTmp;
+	vector<double> mDppVTmp;  
 	vector<MembraneType1> mTypeVTmp;  
 	for (uint i = 0; i < initCenters.size(); i++) {
 	//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
@@ -824,7 +832,7 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
 			"MaxMembrNodeCountPerCell").toInt();
 	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane4.txt");
+	inputc.open("./resources/coordinate_Membrane7.txt");
     //inputc.open(CellCentersFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully ";
@@ -835,20 +843,22 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 
 	int cellIDOld=-1;
 	int cellID ;
-	string mTypeString ; 
     CVector mCoordinate ;
-
+	double mDpp ; 
+	string mTypeString ; 
 	MembraneType1 mType ; 
 	for (int j=0 ; j<initCenters.size() ; j++) {
 		initMembrPosTmp.clear() ;
+		mDppVTmp.clear() ; 
 		mTypeVTmp.clear() ; 
 		cellIDOld++  ;
 		if (j!=0) {
 	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
 	    	mTypeVTmp.push_back(mType);
 		}
         for (int i = 0; i <maxMembrNodeCountPerCell; i++) {
-	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mTypeString ;
+	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mDpp >> mTypeString ;
 			mType =StringToMembraneType1Convertor (mTypeString) ; 
 			if (cellID != cellIDOld) {
 				break ;// for reading the next cell's membrane coordinates
@@ -858,10 +868,12 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 				break ; // to not push backing data when the read file is finished.
 			}
 	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
 	    	mTypeVTmp.push_back(mType);
-			cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" type membrane="<<mType << endl ;  
+			cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" dpp level=" << mDpp <<" type membrane="<<mType << endl ;  
       	}
 		initMembrPos.push_back(initMembrPosTmp);
+		mDppV2.push_back(mDppVTmp);
 		mTypeV2.push_back(mTypeVTmp);
 	}
 	cout << " I read membrane nodes successfully" << endl ; 	

@@ -25,6 +25,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 		std::vector<uint> &initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
 		std::vector<ECellType> & eCellTypeV1 ,
+		std::vector<double> & mDppV,
 		std::vector<MembraneType1> & mTypeV,double InitTimeStage) {  //Ali
 	/*
 	 * Initialize SceNodes by constructor. first two parameters come from input parameters
@@ -58,8 +59,9 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 					== initMembrNodeCountSize);
 	nodes.setAllocParaM(para);
 
-
-	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
+	cout << " I am above initValues_M " << endl ; 
+	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mDppV,mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
+	cout << " I paased initValues_M " << endl ; 
 
 	double simulationTotalTime =
 			globalConfigVars.getConfigValue("SimulationTotalTime").toDouble();
@@ -90,7 +92,7 @@ void SimulationDomainGPU::initialize_v2_M(SimulationInitData_V2_M& initData, dou
 	initializeNodes_M(initData.nodeTypes, initData.initIsActive,
 			initData.initNodeVec, initData.initActiveMembrNodeCounts,
 			initData.initActiveIntnlNodeCounts, initData.initGrowProgVec, 
-			initData.eCellTypeV1,               initData.mTypeV, InitTimeStage);  // Ali
+			initData.eCellTypeV1,initData.mDppV,initData.mTypeV, InitTimeStage);  // Ali
 	std::cout << "Finished initializing nodes positions" << std::endl;
 	nodes.initDimension(domainPara.minX, domainPara.maxX, domainPara.minY,
 			domainPara.maxY, domainPara.gridSpacing);
@@ -150,8 +152,8 @@ void SimulationDomainGPU::runAllLogic_M(double & dt, double Damp_Coef, double In
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedTime2, start2, stop);
-	std::cout << "time spent in Simu Domain logic: " << elapsedTime1 << " "
-	<< elapsedTime2 << std::endl;
+	//std::cout << "time spent in Simu Domain logic: " << elapsedTime1 << " "
+	//<< elapsedTime2 << std::endl;
 #endif
 }
 

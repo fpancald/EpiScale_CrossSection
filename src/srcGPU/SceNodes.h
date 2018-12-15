@@ -75,7 +75,7 @@ typedef thrust::tuple<double, double, double, uint> DDDUi;//AAMIRI
 typedef thrust::tuple<bool, int> BoolInt;
 typedef thrust::tuple<uint, bool> UiB;
 typedef thrust::tuple<bool, uint, double> BoolUID;
-typedef thrust::tuple<bool, int, uint, double, double> BoolIUiDD;
+typedef thrust::tuple<bool, int, uint, double, double,MembraneType1 > BoolIUiDDT;
 typedef thrust::tuple<bool, uint, double, double> BoolUiDD; //Ali
 typedef thrust::tuple<bool, uint, double, double, uint, double> BoolUIDDUID;
 typedef thrust::tuple<bool, uint, double, double, uint, uint, bool, double> BoolUIDDUIUIBoolD;//AAMIRI
@@ -580,7 +580,7 @@ void handleSceForceNodesDisc_M(uint& nodeRank1, uint& nodeRank2, double& xPos,
 __device__
 void handleAdhesionForce_M(int& adhereIndex, double& xPos, double& yPos,
 		double& curAdherePosX, double& curAdherePosY, double& xRes,
-		double& yRes, double& alpha);
+		double& yRes, double& alpha, double  & beta);
 
 //Ali for adhesion reaction force
 __device__
@@ -775,27 +775,35 @@ struct AddSceForceBasic: public thrust::unary_function<Tuuuddd, CVec3> {
 	}
 };
 
-struct ApplyAdh: public thrust::unary_function<BoolIUiDD, CVec2> {
+struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	double* _nodeLocXArrAddr;
 	double* _nodeLocYArrAddr;
 	double* _nodeGrowProAddr;
-	int* _nodeAdhAddr ; 
+	int* _nodeAdhAddr ;
+	double * _nodeDppAddr ; 
 // comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
-	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr  ) :
-			_nodeLocXArrAddr(nodeLocXArrAddr), _nodeLocYArrAddr(nodeLocYArrAddr), _nodeGrowProAddr(nodeGrowProAddr), _nodeAdhAddr(nodeAdhAddr) {
+	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr , double * nodeDppAddr  ) :
+			_nodeLocXArrAddr(nodeLocXArrAddr), _nodeLocYArrAddr(nodeLocYArrAddr), _nodeGrowProAddr(nodeGrowProAddr), _nodeAdhAddr(nodeAdhAddr),
+		    _nodeDppAddr(nodeDppAddr) 	{
 	}
 	__device__
-	CVec2 operator()(const BoolIUiDD& adhInput) const {
+	CVec2 operator()(const BoolIUiDDT& adhInput) const {
 		bool isActive = thrust::get<0>(adhInput);
 		int adhIndx = thrust::get<1>(adhInput);
 		uint nodeIndx = thrust::get<2>(adhInput);
 		double oriVelX = thrust::get<3>(adhInput);
 		double oriVelY = thrust::get<4>(adhInput);
+		MembraneType1 nodeType = thrust::get<5>(adhInput);
+
 		double growProg = _nodeGrowProAddr[nodeIndx];
 		double growProgNeigh = _nodeGrowProAddr[adhIndx];
 		//bool adhSkipped = false;	
 		double alpha = getMitoticAdhCoef(growProg, growProgNeigh);//to adjust the mitotic values of stiffness
+		double beta=1 ; 
+	   	if (nodeType==apical1) {
+			beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+		}
 		/*int maxNodePerCell=680  ; 
 		int cellRank=nodeIndx/maxNodePerCell ;
 		int nodeRank=nodeIndx%maxNodePerCell ;
@@ -821,7 +829,7 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDD, CVec2> {
 				double adhLocX = _nodeLocXArrAddr[adhIndx];
 				double adhLocY = _nodeLocYArrAddr[adhIndx];
 				handleAdhesionForce_M(adhIndx, locX, locY, adhLocX, adhLocY,
-					oriVelX, oriVelY, alpha);
+					oriVelX, oriVelY, alpha, beta);
 				return thrust::make_tuple(oriVelX, oriVelY);
 		}
 	//	else { 
@@ -1018,6 +1026,7 @@ public:
 
 	thrust::host_vector<double> nodeAdhMinDist; // Ali
 
+	thrust::device_vector<double> dppLevel; // Ali
 	thrust::device_vector<MembraneType1> memNodeType1; // Ali
 	thrust::host_vector<MembraneType1> memNodeType1Host; // Ali
 
@@ -1257,6 +1266,7 @@ public:
 	void initValues_M(std::vector<bool>& initIsActive,
 			std::vector<CVector> &initCellNodePos,
 			std::vector<SceNodeType>& nodeTypes,
+			std::vector<double>& mDppV,
 			std::vector<MembraneType1>& mTypeV);
 
 	/**

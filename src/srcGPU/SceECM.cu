@@ -1,6 +1,6 @@
 #include "SceECM.h"
 #include "SceCells.h"
-# define debugModeECM 
+//# define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
@@ -154,7 +154,7 @@ int numberNodes_ECM ;
 double tmpPosX_ECM,tmpPosY_ECM ; 
 vector<double> posXIni_ECM,posYIni_ECM ;
 vector <EType> eNodeVec ;  
-readCoord_ECM.open("./resources/coordinate_ECM18.txt") ;
+readCoord_ECM.open("./resources/coordinate_ECM21.txt") ;
 if (readCoord_ECM.is_open()) {
 	cout << "ECM coordinates file opened successfully" <<endl ; 
 }
@@ -376,9 +376,9 @@ morseEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0);
 adhEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
 thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
 thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
-cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
-cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
-cout<< "I am in ECM module and dt is: " << dt << endl ; 
+//cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
+//cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
+//cout<< "I am in ECM module and dt is: " << dt << endl ; 
 #ifdef debugModeECM
 	cudaEventRecord(start2, 0);
 	cudaEventSynchronize(start2);
@@ -390,8 +390,8 @@ double eCMBendStiff=6.0 ; // need to be an input
 //if (cellPolar) {eCMLinSpringStiff=100 ; }
 //if (subCellPolar) {eCMLinSpringStiff=100 ; }
 
-cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
-cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
+//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
+//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
 
 
 
@@ -427,7 +427,7 @@ if (counter>=100 || curTime<(100*dt)) {
  	double * basalCellLocXAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
  	double * basalCellLocYAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
 	// int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
- 	cout << " Number of cells in ECM class is equal to " << numCells << endl; 
+ 	//cout << " Number of cells in ECM class is equal to " << numCells << endl; 
 	thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -543,7 +543,7 @@ thrust:: transform (
 
 ///////////////////////////////////
 
-cout << " I am after FindCellNeighbor functor" << endl ; 
+//cout << " I am after FindCellNeighbor functor" << endl ; 
 
 
 
@@ -644,7 +644,7 @@ thrust:: transform (
 					adhEnergy.begin())),
 				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
 
-cout << " I am after MorseAndAdhForceECM functor" << endl ; 
+//cout << " I am after MorseAndAdhForceECM functor" << endl ; 
 
 #ifdef debugModeECM
 	cudaEventRecord(start7, 0);

@@ -93,6 +93,7 @@ class SimulationDomainGPU {
 			std::vector<uint> &numOfInitActiveInternalNodeCounts,
 			std::vector<double> &initGrowProgVec, 
 			std::vector<ECellType> & eCellTypeV1,
+			std::vector<double> & mDppV,
 			std::vector<MembraneType1> & mTypeV
 			,double InitTimeStage);
 

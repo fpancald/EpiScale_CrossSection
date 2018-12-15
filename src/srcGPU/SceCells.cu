@@ -1611,11 +1611,11 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 //	enterMitoticCheckForDivAxisCal() ; 
     relaxCount=relaxCount+1 ; 
-//	if (relaxCount==1000) { 
+	if (relaxCount==1000) { 
 	//	divide2D_M();
 
-//		nodes->adhUpdate=true; 
-//	}
+		nodes->adhUpdate=true; 
+	}
 	std::cout << "     *** 7 ***" << endl;
 	std::cout.flush();
 	distributeCellGrowthProgress_M();
@@ -3693,7 +3693,6 @@ void SceCells::distributeCellGrowthProgress_M() {
 							DivideFunctor(allocPara_m.maxAllNodePerCell))),
 			nodes->getInfoVecs().nodeGrowPro.begin()
 					+ allocPara_m.bdryNodeCount);
-                        std::cout << "the vlaue of init time stage in distributeCellGrowthProgress_M is"<< InitTimeStage << std:: endl ; 
 			if (curTime <= InitTimeStage+dt)//AAMIRI   /A & A 
 				thrust::copy(
 					cellInfoVecs.growthProgress.begin(),
