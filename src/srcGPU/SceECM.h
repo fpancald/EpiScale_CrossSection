@@ -32,19 +32,29 @@ class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
 
+bool   eCMRemoved ; 
 public:
-
-void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
+	SceECM() ; 
+	void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
 		nodesPointerECM =nodes ; 
 		cellsPointerECM= cells ;  
 	}
 
+	void SetIfECMIsRemoved(bool eCMRemoved) {
+
+		this->eCMRemoved=eCMRemoved ; 
+		cout << "I am inside set function and eCMRemoved is" << this->eCMRemoved << endl; 
+	}
+
+	bool GetIfECMIsRemoved() 
+		const { return eCMRemoved  ;}  
 
 
-        void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
-		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
+    void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
+	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
 		EType ConvertStringToEType (string eNodeRead) ;
-		void PrintECM(double curTime);
+	void PrintECM(double curTime);
+	void PrintECMRemoved(double curTime);
 SceNodes * nodesPointerECM ; 
 SceCells * cellsPointerECM ; 
 double restLenECMSpring ;

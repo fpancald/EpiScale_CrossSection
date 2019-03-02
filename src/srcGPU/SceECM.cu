@@ -139,6 +139,12 @@ EType SceECM:: ConvertStringToEType(string eNodeRead) {
 } 
 
 
+
+SceECM::SceECM() {
+
+	eCMRemoved=false ; 
+}
+
 void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
 
 maxAllNodePerCell=maxAllNodePerCellECM ; 
@@ -351,7 +357,14 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 
 
 
-void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){   
+void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){  
+
+
+	if (eCMRemoved) {
+		PrintECMRemoved(curTime); 
+		return ; 
+	}
+
 #ifdef debugModeECM 
 	cudaEvent_t start1, start2, start3, start4, start5, start6, start7, start8, stop;
 	float elapsedTime1, elapsedTime2, elapsedTime3, elapsedTime4, elapsedTime5, elapsedTime6,  elapsedTime7 , elapsedTime8 ; 
@@ -756,7 +769,7 @@ void  SceECM:: PrintECM(double curTime) {
         if (lastPrintECM>=freqPlotData) { 
 			outputFrameECM++ ; 
 			lastPrintECM=0 ;
-
+			cout << " I am in regular print function" << endl ; 
 			// First ECM output file for paraview //
 			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
@@ -852,6 +865,60 @@ void  SceECM:: PrintECM(double curTime) {
 		}
 
 }
+
+// This is just to create a file to be able to generate the movie with consisten frames
+void  SceECM:: PrintECMRemoved(double curTime) {
+		lastPrintECM=lastPrintECM+1 ; 
+        if (lastPrintECM>=freqPlotData) { 
+			outputFrameECM++ ; 
+			lastPrintECM=0 ;
+
+			cout << " I am in ECM removed print function" << endl ; 
+			// First ECM output file for paraview //
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
+			ofstream ECMOut;
+			ECMOut.open(vtkFileName.c_str());
+			ECMOut<< "# vtk DataFile Version 3.0" << endl;
+			ECMOut<< "Result for paraview 2d code" << endl;
+			ECMOut << "ASCII" << endl;
+			ECMOut << "DATASET UNSTRUCTURED_GRID" << std::endl;
+			ECMOut << "POINTS " << nodeECMLocX.size() << " float" << std::endl;
+			for (uint i = 0; i < nodeECMLocX.size(); i++) {
+				ECMOut << -500.0  << " " << -500.0  << " "    
+				<< 0.0 << std::endl; // Just out of domain
+			}
+			ECMOut<< std::endl;
+			 ECMOut<< "CELLS " << nodeECMLocX.size()<< " " << 3 *nodeECMLocX.size()<< std::endl;
+			for (uint i = 0; i < (nodeECMLocX.size()-1); i++) {
+				ECMOut << 2 << " " << indexECM[i] << " "
+				<< indexECM[i+1] << std::endl;
+			}
+			ECMOut << 2 << " " << indexECM[nodeECMLocX.size()-1] << " "<< indexECM[0] << std::endl; //last point to the first point
+
+
+			ECMOut << "CELL_TYPES " << nodeECMLocX.size()<< endl;
+			for (uint i = 0; i < nodeECMLocX.size() ; i++) {
+				ECMOut << "3" << endl;
+			}
+			ECMOut << "POINT_DATA "<<nodeECMLocX.size() <<endl ; 
+			ECMOut << "SCALARS Avg_Tension " << "float"<< endl;
+			ECMOut << "LOOKUP_TABLE " << "default"<< endl;
+			for (uint i = 0; i < nodeECMLocX.size(); i++) {
+				ECMOut<<linSpringAvgTension[i] <<endl ; 
+			}
+			
+			ECMOut << "SCALARS Node_Type " << "float"<< endl;
+			ECMOut << "LOOKUP_TABLE " << "default"<< endl;
+			for (uint i = 0; i < nodeECMLocX.size(); i++) {
+				ECMOut<<peripORexcm[i] <<endl ; 
+			}
+
+			ECMOut.close();
+
+		}
+
+}
+
 
 
 
