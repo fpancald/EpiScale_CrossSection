@@ -41,9 +41,7 @@ public:
 	}
 
 	void SetIfECMIsRemoved(bool eCMRemoved) {
-
 		this->eCMRemoved=eCMRemoved ; 
-		cout << "I am inside set function and eCMRemoved is" << this->eCMRemoved << endl; 
 	}
 
 	bool GetIfECMIsRemoved() 
