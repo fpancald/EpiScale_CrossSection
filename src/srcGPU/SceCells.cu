@@ -97,8 +97,8 @@ double DefaultMembraneStiff() {
 
 
 __device__
-double calExtForce(double  curTime) {
-		return min(curTime * F_Ext_Incline_M2,0.15);
+double CalExtForce(double  curTime) {
+		return min(curTime * F_Ext_Incline_M2,20.0);
 }
 //Ali
 __device__
@@ -1559,7 +1559,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	}
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
-	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
+//	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
@@ -1580,7 +1580,8 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	if (eCMPointerCells->GetIfECMIsRemoved()==false) {	
+	if (eCMPointerCells->GetIfECMIsRemoved()==false) {
+		cout << " I am applying basal contraction" << endl ; 
 		applyMembContraction() ;  // Ali
 	}
 
@@ -1593,7 +1594,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 	applyMemForce_M(cellPolar,subCellPolar);
 	applyVolumeConstraint();  //Ali 
-
+	ApplyExtForces() ; // now for single cell stretching
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
 	std::cout.flush();
@@ -2297,6 +2298,43 @@ void SceCells::moveNodes_BC_M() {
 
 
 
+void SceCells::ApplyExtForces()
+{ 
+	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+			* allocPara_m.maxAllNodePerCell;
+
+//for (int i=0 ; i <nodes->getInfoVecs().memNodeType1.size(); i++ ) { 
+//	if (nodes->getInfoVecs().memNodeType1[i]==basal1) {
+//		cout << "  I am a basal node with id="<< i << " and vx before applying external force is equal to " <<nodes->getInfoVecs().nodeVelX[i] << endl ;  
+//	}
+//}
+
+	thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().memNodeType1.begin(),
+                            nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().memNodeType1.begin(),
+							nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin()))
+					+ totalNodeCountForActiveCells,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin())),
+			AddExtForces(curTime));
+//for (int i=0 ; i <nodes->getInfoVecs().memNodeType1.size(); i++ ) { 
+//	if (nodes->getInfoVecs().memNodeType1[i]==basal1) {
+//		cout << "  I am a basal node with id="<< i << " and vx is equal to " <<nodes->getInfoVecs().nodeVelX[i]  << endl ; 
+//	}
+//}
+
+}
+
+
+
 
 
 
@@ -2590,57 +2628,6 @@ if ( (timeStep % 10000)==0 ) {
 
 
 
-
-
-
-
-
-
-
-	thrust::transform(
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							thrust::make_permutation_iterator(
-									cellInfoVecs.eCellTypeV2.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.activeMembrNodeCounts.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.centerCoordX.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							make_transform_iterator(iBegin,
-									ModuloFunctor(maxAllNodePerCell)),
-                            nodes->getInfoVecs().memNodeType1.begin(),
-                            nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin())),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							thrust::make_permutation_iterator(
-									cellInfoVecs.eCellTypeV2.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.activeMembrNodeCounts.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.centerCoordX.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-                            make_transform_iterator(iBegin,
-									ModuloFunctor(maxAllNodePerCell)),
-							nodes->getInfoVecs().memNodeType1.begin(),
-							nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin()))
-					+ totalNodeCountForActiveCells,
-			thrust::make_zip_iterator(
-					thrust::make_tuple(nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin())),
-			AddExtForce(curTime,tissueCenterX));
 
 
 
@@ -3039,6 +3026,7 @@ thrust::transform(
 */
 
 }
+
 void SceCells::computeContractileRingForces() {
 
 
@@ -3742,7 +3730,7 @@ thrust::device_vector<double>::iterator  MinY_Itr=thrust::min_element(nodes->get
 							cellInfoVecs.isRandGrowInited.begin())),
 			RandomizeGrow_M(minY_Tisu,maxY_Tisu,growthAuxData.randomGrowthSpeedMin,
 					growthAuxData.randomGrowthSpeedMax, seed));
-	for (int i=0 ; i<3 ;  i++) {
+	for (int i=0 ; i<1 ;  i++) {
 	cout << "cell growth speed for rank " <<i << " is " << cellInfoVecs.growthSpeed [i] << endl ; 
 	}
 	cout << "the min growth speed is " << growthAuxData.randomGrowthSpeedMin << endl ; 

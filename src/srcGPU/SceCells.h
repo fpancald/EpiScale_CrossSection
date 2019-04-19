@@ -32,6 +32,7 @@ typedef thrust::tuple<double, uint, uint, uint, double, double> DUiUiUiDD;
 typedef thrust::tuple<double, uint, double, double,uint, uint, double, double, double, double> DUiDDUiUiDDDD;
 typedef thrust::tuple<double, int, int ,uint, uint, double, double > DIIUiUiDD;
 typedef thrust::tuple<ECellType,uint, double, MembraneType1 ,bool,uint, uint> ActinData; //Ali
+typedef thrust::tuple<MembraneType1 ,double, double> TDD; //Ali
 typedef thrust::tuple<MembraneType1,int,int> TII; //Ali
 typedef thrust::tuple<bool,MembraneType1,uint ,uint> BTUiUi; //Ali
 typedef thrust::tuple<ECellType,uint,double,uint ,MembraneType1, double, double> TUiDUiTDD; //Ali
@@ -52,7 +53,7 @@ typedef thrust::tuple<double, uint, double, double, uint, uint, bool, double, do
  */
 
 __device__
-double calExtForce(double  curTime);
+double CalExtForce(double  curTime);
 
 __host__ __device__
 double DefaultMembraneStiff();
@@ -558,35 +559,35 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 
 	//		if (_subMembPolar) { // if # 6 s
 				if ( (cellType==pouch && memType==lateralB) || (cellType==pouch && memType==lateralA)  ) { 
-					actinLevel=3.0*kStiff ;  //0.5
+					actinLevel=kStiff ;  //0.5
 				}
 		        if (cellType==pouch &&  memType==apical1) {
-					 actinLevel=4.5*kStiff ; 
+					 actinLevel=kStiff ; 
 				}
 				if (cellType==pouch &&  memType==basal1) {
-					 actinLevel=1.5*kStiff ; // 0.55
+					 actinLevel=kStiff ; // 0.55
 				}
 
 				
 				if ( (cellType==peri && memType==lateralB) || (cellType==peri && memType==lateralA)  ) { 
-					  actinLevel=3.0*kStiff ;
+					  actinLevel=kStiff ;
 				}
 				if   (cellType==peri && memType == apical1) {
-					  actinLevel=4.5*kStiff ;
+					  actinLevel=kStiff ;
 				}
 				if   (cellType==peri && memType == basal1) {
-					  actinLevel=1.5*kStiff ;
+					  actinLevel=kStiff ;
 				}
 				
 
 				if ( (cellType==bc && memType==lateralB) || (cellType==bc && memType==lateralA)  ) { 
-					actinLevel=3.0*kStiff ; //1.5
+					actinLevel=kStiff ; //1.5
 				}
 		        if (cellType==bc &&  memType==apical1) {
-					 actinLevel=4.5*kStiff ; // 1.5
+					 actinLevel=kStiff ; // 1.5
 				}
 				if (cellType==bc &&  memType==basal1) {
-					 actinLevel=1.5*kStiff ;
+					 actinLevel=kStiff ;
 				}
 
 
@@ -1158,45 +1159,33 @@ struct CalMembrEnergy: public thrust::unary_function<DUiUiUiDD, CVec2> {
 
 
 
-struct AddExtForce: public thrust::unary_function<TUiDUiTDD, CVec2> {
+struct AddExtForces: public thrust::unary_function<TDD, CVec2> {
 
-	double _time ; 
-	double _tissueCenterX ;
+	double _curTime ; 
 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__host__ __device__ AddExtForce(double time, double tissueCenterX) :
-			_time(time),_tissueCenterX(tissueCenterX) {
+	__host__ __device__ AddExtForces(double curTime) :
+			_curTime(curTime) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__device__ CVec2 operator()(const TUiDUiTDD &tUiDUiTDD) const {
+	__device__ CVec2 operator()(const TDD &tDD) const {
 
-		ECellType  cellType= thrust::get<0>(tUiDUiTDD);
-		uint activeMembrCount = thrust::get<1>(tUiDUiTDD);
-		double cellCenterX = thrust::get<2>(tUiDUiTDD);
-		uint   nodeRank = thrust::get<3>(tUiDUiTDD);
-		MembraneType1 memNodeType = thrust::get<4>(tUiDUiTDD);
-		double velX = thrust::get<5>(tUiDUiTDD);
-		double velY = thrust::get<6>(tUiDUiTDD);
+		MembraneType1 memNodeType = thrust::get<0>(tDD);
+		double velX = thrust::get<1>(tDD);
+		double velY = thrust::get<2>(tDD);
 
-		double fExt=0 ; 
-		
-		if (nodeRank >= activeMembrCount) {
-			return thrust::make_tuple(velX, velY);
-		}else {
-			
-			if (cellType==bc && ( memNodeType==lateralB ||  memNodeType==lateralA  ) && cellCenterX> _tissueCenterX) {
-				fExt=0 ; // calExtForce (_time) ;  
-				velX = velX -fExt  ;
-			}
-			if (cellType==bc && ( memNodeType==lateralB ||  memNodeType==lateralA  )  && cellCenterX< _tissueCenterX) {
-				fExt=0 ; //calExtForce (_time) ;  
-				velX = velX +fExt  ;
-			}
+		if (memNodeType==basal1  )  {
+			velX = velX ;  //CalExtForce(_curTime)   ;
+			velY = 0 ;
+		}
+		if (memNodeType==apical1) {
+			velX = velX  ; CalExtForce(_curTime)   ;
+			velY = 0 ;
+		}
 
-			return thrust::make_tuple(velX, velY);
+		return thrust::make_tuple(velX, velY);
 	
 		}
-	}
 }; 
 
 
@@ -1224,8 +1213,8 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 
 		double progress = thrust::get<0>(dUiDDUiUiDDDD);
 		uint   activeMembrCount= thrust::get<1>(dUiDDUiUiDDDD);
-		double cellCenterX = thrust::get<2>(dUiDDUiUiDDDD);
-		double cellCenterY = thrust::get<3>(dUiDDUiUiDDDD);
+		double cellCenterX =thrust::get<2>(dUiDDUiUiDDDD);
+		double cellCenterY =thrust::get<3>(dUiDDUiUiDDDD);
 		uint   cellRank = thrust::get<4>(dUiDDUiUiDDDD);
 		uint   nodeRank = thrust::get<5>(dUiDDUiUiDDDD);
 		double locX = thrust::get<6>(dUiDDUiUiDDDD);
@@ -1306,12 +1295,13 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 			else {
 				percent =0 ; // max ((progress-_mitoticCri)/(0.9-_mitoticCri),0.0);  
 			}
-
+			/*
 			if (_cellTypeAddr[cellRank]==bc) {
 				cellAreaDesire=20+ percent*20 ;
 			}
 			else if (cellRank==0 || cellRank==64) {
 				cellAreaDesire=25+ percent*25 ;
+		//		cellAreaDesire=65+ percent*65 ;
 			}
 			else if (cellRank==1 || cellRank==63) {
 				cellAreaDesire=50+ percent*50 ;
@@ -1320,13 +1310,14 @@ struct AddLagrangeForces: public thrust::unary_function<DUiDDUiUiDDDD, CVec5> {
 				cellAreaDesire=65+ percent*65 ;
 
 			}
+			*/
 /*
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1X-term2X)/term5+ (term3X-term4X)/term6 ) ; 
 			 fY=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     ( (term1Y-term2Y)/term5+ (term3Y-term4Y)/term6 ) ; 
 */
-
+			 cellAreaDesire=75 ; 
 			 fX=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
 			     (  posYR-posYL ) ; 
 			 fY=-2*kStiffArea*(_cellAreaVecAddr[cellRank]-cellAreaDesire)*
@@ -3632,7 +3623,6 @@ class SceCells {
 	void initCellNodeInfoVecs();
 	void initGrowthAuxData();
 	void initGrowthAuxData_M();
-
 	void initialize(SceNodes* nodesInput);
 	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput);
 
@@ -3786,6 +3776,7 @@ class SceCells {
 
 	void applyMemForce_M(bool cellPolar, bool subCellPolar);
 	void applyVolumeConstraint();
+	void ApplyExtForces();
 	void computeLagrangeForces();
 	void computeContractileRingForces();
 
