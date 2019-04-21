@@ -559,14 +559,14 @@ vector<double> CellsStatsData::outputPolySides() {
 }
 
 //Ali
-void CellsStatsData::printStressStrain(std::string FileName1,double curTime,double Init_Displace) {
+void SingleCellData::printStressStrain(std::string FileName1,double curTime,double Init_Displace) {
   ofstream ofs1(FileName1.c_str(),ios::app); 
 //  double F_Ext=60*SceMechPara_M.F_Ext_Incline*curTime ; 
   ofs1 << curTime<<","<<50*F_Ext_Out/(Cells_Extrem_Loc[3]-Cells_Extrem_Loc[2])<<","
        <<((Cells_Extrem_Loc[1]-Cells_Extrem_Loc[0])-Init_Displace)/Init_Displace<<"," <<(MaxDistanceX-Init_Displace)/Init_Displace<<std::endl ; 
 
 }
-void CellsStatsData::printStressStrain_Ini(std::string FileName1) {
+void SingleCellData::printStressStrain_Ini(std::string FileName1) {
   ofstream ofs1(FileName1.c_str(),ios::out); 
   ofs1 << "Time"<<","<<"Stress"<<","<<"Strain_M"<<","<< "Strain_Center"<<std::endl ; 
 }

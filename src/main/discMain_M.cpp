@@ -146,34 +146,30 @@ int main(int argc, char* argv[]) {
 	for (uint i = 0; i <= (uint) (mainPara.totalTimeSteps); i++) {
 		// this if is just for output data// 
 		if (i % mainPara.aniAuxVar == 0) {
-			std::cout << "substep 1 " << std::endl;
 			std::cout << "substep 1_confirm " << std::flush;
 
 	 		CellsStatsData polyData = simuDomain.outputPolyCountData();  //Ali comment
-	              //    CellsStatsData polyData = simuDomain.outputPolyCountData();
-                         
-                        double curTime=i*mainPara.dt + mainPara.InitTimeStage;  //Ali - Abu
-                        //Ali
+            SingleCellData singleCellData=simuDomain.OutputStressStrain() ;              
+            double curTime=i*mainPara.dt + mainPara.InitTimeStage;  //Ali - Abu
 
-                         cout<<"Th value of initial time stage is"<<mainPara.InitTimeStage<<endl ;  
+            cout<<"Th value of initial time stage is"<<mainPara.InitTimeStage<<endl ;  
 
-                        if (FirstData==true) { 
+            if (FirstData==true) { 
                           
-                          Init_Displace=polyData.Cells_Extrem_Loc[1]-polyData.Cells_Extrem_Loc[0] ;
-                          cout << "Init_Displace="<< Init_Displace<< endl ; 
-                          FirstData=false ;  
-                        }
-						/*
-                        if (i==0){
-                          polyData.printStressStrain_Ini( FileName2) ;
-                          FirstData=true ; 
-                          cout <<"I am in i=0"<< endl; 
-                        }
-                        if (i !=0 && FirstData==false){
-                          polyData.printStressStrain( FileName2,curTime,Init_Displace) ;
-                         cout<<"I am in writing and i is equal to"<<i<<endl ;  
-                        }
- 						*/
+            	Init_Displace=singleCellData.Cells_Extrem_Loc[1]-singleCellData.Cells_Extrem_Loc[0] ;
+                cout << "Init_Displace="<< Init_Displace<< endl ; 
+                FirstData=false ;  
+            }
+			   
+            if (i==0){
+                singleCellData.printStressStrain_Ini( FileName2) ;
+                FirstData=true ; 
+                }
+            if (i !=0 && FirstData==false){
+                singleCellData.printStressStrain( FileName2,curTime,Init_Displace) ;
+                cout<<"I am in writing and i is equal to"<<i<<endl ;  
+                }
+ 						
 
 			std::cout << "substep 2 " << std::endl;
 			//////// update division threshold //////
@@ -203,7 +199,6 @@ int main(int argc, char* argv[]) {
 			std::cout << "substep 6 " << std::endl;
 			aniFrame++;
 		}
-//Ali		simuDomain.runAllLogic_M(mainPara.dt); // this dt belongs to cellInitHelper
 		simuDomain.runAllLogic_M(mainPara.dt,mainPara.Damp_Coef,mainPara.InitTimeStage);  //Ali
 	}
 

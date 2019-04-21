@@ -183,6 +183,7 @@ public:
 	void performAblation(AblationEvent &ablEvent);
 
 	CellsStatsData outputPolyCountData();
+	SingleCellData OutputStressStrain();
 
 	void processT1Info(int maxStepTraceBack, CellsStatsData &polyData);
 };

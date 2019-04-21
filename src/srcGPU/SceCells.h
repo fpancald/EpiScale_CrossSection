@@ -1173,13 +1173,13 @@ struct AddExtForces: public thrust::unary_function<TDD, CVec2> {
 		MembraneType1 memNodeType = thrust::get<0>(tDD);
 		double velX = thrust::get<1>(tDD);
 		double velY = thrust::get<2>(tDD);
-
+		double tranT=500 ; 
 		if (memNodeType==basal1  )  {
-			velX = velX ;  //CalExtForce(_curTime)   ;
+			velX = velX+ CalExtForce(max(_curTime-tranT,0.0))   ;
 			velY = 0 ;
 		}
 		if (memNodeType==apical1) {
-			velX = velX  ; CalExtForce(_curTime)   ;
+			velX = velX- CalExtForce(max(_curTime-tranT,0.0))   ;
 			velY = 0 ;
 		}
 
@@ -3597,10 +3597,6 @@ class SceCells {
 		bool addNode  ; 
         double Damp_Coef ;   //Ali
         double InitTimeStage ;  //A & A 
-        double MinX ;  
-        double MaxX ;  
-        double MinY ;  
-        double MaxY ; 
 		int freqPlotData ;
 	double centerShiftRatio;
 	double shrinkRatio;
@@ -3957,6 +3953,7 @@ public:
 
 
 	CellsStatsData outputPolyCountData();
+	SingleCellData OutputStressStrain();
 
 	const NodeAllocPara_M& getAllocParaM() const {
 		return allocPara_m;

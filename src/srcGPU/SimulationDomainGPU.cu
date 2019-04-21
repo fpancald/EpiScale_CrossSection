@@ -271,8 +271,8 @@ void SimulationDomainGPU::outputVtkColorByCell_polySide(
 }
 std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<double> & cellsPerimeter) {
 	CellsStatsData cellStatsVec = cells.outputPolyCountData();
+	
         for (int i=0; i< int (cellStatsVec.cellsStats.size());  i++) {
-
         std::cout << cellStatsVec.cellsStats.size() <<"cellsStatsvec vector size is" <<std:: endl; 
         cellsPerimeter.push_back(cellStatsVec.cellsStats[i].cellPerim) ;
         }
@@ -387,6 +387,12 @@ CellsStatsData SimulationDomainGPU::outputPolyCountData() {
 	//nodes.sceForcesDisc_M(); // Ali commented this. it will intefere with logics of the code.
 	return cells.outputPolyCountData();
 }
+SingleCellData  SimulationDomainGPU::OutputStressStrain() {
+	// this step is necessary for obtaining correct neighbors because new cells might have been created in previous step.
+	//nodes.sceForcesDisc_M(); // Ali commented this. it will intefere with logics of the code.
+	return cells.OutputStressStrain();
+}
+
 
 NetworkInfo SimulationDomainGPU::buildNetInfo(CellsStatsData &polyData) {
 	std::vector<NetworkNode> netNodes;
