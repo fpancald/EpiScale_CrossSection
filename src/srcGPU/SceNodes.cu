@@ -2664,7 +2664,7 @@ void SceNodes::sceForcesDisc_M() {
 	cout << "     --- 4 ---" << endl;
 	cout.flush();
 
-	//copyExtForces_M();//AAMIRI	
+	copyInterCellForces_M();//AAMIRI	
 
 
 #ifdef DebugMode
@@ -2756,10 +2756,12 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeVelNormal.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeCurvature.resize(maxTotalNodeCount, 0.0);//AAMIRI
 	infoVecs.nodeActinLevel.resize(maxTotalNodeCount, 0.0);//Ali
-	infoVecs.nodeExtForceX.resize(maxTotalNodeCount,0.0);//AAMIRI
-	infoVecs.nodeExtForceY.resize(maxTotalNodeCount,0.0);//AAMIRI
-	infoVecs.nodeExtForceTangent.resize(maxTotalNodeCount);//AAMIRI
-	infoVecs.nodeExtForceNormal.resize(maxTotalNodeCount);//AAMIRI
+	infoVecs.nodeExtForceX.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeExtForceY.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceX.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceY.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceTangent.resize(maxTotalNodeCount);//AAMIRI
+	infoVecs.nodeInterCellForceNormal.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeMaxForce.resize(maxTotalNodeCount);
 	//infoVecs.nodeIsBasalMem.resize(maxTotalNodeCount,false); //Ali
 	//infoVecs.nodeIsLateralMem.resize(maxTotalNodeCount,false); //Ali
@@ -3022,13 +3024,14 @@ void SceNodes::applyMembrAdh_M() {
 */
 }
 
-//AAMIRI
-//void SceNodes::copyExtForces_M(){
+//AAMIRI-Ali 
+//up to here nodeVelX and nodeVelY are the summation of Adhesion force between cells and Membrane-membrane forces between differen cells
+void SceNodes::copyInterCellForces_M(){
 
-//	thrust::copy(infoVecs.nodeVelX.begin(), infoVecs.nodeVelX.end(),
-//			infoVecs.nodeExtForceX.begin());
+	thrust::copy(infoVecs.nodeVelX.begin(), infoVecs.nodeVelX.end(),
+			infoVecs.nodeInterCellForceX.begin());
 
-//	thrust::copy(infoVecs.nodeVelY.begin(), infoVecs.nodeVelY.end(),
-//			infoVecs.nodeExtForceY.begin());
+	thrust::copy(infoVecs.nodeVelY.begin(), infoVecs.nodeVelY.end(),
+			infoVecs.nodeInterCellForceY.begin());
 
-//}
+}

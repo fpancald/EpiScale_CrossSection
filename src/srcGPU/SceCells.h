@@ -8,6 +8,7 @@
 #include "SceECM.h"
 #include <time.h>
 #include <thrust/tabulate.h>
+#include <thrust/count.h>
 #define PI 3.14159265358979
 
 typedef thrust::tuple<double, double, SceNodeType> CVec2Type;
@@ -1159,7 +1160,7 @@ struct CalMembrEnergy: public thrust::unary_function<DUiUiUiDD, CVec2> {
 
 
 
-struct AddExtForces: public thrust::unary_function<TDD, CVec2> {
+struct AddExtForces: public thrust::unary_function<TDD, CVec4> {
 
 	double _curTime ; 
 
@@ -1168,23 +1169,23 @@ struct AddExtForces: public thrust::unary_function<TDD, CVec2> {
 			_curTime(curTime) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__device__ CVec2 operator()(const TDD &tDD) const {
+	__device__ CVec4 operator()(const TDD &tDD) const {
 
 		MembraneType1 memNodeType = thrust::get<0>(tDD);
 		double velX = thrust::get<1>(tDD);
 		double velY = thrust::get<2>(tDD);
-		double tranT=500 ; 
-		if (memNodeType==basal1  )  {
-			velX = velX+ CalExtForce(max(_curTime-tranT,0.0))   ;
-			velY = 0 ;
+		double tranT=500 ;
+		double fX=0 ; 
+		double fY=0 ;
+		if (memNodeType==basal1)  {
+			fX=CalExtForce(max(_curTime-tranT,0.0)) ;
+			velY=0 ; //gripping handles for stretch test won't allow motion in y direction 
 		}
 		if (memNodeType==apical1) {
-			velX = velX- CalExtForce(max(_curTime-tranT,0.0))   ;
-			velY = 0 ;
+			fX= -CalExtForce(max(_curTime-tranT,0.0))  ; 
+			velY=0 ; //gripping handles for stretch test won't allow motion in y direction 
 		}
-
-		return thrust::make_tuple(velX, velY);
-	
+		return thrust::make_tuple(velX+fX, velY+fY,fX,fY);
 		}
 }; 
 

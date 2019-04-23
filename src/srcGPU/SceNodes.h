@@ -152,6 +152,33 @@ struct isTrue {
 	}
 };
 
+struct isGreaterZero {
+	__host__ __device__
+	bool operator()(const double & b) {
+		if (b > 0.00001 ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+};
+
+struct  SumGreaterZero { 
+	__host__ __device__
+	double operator()(double x, double y) {return (x+max(y,0.0)) ;}
+}; 
+
+struct isOdd
+{
+//	__host__ __device__
+	bool operator()(int &x)
+	{
+		return x & 1 ; 
+		}
+};
+
+
+
 struct NanCount: public thrust::binary_function<double, double, CVec3> {
 	__device__
 	int operator()(const double& num) {
@@ -997,18 +1024,21 @@ public:
 	thrust::device_vector<double> nodeActinLevel;//Ali 
 // Curvature at the node
 	thrust::device_vector<double> nodeCurvature;//AAMIRI
-
 //External forces on nodes in x dir
-	thrust::device_vector<double> nodeExtForceX;//AAMIRI
-
+	thrust::device_vector<double> nodeExtForceX;//AAMIRI-Ali
 //External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceY;//AAMIRI
+	thrust::device_vector<double> nodeExtForceY;//AAMIRI-Ali
+//Intercellular forces on nodes in x dir. It is summnation of Adhesion and MMD in x direction
+	thrust::device_vector<double> nodeInterCellForceX;//AAMIRI-Ali
 
-//External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceTangent;//AAMIRI
+//intercellular forces on nodes in y dir.It is summnation of Adhesion and MMD in y direction
+	thrust::device_vector<double> nodeInterCellForceY;//AAMIRI-Ali
 
-//External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceNormal;//AAMIRI
+//Intercellular forces on nodes in tangent  dir
+	thrust::device_vector<double> nodeInterCellForceTangent;//AAMIRI-Ali
+
+//Intercellular forces on nodes in normal dir
+	thrust::device_vector<double> nodeInterCellForceNormal;//AAMIRI-Ali
 // is subApical node , for adhesion purpose
 	thrust::device_vector<bool> isSubApicalJunction;//Ali 
 	thrust::host_vector<bool> isSubApicalJunctionHost;//Ali 
@@ -1208,7 +1238,7 @@ class SceNodes {
 	void removeInvalidPairs_M();
 	void applyMembrAdh_M();
 
-	void copyExtForces_M();//AAMIRI
+	void copyInterCellForces_M();//AAMIRI-Ali
 
 	uint endIndx_M;
 	uint endIndxExt_M;
