@@ -131,7 +131,8 @@ int main(int argc, char* argv[]) {
 
 	uint aniFrame = 0;
 	// main simulation steps.
-    std::string stressStrainFileName="StressStrain.CSV" ; 
+    std::string stressStrainFileNameBase="StressStrain" ; 
+    std::string stressStrainFileName=stressStrainFileNameBase +uniqueSymbol+ ".CSV" ; 
     SingleCellData singleCellData(stressStrainFileName); 
 	for (uint i = 0; i <= (uint) (mainPara.totalTimeSteps); i++) {
 		// this if is just for output data// 
