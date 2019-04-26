@@ -1,4 +1,4 @@
-//Notes: 1-  In infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodes
+//Notes: 1-  In infoVecs.nodeCellRankBehind and  infoVecs.nodeCellRankFront are given sequential values correspond to their actual values in function: SceNodes::allocSpaceForNodesdh
 // 2- the algorithm of adhesion won't work if there is no  apical node.
 // 3- maxNumAdh is given inside the code as a parameters in .cu file. It should become an input or I should write a function to detect that automatically
 // 4- In SceNodes::NumAdhAfter and SceNodes::NumAdhBefore  number of lateral nodes is given manually inside the code it should be automatically calculate from the input parameters/
@@ -2419,10 +2419,10 @@ void SceNodes::applySceForcesDisc_M() {
 					int idBehind=subApicalInfo[i].nodeIdBehind[j] ;
 					int cellRankFront=infoVecs.nodeCellRankFrontHost[i] ; 
 					int cellRankBehind=infoVecs.nodeCellRankBehindHost[i] ;
-					if (idFront != -1) {
+					if (idFront != -1 && cellRankFront != -1) {
 						infoVecs.nodeAdhereIndexHost[idFront]=subApicalInfo[cellRankFront].nodeIdBehind[j] ;
 					}
-					if (idBehind !=-1) {
+					if (idBehind !=-1 && cellRankBehind != -1) {
 						infoVecs.nodeAdhereIndexHost[idBehind]=subApicalInfo[cellRankBehind].nodeIdFront[j] ;
 					}
 					if ( eCellTypeVHost[i]==pouch && NumAdhBefore(i,pouch)==NumAdhAfter(i,pouch) ) {
@@ -2664,7 +2664,7 @@ void SceNodes::sceForcesDisc_M() {
 	cout << "     --- 4 ---" << endl;
 	cout.flush();
 
-	copyExtForces_M();//AAMIRI	
+	copyInterCellForces_M();//AAMIRI	
 
 
 #ifdef DebugMode
@@ -2756,10 +2756,12 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeVelNormal.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeCurvature.resize(maxTotalNodeCount, 0.0);//AAMIRI
 	infoVecs.nodeActinLevel.resize(maxTotalNodeCount, 0.0);//Ali
-	infoVecs.nodeExtForceX.resize(maxTotalNodeCount);//AAMIRI
-	infoVecs.nodeExtForceY.resize(maxTotalNodeCount);//AAMIRI
-	infoVecs.nodeExtForceTangent.resize(maxTotalNodeCount);//AAMIRI
-	infoVecs.nodeExtForceNormal.resize(maxTotalNodeCount);//AAMIRI
+	infoVecs.nodeExtForceX.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeExtForceY.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceX.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceY.resize(maxTotalNodeCount,0.0);//AAMIRI-Ali
+	infoVecs.nodeInterCellForceTangent.resize(maxTotalNodeCount);//AAMIRI
+	infoVecs.nodeInterCellForceNormal.resize(maxTotalNodeCount);//AAMIRI
 	infoVecs.nodeMaxForce.resize(maxTotalNodeCount);
 	//infoVecs.nodeIsBasalMem.resize(maxTotalNodeCount,false); //Ali
 	//infoVecs.nodeIsLateralMem.resize(maxTotalNodeCount,false); //Ali
@@ -2773,8 +2775,6 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeAdhMinDist.resize(maxTotalNodeCount); // Ali
 	infoVecs.nodeCellRankFront.resize(maxNumCells,-1); // Ali
 	infoVecs.nodeCellRankBehind.resize(maxNumCells,-1); // Ali
-	infoVecs.nodeCellRankFrontOld.resize(maxNumCells,-1); // Ali
-	infoVecs.nodeCellRankBehindOld.resize(maxNumCells,-1); // Ali
 	infoVecs.nodeCellRankFrontHost.resize(maxNumCells,-1); // Ali
 	infoVecs.nodeCellRankBehindHost.resize(maxNumCells,-1); // Ali
 	if (controlPara.simuType == Disc
@@ -2821,30 +2821,28 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		auxVecs.bucketKeysExpanded.resize(maxTotalNodeCount * 9);
 		auxVecs.bucketValuesIncludingNeighbor.resize(maxTotalNodeCount * 9);
 	}
-	thrust:: sequence (infoVecs.nodeCellRankFront.begin() ,infoVecs.nodeCellRankFront.begin() +currentActiveCellCount) ; //Ali
-	thrust:: sequence (infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.begin()+currentActiveCellCount) ; //Ali
+	if (currentActiveCellCount != 1) {
+		thrust:: sequence (infoVecs.nodeCellRankFront.begin() ,infoVecs.nodeCellRankFront.begin() +currentActiveCellCount) ; //Ali
+		thrust:: sequence (infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.begin()+currentActiveCellCount) ; //Ali
 
+		thrust:: device_vector<int>  tmp1 ; 
+		thrust:: device_vector<int>  tmp2 ; 
 
-	thrust:: device_vector<int>  tmp1 ; 
-	thrust:: device_vector<int>  tmp2 ; 
+    	tmp1.resize(currentActiveCellCount,1) ; 
+    	tmp2.resize(currentActiveCellCount,-1) ;
 
-    tmp1.resize(currentActiveCellCount,1) ; 
-    tmp2.resize(currentActiveCellCount,-1) ;
-
-
-
-	thrust:: transform(tmp1.begin(),tmp1.begin()+currentActiveCellCount,
-					   infoVecs.nodeCellRankFront.begin(),infoVecs.nodeCellRankFront.begin(), thrust::plus<int>()) ; //Ali
-	thrust:: transform(tmp2.begin(),tmp2.begin()+currentActiveCellCount,
-	                   infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.begin(),thrust::plus<int>()) ; //Ali
+		thrust:: transform(tmp1.begin(),tmp1.begin()+currentActiveCellCount,
+						   infoVecs.nodeCellRankFront.begin(),infoVecs.nodeCellRankFront.begin(), thrust::plus<int>()) ; //Ali
+		thrust:: transform(tmp2.begin(),tmp2.begin()+currentActiveCellCount,
+	        	           infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.begin(),thrust::plus<int>()) ; //Ali
 					  
-	infoVecs.nodeCellRankBehind[0]=currentActiveCellCount-1 ; 
-	infoVecs.nodeCellRankFront[currentActiveCellCount-1]=0 ;
+		infoVecs.nodeCellRankBehind[0]=currentActiveCellCount-1 ; 
+		infoVecs.nodeCellRankFront[currentActiveCellCount-1]=0 ;
 
     	cout << " I am here 3   " << maxNumCells << endl ;  
 
+	}
 }
-
 void SceNodes::initNodeAllocPara(uint totalBdryNodeCount,
 		uint maxProfileNodeCount, uint maxCartNodeCount, uint maxTotalECMCount,
 		uint maxNodeInECM, uint maxTotalCellCount, uint maxNodeInCell) {
@@ -3026,13 +3024,14 @@ void SceNodes::applyMembrAdh_M() {
 */
 }
 
-//AAMIRI
-void SceNodes::copyExtForces_M(){
+//AAMIRI-Ali 
+//up to here nodeVelX and nodeVelY are the summation of Adhesion force between cells and Membrane-membrane forces between differen cells
+void SceNodes::copyInterCellForces_M(){
 
 	thrust::copy(infoVecs.nodeVelX.begin(), infoVecs.nodeVelX.end(),
-			infoVecs.nodeExtForceX.begin());
+			infoVecs.nodeInterCellForceX.begin());
 
 	thrust::copy(infoVecs.nodeVelY.begin(), infoVecs.nodeVelY.end(),
-			infoVecs.nodeExtForceY.begin());
+			infoVecs.nodeInterCellForceY.begin());
 
 }

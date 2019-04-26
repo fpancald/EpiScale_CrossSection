@@ -236,11 +236,11 @@ void VtkAnimationData::outputVtkAni(std::string scriptNameBase, int rank) {
 	//AAMIRI finished writing the node tension vector
 
 	//AAMIRI starts writing external force vector
- 	fs << "VECTORS ExternalForce float" << endl;
+ 	fs << "VECTORS IntercellForce float" << endl;
 		for (uint i = 0; i < pointsAniData.size(); i++) {
 
-			fs << pointsAniData[i].extForce.x << " " << pointsAniData[i].extForce.y << " "
-					<< pointsAniData[i].extForce.z << endl;
+			fs << pointsAniData[i].intercellForce.x << " " << pointsAniData[i].intercellForce.y << " "
+					<< pointsAniData[i].intercellForce.z << endl;
 		}
 	//AAMIRI finished writing the node ext force vector
 
@@ -559,17 +559,18 @@ vector<double> CellsStatsData::outputPolySides() {
 }
 
 //Ali
-void CellsStatsData::printStressStrain(std::string FileName1,double curTime,double Init_Displace) {
-  ofstream ofs1(FileName1.c_str(),ios::app); 
-//  double F_Ext=60*SceMechPara_M.F_Ext_Incline*curTime ; 
-  ofs1 << curTime<<","<<50*F_Ext_Out/(Cells_Extrem_Loc[3]-Cells_Extrem_Loc[2])<<","
-       <<((Cells_Extrem_Loc[1]-Cells_Extrem_Loc[0])-Init_Displace)/Init_Displace<<"," <<(MaxDistanceX-Init_Displace)/Init_Displace<<std::endl ; 
+void SingleCellData::printStressStrainToFile(string fileName, double curTime) {
+  ofstream ofs(fileName.c_str(),ios::app);
+  ofs << curTime<<","<<F_Ext_Out<<"," <<(Cells_Extrem_Loc[1]-Cells_Extrem_Loc[0])<<std::endl ; 
+}
+SingleCellData::SingleCellData(std::string fileName) {
+  ofstream ofs(fileName.c_str(),ios::out); 
+  ofs << "Time"<<","<<"Force"<<","<<"displacement"<<std::endl ;
+  ofs.close() ; 
+}
+SingleCellData::SingleCellData() {
+}
 
-}
-void CellsStatsData::printStressStrain_Ini(std::string FileName1) {
-  ofstream ofs1(FileName1.c_str(),ios::out); 
-  ofs1 << "Time"<<","<<"Stress"<<","<<"Strain_M"<<","<< "Strain_Center"<<std::endl ; 
-}
 
 //Ali     
 

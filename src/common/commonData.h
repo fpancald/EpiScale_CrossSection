@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <fstream>
 #include <algorithm>
+#include <string>
+#include <iostream> 
 
 #ifndef COMMONDATA_H_
 #define COMMONDATA_H_
@@ -584,7 +586,7 @@ struct PointAniData {
 	CVector dir;
 	CVector F_MI_M; //AliE
 	double F_MI_M_MagN_Int; //AliE
-	CVector extForce;//AAMIRI
+	CVector intercellForce;//AAMIRI-Ali
 	double colorScale;
 	double colorScale2;//AAMIRI //curvature
 	double colorScale3;//Ali  //membrane tension
@@ -647,7 +649,7 @@ struct AniRawData {
 	std::vector<CVector> aniNodePosArr;
 	std::vector<CVector> aniNodeF_MI_M;//AAMIRI // AliE
 	std::vector<double> aniNodeF_MI_M_MagN_Int; //AliE
-	std::vector<CVector> aniNodeExtForceArr;//AAMIRI
+	std::vector<CVector> aniNodeInterCellForceArr;//AAMIRI
 	std::vector<double> aniNodeVal;
 	std::vector<double> aniNodeCurvature;//AAMIRI
 	std::vector<double> aniNodeMembTension ;//Ali 
@@ -712,21 +714,26 @@ struct CountEntry {
 
 class CellsStatsData {
 
+	public: 
 
-public:
-        //Ali
-        double Cells_Extrem_Loc[4] ;
-        double F_Ext_Out ; //Ali  
-        //Ali 
-        double MaxDistanceX ; //Ali 
 	std::vector<CellStats> cellsStats;
 
 	void printPolyCountToFile(std::string fileName, double divThreshold);
 	void printDetailStatsToFile(std::string fileNameBase, int timestep);
 	vector<double> outputPolySides();
-        void printStressStrain(std::string FileName1,double curTime,double Init_Displace );   //Ali
-        void printStressStrain_Ini(std::string FileName1); // Ali
-};
+   };
+class SingleCellData {
+	
+public:	
+		double Cells_Extrem_Loc[4] ;
+        double F_Ext_Out ;   
+        double MaxDistanceX ;
+
+	    void printStressStrainToFile(std::string fileName, double curTime);   //Ali
+		SingleCellData() ; 
+        SingleCellData(std::string fileName); // Ali
+
+} ; 
 //Ali
 class EnergyCellInfo {
 

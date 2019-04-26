@@ -1,6 +1,6 @@
 //============================================================================
 // Name        : Main.cpp
-// Author      : Wenzhao Sun
+// Author      : Wenzhao Sun, Ali Nematbakhsh
 // Version     :
 // Copyright   : Your copyright notice
 // Description : Hello World in C++, Ansi-style
@@ -129,58 +129,26 @@ int main(int argc, char* argv[]) {
 	int maxStepTraceBack =
 			globalConfigVars.getConfigValue("MaxStepTraceBack").toInt();
 
-	// preparation.
-        //Ali
-        
-        //CellsStatsData polyData ; 
-        //polyData2.FileName1.open("StressStrain.txt");
-        //polyData2.FileName1<<"Single cell data"<< "\n" ;
-       
-        //Ali
-         
-	double Init_Displace=0.0  ; 
-       std:: string FileName2= "StressStrain.CSV" ; 
 	uint aniFrame = 0;
 	// main simulation steps.
-       bool FirstData=false ; 
+    std::string stressStrainFileNameBase="StressStrain" ; 
+    std::string stressStrainFileName=stressStrainFileNameBase +uniqueSymbol+ ".CSV" ; 
+    SingleCellData singleCellData(stressStrainFileName); 
 	for (uint i = 0; i <= (uint) (mainPara.totalTimeSteps); i++) {
 		// this if is just for output data// 
 		if (i % mainPara.aniAuxVar == 0) {
-			std::cout << "substep 1 " << std::endl;
-			std::cout << "substep 1_confirm " << std::flush;
+
+            double curTime=i*mainPara.dt + mainPara.InitTimeStage;  //Ali - Abu
+			updateDivThres(curDivThred, i, curTime, decayCoeff,divThreshold);
+
+			std::cout << "substep 1" << std::flush;
 
 	 		CellsStatsData polyData = simuDomain.outputPolyCountData();  //Ali comment
-	              //    CellsStatsData polyData = simuDomain.outputPolyCountData();
-                         
-                        double curTime=i*mainPara.dt + mainPara.InitTimeStage;  //Ali - Abu
-                        //Ali
-
-                         cout<<"Th value of initial time stage is"<<mainPara.InitTimeStage<<endl ;  
-
-                        if (FirstData==true) { 
-                          
-                          Init_Displace=polyData.Cells_Extrem_Loc[1]-polyData.Cells_Extrem_Loc[0] ;
-                          cout << "Init_Displace="<< Init_Displace<< endl ; 
-                          FirstData=false ;  
-                        }
-						/*
-                        if (i==0){
-                          polyData.printStressStrain_Ini( FileName2) ;
-                          FirstData=true ; 
-                          cout <<"I am in i=0"<< endl; 
-                        }
-                        if (i !=0 && FirstData==false){
-                          polyData.printStressStrain( FileName2,curTime,Init_Displace) ;
-                         cout<<"I am in writing and i is equal to"<<i<<endl ;  
-                        }
- 						*/
+			singleCellData=simuDomain.OutputStressStrain() ;              
+            singleCellData.printStressStrainToFile(stressStrainFileName,curTime) ;
+ 						
 
 			std::cout << "substep 2 " << std::endl;
-			//////// update division threshold //////
-			updateDivThres(curDivThred, i, curTime, decayCoeff,              //Ali
-					divThreshold);
-
-			std::cout << "substep 3 " << std::endl;
 			// prints brief polygon counting statistics to file
 			polyData.printPolyCountToFile(polyStatFileName, curDivThred);
 			// prints detailed individual cell statistics to file
@@ -192,7 +160,7 @@ int main(int argc, char* argv[]) {
 				//simuDomain.processT1Info(maxStepTraceBack, polyData);
 			//}
 
-			std::cout << "substep 5 " << std::endl;
+			std::cout << "substep 3 " << std::endl;
 			//simuDomain.outputVtkFilesWithCri_M(mainPara.animationNameBase,
 			//		aniFrame, mainPara.aniCri);
 			//simuDomain.outputVtkColorByCell_T1(mainPara.animationNameBase,
@@ -200,10 +168,9 @@ int main(int argc, char* argv[]) {
 			simuDomain.outputVtkColorByCell_polySide(mainPara.animationNameBase,
 					aniFrame, mainPara.aniCri);
 			// std::cout << "in ani step " << aniFrame << std::endl;
-			std::cout << "substep 6 " << std::endl;
+			std::cout << "substep 4 " << std::endl;
 			aniFrame++;
 		}
-//Ali		simuDomain.runAllLogic_M(mainPara.dt); // this dt belongs to cellInitHelper
 		simuDomain.runAllLogic_M(mainPara.dt,mainPara.Damp_Coef,mainPara.InitTimeStage);  //Ali
 	}
 

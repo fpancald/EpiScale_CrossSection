@@ -12,7 +12,7 @@
 
 #include "SceCells.h"
 #include <cmath>
-
+#include <numeric>
 double epsilon = 1.0e-12;
 
 __constant__ double membrEquLen;
@@ -97,8 +97,8 @@ double DefaultMembraneStiff() {
 
 
 __device__
-double calExtForce(double  curTime) {
-		return min(curTime * F_Ext_Incline_M2,0.15);
+double CalExtForce(double  curTime) {
+		return min(curTime * F_Ext_Incline_M2,10.0);
 }
 //Ali
 __device__
@@ -1559,7 +1559,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	}
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
-	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
+//	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
@@ -1580,8 +1580,9 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	if (eCMPointerCells->GetIfECMIsRemoved()==false) {	
-		applyMembContraction() ;  // Ali
+	if (eCMPointerCells->GetIfECMIsRemoved()==false) {
+		cout << " I am applying basal contraction" << endl ; 
+//		applyMembContraction() ;  // Ali
 	}
 
 	//	applyNucleusEffect() ;
@@ -1593,7 +1594,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 	applyMemForce_M(cellPolar,subCellPolar);
 	applyVolumeConstraint();  //Ali 
-
+	ApplyExtForces() ; // now for single cell stretching
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
 	std::cout.flush();
@@ -2297,6 +2298,46 @@ void SceCells::moveNodes_BC_M() {
 
 
 
+void SceCells::ApplyExtForces()
+{ 
+	totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+			* allocPara_m.maxAllNodePerCell;
+
+//for (int i=0 ; i <nodes->getInfoVecs().memNodeType1.size(); i++ ) { 
+//	if (nodes->getInfoVecs().memNodeType1[i]==basal1) {
+//		cout << "  I am a basal node with id="<< i << " and vx before applying external force is equal to " <<nodes->getInfoVecs().nodeVelX[i] << endl ;  
+//	}
+//}
+
+	thrust::transform(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().memNodeType1.begin(),
+                            nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().memNodeType1.begin(),
+							nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin()))
+					+ totalNodeCountForActiveCells,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+							nodes->getInfoVecs().nodeVelX.begin(),
+							nodes->getInfoVecs().nodeVelY.begin(),
+							nodes->getInfoVecs().nodeExtForceX.begin(),
+							nodes->getInfoVecs().nodeExtForceY.begin())),
+			AddExtForces(curTime));
+//for (int i=0 ; i <nodes->getInfoVecs().memNodeType1.size(); i++ ) { 
+//	if (nodes->getInfoVecs().memNodeType1[i]==basal1) {
+//		cout << "  I am a basal node with id="<< i << " and vx is equal to " <<nodes->getInfoVecs().nodeVelX[i]  << endl ; 
+//	}
+//}
+
+}
+
+
+
 
 
 
@@ -2312,28 +2353,7 @@ void SceCells::applyMemForce_M(bool cellPolar,bool subCellPolar) {
         
        //Ali 
         
-        thrust::device_vector<double>::iterator  MinX_Itr=thrust::min_element(nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount,
-                                              nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
-        thrust::device_vector<double>::iterator  MaxX_Itr=thrust::max_element(nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount,
-                                              nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
-        thrust::device_vector<double>::iterator  MinY_Itr=thrust::min_element(nodes->getInfoVecs().nodeLocY.begin()+ allocPara_m.bdryNodeCount,
-                                              nodes->getInfoVecs().nodeLocY.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
-        thrust::device_vector<double>::iterator  MaxY_Itr=thrust::max_element(nodes->getInfoVecs().nodeLocY.begin()+ allocPara_m.bdryNodeCount,
-                                              nodes->getInfoVecs().nodeLocY.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
-        MinX= *MinX_Itr ; 
-        MaxX= *MaxX_Itr ; 
-        MinY= *MinY_Itr ; 
-        MaxY= *MaxY_Itr ;  
-        //cout<< "# of boundary nodes"<< allocPara_m.bdryNodeCount<<endl ;
-        //cout<< "# of total active nodes"<<totalNodeCountForActiveCells <<endl ;
-
-        //cout<<"The minimum location in X is="<<MinX<< endl;  
-        //cout<<"The maximum location in X is="<<MaxX<< endl;  
-        //cout<<"The minimum location in Y is="<<MinY<< endl;  
-        //cout<<"The maximum location in Y is="<<MaxY<< endl;  
-        //Ali
-
- 		
+         		
         thrust::device_vector<double>::iterator  MinY_Itr_Cell=thrust::min_element(
                                        cellInfoVecs.centerCoordY.begin(),
                                        cellInfoVecs.centerCoordY.begin()+allocPara_m.currentActiveCellCount ) ;
@@ -2344,7 +2364,6 @@ void SceCells::applyMemForce_M(bool cellPolar,bool subCellPolar) {
         double minY_Cell= *MinY_Itr_Cell ; 
         double maxY_Cell= *MaxY_Itr_Cell ;
 
-		double tissueCenterX=0.5*(MinX+MaxX) ; 
 		
 
 	double* nodeLocXAddr = thrust::raw_pointer_cast(
@@ -2596,57 +2615,6 @@ if ( (timeStep % 10000)==0 ) {
 
 
 
-
-	thrust::transform(
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							thrust::make_permutation_iterator(
-									cellInfoVecs.eCellTypeV2.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.activeMembrNodeCounts.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.centerCoordX.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							make_transform_iterator(iBegin,
-									ModuloFunctor(maxAllNodePerCell)),
-                            nodes->getInfoVecs().memNodeType1.begin(),
-                            nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin())),
-			thrust::make_zip_iterator(
-					thrust::make_tuple(
-							thrust::make_permutation_iterator(
-									cellInfoVecs.eCellTypeV2.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.activeMembrNodeCounts.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-							thrust::make_permutation_iterator(
-									cellInfoVecs.centerCoordX.begin(),
-									make_transform_iterator(iBegin,
-											DivideFunctor(maxAllNodePerCell))),
-                            make_transform_iterator(iBegin,
-									ModuloFunctor(maxAllNodePerCell)),
-							nodes->getInfoVecs().memNodeType1.begin(),
-							nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin()))
-					+ totalNodeCountForActiveCells,
-			thrust::make_zip_iterator(
-					thrust::make_tuple(nodes->getInfoVecs().nodeVelX.begin(),
-							nodes->getInfoVecs().nodeVelY.begin())),
-			AddExtForce(curTime,tissueCenterX));
-
-
-
-
-
-
 	double* bendLeftXAddr = thrust::raw_pointer_cast(
 			&(nodes->getInfoVecs().membrBendLeftX[0]));
 	double* bendLeftYAddr = thrust::raw_pointer_cast(
@@ -2724,8 +2692,8 @@ void SceCells::findTangentAndNormal_M() {
  							nodes->getInfoVecs().nodeF_MI_M_T.begin(), //AliE
 							nodes->getInfoVecs().nodeF_MI_M_N.begin(), //AliE
 							nodes->getInfoVecs().nodeCurvature.begin(),
-							nodes->getInfoVecs().nodeExtForceX.begin(),
-							nodes->getInfoVecs().nodeExtForceY.begin())),
+							nodes->getInfoVecs().nodeInterCellForceX.begin(),
+							nodes->getInfoVecs().nodeInterCellForceY.begin())),
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
 							thrust::make_permutation_iterator(
@@ -2741,15 +2709,15 @@ void SceCells::findTangentAndNormal_M() {
  							nodes->getInfoVecs().nodeF_MI_M_T.begin(), //AliE
 							nodes->getInfoVecs().nodeF_MI_M_N.begin(), //AliE
 							nodes->getInfoVecs().nodeCurvature.begin(),
-							nodes->getInfoVecs().nodeExtForceX.begin(),
-							nodes->getInfoVecs().nodeExtForceY.begin()))
+							nodes->getInfoVecs().nodeInterCellForceX.begin(),
+							nodes->getInfoVecs().nodeInterCellForceY.begin()))
 					+ totalNodeCountForActiveCells,
 			thrust::make_zip_iterator(
 					thrust::make_tuple(nodes->getInfoVecs().nodeF_MI_M_T.begin(),
 							nodes->getInfoVecs().nodeF_MI_M_N.begin(),   //Absoulte value since we know it is always repulsion. only it is used for output data
 							nodes->getInfoVecs().nodeCurvature.begin(),
-							nodes->getInfoVecs().nodeExtForceTangent.begin(),
-							nodes->getInfoVecs().nodeExtForceNormal.begin(), // Absolute value to be consittent only it is used for output data 
+							nodes->getInfoVecs().nodeInterCellForceTangent.begin(),
+							nodes->getInfoVecs().nodeInterCellForceNormal.begin(), // Absolute value to be consittent only it is used for output data 
 							nodes->getInfoVecs().membrDistToRi.begin())),
 			CalCurvatures(maxAllNodePerCell, nodeIsActiveAddr, nodeLocXAddr, nodeLocYAddr));
 
@@ -3039,6 +3007,7 @@ thrust::transform(
 */
 
 }
+
 void SceCells::computeContractileRingForces() {
 
 
@@ -3126,10 +3095,10 @@ void SceCells::BC_Imp_M() {
         thrust::device_vector<double>::iterator  MaxY_Itr=thrust::max_element(
                                        cellInfoVecs.centerCoordY.begin(),
                                        cellInfoVecs.centerCoordY.begin()+allocPara_m.currentActiveCellCount ) ;
-        MinX= *MinX_Itr ; 
-        MaxX= *MaxX_Itr ; 
-        MinY= *MinY_Itr ; 
-        MaxY= *MaxY_Itr ;
+        double MinX= *MinX_Itr ; 
+        double MaxX= *MaxX_Itr ; 
+        double MinY= *MinY_Itr ; 
+        double MaxY= *MaxY_Itr ;
   
 /**	thrust::transform(
 			thrust::make_zip_iterator(
@@ -3742,7 +3711,7 @@ thrust::device_vector<double>::iterator  MinY_Itr=thrust::min_element(nodes->get
 							cellInfoVecs.isRandGrowInited.begin())),
 			RandomizeGrow_M(minY_Tisu,maxY_Tisu,growthAuxData.randomGrowthSpeedMin,
 					growthAuxData.randomGrowthSpeedMax, seed));
-	for (int i=0 ; i<3 ;  i++) {
+	for (int i=0 ; i<1 ;  i++) {
 	cout << "cell growth speed for rank " <<i << " is " << cellInfoVecs.growthSpeed [i] << endl ; 
 	}
 	cout << "the min growth speed is " << growthAuxData.randomGrowthSpeedMin << endl ; 
@@ -4371,8 +4340,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	//thrust::host_vector<double> hostTmpVectorF_MI_M_N(maxActiveNode);//AliE
 	thrust::host_vector<double> hostTmpVectorNodeCurvature(maxActiveNode);//AAMIRI
 	thrust::host_vector<double> hostTmpVectorNodeActinLevel(maxActiveNode);//Ali
-	thrust::host_vector<double> hostTmpVectorExtForceTangent(maxActiveNode);//AAMIRI
-	thrust::host_vector<double> hostTmpVectorExtForceNormal(maxActiveNode);//AAMIRI
+	thrust::host_vector<double> hostTmpVectorInterCellForceTangent(maxActiveNode);//AAMIRI
+	thrust::host_vector<double> hostTmpVectorInterCellForceNormal(maxActiveNode);//AAMIRI
 
 
 
@@ -4386,8 +4355,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							nodes->getInfoVecs().nodeIsActive.begin(),
 							nodes->getInfoVecs().nodeAdhereIndex.begin(),
 							nodes->getInfoVecs().membrTensionMag.begin(),
-							nodes->getInfoVecs().nodeExtForceTangent.begin(),//AAMIRI
-							nodes->getInfoVecs().nodeExtForceNormal.begin())),//AAMIRI
+							nodes->getInfoVecs().nodeInterCellForceTangent.begin(),//AAMIRI
+							nodes->getInfoVecs().nodeInterCellForceNormal.begin())),//AAMIRI
 			thrust::make_zip_iterator(
 					thrust::make_tuple(nodes->getInfoVecs().nodeLocX.begin(),
 							nodes->getInfoVecs().nodeLocY.begin(),
@@ -4397,8 +4366,8 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							nodes->getInfoVecs().nodeIsActive.begin(),
 							nodes->getInfoVecs().nodeAdhereIndex.begin(),
 							nodes->getInfoVecs().membrTensionMag.begin(),
-							nodes->getInfoVecs().nodeExtForceTangent.begin(),//AAMIRI
-							nodes->getInfoVecs().nodeExtForceNormal.begin()))//AAMIRI
+							nodes->getInfoVecs().nodeInterCellForceTangent.begin(),//AAMIRI
+							nodes->getInfoVecs().nodeInterCellForceNormal.begin()))//AAMIRI
 					+ maxActiveNode,
 			thrust::make_zip_iterator(
 					thrust::make_tuple(hostTmpVectorLocX.begin(),
@@ -4407,7 +4376,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							hostTmpVectorNodeCurvature.begin(), //AAMIRI
 							hostIsActiveVec.begin(),
 							hostBondVec.begin(), hostTmpVectorTenMag.begin(),
-							hostTmpVectorExtForceTangent.begin(), hostTmpVectorExtForceNormal.begin())));//AAMIRI
+							hostTmpVectorInterCellForceTangent.begin(), hostTmpVectorInterCellForceNormal.begin())));//AAMIRI
 
 //Copy more than 10 elements is not allowed so, I separate it
 /*
@@ -4446,7 +4415,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 
 	CVector tmpPos;
 	CVector tmpF_MI_M ;//AAmiri
-	CVector tmpExtForce;//AAMIRI
+	CVector tmpInterCellForce;//AAMIRI
 	double tmpCurv;
 	double tmpMembTen ; 
 	double tmpActinLevel ; 
@@ -4457,7 +4426,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	double node1X, node1Y;
 	double node2X, node2Y;
 	double node1F_MI_M_x, node1F_MI_M_y;//AAMIRI //AliE
-	double nodeExtForceT, nodeExtForceN;//AAMIRI 
+	double nodeInterCellForceT, nodeInterCellForceN;//AAMIRI 
 	double aniVal;
         //double tmpF_MI_M_MagN_Int[activeCellCount-1] ; //AliE
 
@@ -4482,10 +4451,10 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
                                // tmpF_MI_M_MagN_Int[i]=tmpF_MI_M_MagN_Int[i]+sqrt(pow(hostTmpVectorF_MI_M_x[index1],2)+pow(hostTmpVectorF_MI_M_y[index1],2)) ; //AliE
                 //tmpF_MI_M_MagN_Int[i]=tmpF_MI_M_MagN_Int[i]+hostTmpVectorF_MI_M_N[index1] ; //AliE
 
-				nodeExtForceT = hostTmpVectorExtForceTangent[index1];//AAMIRI
-				nodeExtForceN = hostTmpVectorExtForceNormal[index1];//AAMIRI
-				tmpExtForce = CVector(nodeExtForceT, nodeExtForceN, 0.0);//AAMIRI
-				rawAniData.aniNodeExtForceArr.push_back(tmpExtForce);
+				nodeInterCellForceT = hostTmpVectorInterCellForceTangent[index1];//AAMIRI
+				nodeInterCellForceN = hostTmpVectorInterCellForceNormal[index1];//AAMIRI
+				tmpInterCellForce = CVector(nodeInterCellForceT, nodeInterCellForceN, 0.0);//AAMIRI
+				rawAniData.aniNodeInterCellForceArr.push_back(tmpInterCellForce);
 
 
 				rawAniData.aniNodeRank.push_back(i);//AAMIRI
@@ -4512,11 +4481,11 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 				tmpF_MI_M= CVector(node1F_MI_M_x, node1F_MI_M_y, 0.0); //AliE
 				rawAniData.aniNodeF_MI_M.push_back(tmpF_MI_M);
 
-				nodeExtForceT = hostTmpVectorExtForceTangent[index1];//AAMIRI
-				nodeExtForceN = hostTmpVectorExtForceNormal[index1];//AAMIRI
-				tmpExtForce = CVector(nodeExtForceT, nodeExtForceN, 0.0);//AAMIRI
+				nodeInterCellForceT = hostTmpVectorInterCellForceTangent[index1];//AAMIRI
+				nodeInterCellForceN = hostTmpVectorInterCellForceNormal[index1];//AAMIRI
+				tmpInterCellForce = CVector(nodeInterCellForceT, nodeInterCellForceN, 0.0);//AAMIRI
 				
-				rawAniData.aniNodeExtForceArr.push_back(tmpExtForce);
+				rawAniData.aniNodeInterCellForceArr.push_back(tmpInterCellForce);
 				rawAniData.aniNodeRank.push_back(i);//AAMIRI
 				}
 			
@@ -4941,7 +4910,7 @@ VtkAnimationData SceCells::outputVtkData(AniRawData& rawAniData,
 		ptAniData.colorScale3 = rawAniData.aniNodeMembTension[i];//Ali 
 		ptAniData.colorScale4 = rawAniData.aniNodeActinLevel[i];//Ali 
 		ptAniData.rankScale = rawAniData.aniNodeRank[i];//AAMIRI
-		ptAniData.extForce = rawAniData.aniNodeExtForceArr[i];//AAMIRI
+		ptAniData.intercellForce = rawAniData.aniNodeInterCellForceArr[i];//AAMIRI
 		vtkData.pointsAniData.push_back(ptAniData);
 	}
 	for (uint i = 0; i < rawAniData.internalLinks.size(); i++) {
@@ -6354,23 +6323,42 @@ CellsStatsData SceCells::outputPolyCountData() {
             }
           }
         }
-        //Ali
-        cout << "I want to write data" << endl ;  
-       // ofstream  Stress_Strain_Single ; 
-        //Stress_Strain_Single.open("Stress_Strain_Single.txt"); 
-        //Stress_Strain_Single.close() ;
-       //Ali
-        result.MaxDistanceX=abs(centerCoordXHost[1]-centerCoordXHost[0]); //Ali
-        result.Cells_Extrem_Loc[0]=MinX; 
-        result.Cells_Extrem_Loc[1]=MaxX; 
-        result.Cells_Extrem_Loc[2]=MinY;
-        result.Cells_Extrem_Loc[3]=MaxY ;
-        result.F_Ext_Out=membrPara.F_Ext_Incline*curTime ; 
-        //if (dt==curTime) { 
-        //result.Init_Displace=MaxX-MinX ; 
-       // }
-       //Ali
-	return result;
+        	return result;
+}
+
+SingleCellData SceCells::OutputStressStrain() {
+
+	SingleCellData result ; 
+    vector <double> nodeExtForceXHost; 
+    vector <double> nodeExtForceYHost; 
+
+	nodeExtForceXHost.resize(totalNodeCountForActiveCells); 
+	nodeExtForceYHost.resize(totalNodeCountForActiveCells); 
+	thrust::copy ( nodes->getInfoVecs().nodeExtForceX.begin(),
+	               nodes->getInfoVecs().nodeExtForceX.begin()+ totalNodeCountForActiveCells,
+				   nodeExtForceXHost.begin()); 
+	thrust::copy ( nodes->getInfoVecs().nodeExtForceY.begin(),
+	               nodes->getInfoVecs().nodeExtForceY.begin()+ totalNodeCountForActiveCells,
+				   nodeExtForceYHost.begin()); 
+         // There is a compiling issue with using count_if on GPU. 
+    int numPositiveForces     =     count_if(nodeExtForceXHost.begin(),nodeExtForceXHost.end(),isGreaterZero() ) ;
+    double totalExtPositiveForce =accumulate(nodeExtForceXHost.begin(),nodeExtForceXHost.end(),0.0, SumGreaterZero() ) ;
+	cout << "number of positive external forces are=" <<numPositiveForces<<endl ; 
+	cout << "Total external forces are=" <<totalExtPositiveForce<<endl ; 
+
+
+	//thrust::device_vector<double>::iterator  
+	double MinX=*thrust::min_element(nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount,
+                                     nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
+    //thrust::device_vector<double>::iterator 
+	double MaxX=*thrust::max_element(nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount,
+                                     nodes->getInfoVecs().nodeLocX.begin()+ allocPara_m.bdryNodeCount+ totalNodeCountForActiveCells) ;
+
+    result.Cells_Extrem_Loc[0]=MinX; 
+    result.Cells_Extrem_Loc[1]=MaxX; 
+    result.F_Ext_Out=totalExtPositiveForce ; 
+    return result ; 
+
 }
 
 __device__ bool bigEnough(double& num) {

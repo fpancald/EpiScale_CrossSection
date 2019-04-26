@@ -142,7 +142,7 @@ EType SceECM:: ConvertStringToEType(string eNodeRead) {
 
 SceECM::SceECM() {
 
-	eCMRemoved=false ; 
+	eCMRemoved=true ; 
 }
 
 void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
@@ -361,7 +361,8 @@ void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountFo
 
 
 	if (eCMRemoved) {
-		PrintECMRemoved(curTime); 
+		PrintECMRemoved(curTime);
+		cout << "ECM is removed" << endl ; 
 		return ; 
 	}
 
