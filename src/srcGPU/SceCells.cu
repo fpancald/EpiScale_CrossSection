@@ -6,6 +6,7 @@
 	//5- two bool variables subcellularPolar and cellularPolar are given values inside the code. Although for now it is always true, it is better to be input parameters.
 	//6-the value of L0 in the function calAndAddMM_ContractAdh is directly inside the function. It should be an input of the code 
 //7- In the function calAndAddMM_ContractRepl, the values of Morse potential are equal to the values of sceIIDiv_M[i] in the input file. it should be an input of the code.
+//8- In the function calBendMulti_Mitotic the equlibrium angle for bending stifness is pi it should be an input for the code
 //Notes:
 	// 1- Currently the nucleus position is desired location not an enforced position. So, all the functions which used "nucleusLocX" & "nucleusLocY" are not active. Instead two variables "nucleusDesireLocX" & "nucleusDesireLocY" are active and internal avg position represent where the nuclei are located.
 
@@ -1559,7 +1560,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	}
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
-//	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
+	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
@@ -1582,7 +1583,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	applySceCellDisc_M();
 	if (eCMPointerCells->GetIfECMIsRemoved()==false) {
 		cout << " I am applying basal contraction" << endl ; 
-//		applyMembContraction() ;  // Ali
+		applyMembContraction() ;  // Ali
 	}
 
 	//	applyNucleusEffect() ;
@@ -1594,7 +1595,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 	applyMemForce_M(cellPolar,subCellPolar);
 	applyVolumeConstraint();  //Ali 
-	ApplyExtForces() ; // now for single cell stretching
+	//ApplyExtForces() ; // now for single cell stretching
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
 	std::cout.flush();
@@ -6383,7 +6384,8 @@ __device__ double calBendMulti(double& angle, uint activeMembrCt) {
 //AAMIRI
 __device__ double calBendMulti_Mitotic(double& angle, uint activeMembrCt, double& progress, double mitoticCri) {
 
-	double equAngle = PI - PI / activeMembrCt;
+	//double equAngle = PI - PI / activeMembrCt;
+	double equAngle = PI ; // - PI / activeMembrCt;
 	
 	if (progress <= mitoticCri){
 		return bendCoeff * (angle - equAngle);}

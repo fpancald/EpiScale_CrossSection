@@ -2,11 +2,11 @@
  /* CellInitHelper.cpp
  *
  *  Created on: Sep 22, 2013
- *      Author: wsun2
+ *      Authors: wsun2, Ali Nematbakhsh
  */
 // To Do List: 
 //1- The ID of cells to which asymmetric nuclear position is assigned, is given manually in generateInitIntnlNodes_M function. It should be updated if the number of cells are changed. It is better to be automatically detected.
-//2-The location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
+//2-In the function generateInitIntnlNodes_M, the location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
 #include <fstream>
 #include "CellInitHelper.h"
 //Ali 
@@ -80,101 +80,6 @@ CVector CellInitHelper::getPointGivenAngle(double currentAngle, double r,
 	double yPos = centerPos.y + r * sin(currentAngle);
 	return CVector(xPos, yPos, 0);
 }
-/*Beak simulation is not active and I want to remove the dependency of the code on CGAL
-
-RawDataInput CellInitHelper::generateRawInputWithProfile(
-		std::vector<CVector> &cellCenterPoss, bool isInnerBdryIncluded) {
-
-	RawDataInput rawData;
-	vector<CVector> outsideBdryNodePos;
-	vector<CVector> outsideProfileNodePos;
-	std::string bdryInputFileName = globalConfigVars.getConfigValue(
-			"Bdry_InputFileName").toString();
-
-	GEOMETRY::MeshGen meshGen;
-
-	double genBdryRatio =
-			globalConfigVars.getConfigValue("GenBdrySpacingRatio").toDouble();
-
-	GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DWithProfile(
-			bdryInputFileName, genBdryRatio, isInnerBdryIncluded);
-
-	std::vector<GEOMETRY::Point2D> bdryPoints = mesh.getFinalBdryPts();
-
-	std::vector<GEOMETRY::Point2D> profilePoints = mesh.getFinalProfilePts();
-
-	for (uint i = 0; i < bdryPoints.size(); i++) {
-		outsideBdryNodePos.push_back(
-				CVector(bdryPoints[i].getX(), bdryPoints[i].getY(), 0));
-	}
-
-	rawData.bdryNodes = outsideBdryNodePos;
-
-	for (uint i = 0; i < profilePoints.size(); i++) {
-		outsideProfileNodePos.push_back(
-				CVector(profilePoints[i].getX(), profilePoints[i].getY(), 0));
-	}
-
-	rawData.profileNodes = outsideProfileNodePos;
-
-	// calculate average length of profile links
-	double sumLength = 0;
-	for (uint i = 0; i < profilePoints.size() - 1; i++) {
-		CVector tmpVec = outsideProfileNodePos[i]
-				- outsideProfileNodePos[i + 1];
-		sumLength += tmpVec.getModul();
-	}
-
-	for (unsigned int i = 0; i < cellCenterPoss.size(); i++) {
-		CVector centerPos = cellCenterPoss[i];
-		centerPos.Print();
-		if (isMXType(centerPos)) {
-			rawData.MXCellCenters.push_back(centerPos);
-		} else {
-			rawData.FNMCellCenters.push_back(centerPos);
-		}
-
-	}
-
-	generateCellInitNodeInfo_v2(rawData.initCellNodePoss);
-
-	return rawData;
-}
-*/
-/* DiskMain and laser ablation projects are not active and I want to remove the dependency of the code on CGAL
-
-RawDataInput CellInitHelper::generateRawInput_simu(
-		std::vector<CVector>& cellCenterPoss) {
-	if (simuType == Beak) {
-		RawDataInput baseRawInput = generateRawInputWithProfile(cellCenterPoss,
-				false);
-
-		GEOMETRY::MeshGen meshGen;
-		double genBdryRatio = globalConfigVars.getConfigValue(
-				"GenBdrySpacingRatio").toDouble();
-		std::string bdryInputFileName = globalConfigVars.getConfigValue(
-				"Bdry_InputFileName").toString();
-		GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DWithProfile(
-				bdryInputFileName, genBdryRatio);
-		GEOMETRY::MeshInput input = meshGen.obtainMeshInput();
-		baseRawInput.cartilageData = meshGen.obtainCartilageData(mesh, input);
-
-		baseRawInput.isStab = false;
-		baseRawInput.simuType = simuType;
-		return baseRawInput;
-	} else if (simuType == Disc) {
-		RawDataInput rawInput;
-		initializeRawInput(rawInput, cellCenterPoss);
-		rawInput.isStab = false;
-		rawInput.simuType = simuType;
-		return rawInput;
-	} else {
-		throw SceException(
-				"Simulation Type is not defined when trying to generate raw input",
-				InvalidInput);
-	}
-}
-*/
 void CellInitHelper::transformRawCartData(CartilageRawData& cartRawData,
 		CartPara& cartPara, std::vector<CVector>& initNodePos) {
 	// step 1, switch tip node1 to pos 0
@@ -832,7 +737,7 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
 			"MaxMembrNodeCountPerCell").toInt();
 	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane_SingleCell2.txt");
+	inputc.open("./resources/coordinate_Membrane7.txt");
     //inputc.open(CellCentersFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully ";
@@ -840,7 +745,6 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 	else{
        cout << "failed opening membrane nodes coordinates ";
     }
-
 	int cellIDOld=-1;
 	int cellID ;
     CVector mCoordinate ;
@@ -987,11 +891,22 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes_M(CVector& center,
 			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
 	
 	double	noiseNucleusY ; 
-	if ( cellRank>1 && cellRank<63)
-		noiseNucleusY=getRandomNum(-0.75*initRadius,7.25*initRadius); 
+	if ( cellRank>1 && cellRank<63) {
+		double std=0.16 ; 
+		double mean=0.6 ;
+		double pouchCellH=25 ; 
+		double upperLimit=mean+std ; 
+		double lowerLimit=mean-std  ;
+		// generate random number in y direction respect to cell center (0.5*pouhCellH)
+		noiseNucleusY=getRandomNum( (upperLimit-0.5)*pouchCellH
+		                           , (0.5-lowerLimit)*pouchCellH ); 
+		//noiseNucleusY=getRandomNum(-0.75*initRadius,7.25*initRadius); 
+	}
 	else {
+
 		noiseNucleusY=getRandomNum(-0.25*initRadius,0.25*initRadius);  
 	}
+
 	center.y=center.y+ noiseNucleusY ; 
 
 

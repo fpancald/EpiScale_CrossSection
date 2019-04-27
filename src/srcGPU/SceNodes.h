@@ -827,11 +827,12 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 		double growProgNeigh = _nodeGrowProAddr[adhIndx];
 		//bool adhSkipped = false;	
 		double alpha = getMitoticAdhCoef(growProg, growProgNeigh);//to adjust the mitotic values of stiffness
-		double beta=1 ; 
+		double beta=1 ; // every other pair is one for apical is different. 
 	   	if (nodeType==apical1) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
-			beta=0.0* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
-		}
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			beta=0.1;   
+			}
 		/*int maxNodePerCell=680  ; 
 		int cellRank=nodeIndx/maxNodePerCell ;
 		int nodeRank=nodeIndx%maxNodePerCell ;

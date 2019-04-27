@@ -142,7 +142,7 @@ EType SceECM:: ConvertStringToEType(string eNodeRead) {
 
 SceECM::SceECM() {
 
-	eCMRemoved=true ; 
+	eCMRemoved=false ; 
 }
 
 void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {

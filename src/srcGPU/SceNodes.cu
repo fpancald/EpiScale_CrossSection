@@ -2747,7 +2747,6 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeF_MM_C_Y.resize(maxTotalNodeCount,0.0);// Ali
 	infoVecs.nodeContractEnergyT.resize(maxTotalNodeCount,0.0);// Ali
 
-    cout << " I am here 1  " << maxNumCells << endl ;  
 	infoVecs.nodeF_MI_M_x.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_y.resize(maxTotalNodeCount);  //Ali
 	infoVecs.nodeF_MI_M_T.resize(maxTotalNodeCount);  //Ali
@@ -2814,7 +2813,6 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.memNodeType1Host.resize(maxTotalNodeCount, notAssigned1); //Ali 
 		infoVecs.isSubApicalJunction.resize(maxTotalNodeCount, false); //Ali 
 		infoVecs.isSubApicalJunctionHost.resize(maxTotalNodeCount, false); //Ali 
-    	cout << " I am here2  " << maxNumCells << endl ;  
 
 		auxVecs.bucketKeys.resize(maxTotalNodeCount);
 		auxVecs.bucketValues.resize(maxTotalNodeCount);
@@ -2839,7 +2837,6 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.nodeCellRankBehind[0]=currentActiveCellCount-1 ; 
 		infoVecs.nodeCellRankFront[currentActiveCellCount-1]=0 ;
 
-    	cout << " I am here 3   " << maxNumCells << endl ;  
 
 	}
 }
