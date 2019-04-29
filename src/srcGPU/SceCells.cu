@@ -298,8 +298,9 @@ void MembrPara::initFromConfig() {
 
 SceCells::SceCells() {
 	//curTime = 0 + 55800.0;//AAMIRI // Ali I comment that out safely on 04/04/2017
-        std ::cout << "I am in SceCells constructor with zero element "<<InitTimeStage<<std::endl ;
-
+    std ::cout << "I am in SceCells constructor with zero element "<<InitTimeStage<<std::endl ;
+	isBasalActinPresent=true ;
+	cout <<" Basal actinomyosin is active on pouch cells" << endl ; 
     addNode=true ;
 	cout << " addNode boolean is initialized " <<addNode <<endl ; 
 }
@@ -1519,6 +1520,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	
 	if (curTime>50000) {
 		eCMPointerCells->SetIfECMIsRemoved(true) ; 
+		isBasalActinPresent=false ; 
 	}
 
  	if (curTime==InitTimeStage) {
@@ -1581,7 +1583,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 2 ***" << endl;
 	std::cout.flush();
 	applySceCellDisc_M();
-	if (eCMPointerCells->GetIfECMIsRemoved()==false) {
+	if (isBasalActinPresent) {
 		cout << " I am applying basal contraction" << endl ; 
 		applyMembContraction() ;  // Ali
 	}

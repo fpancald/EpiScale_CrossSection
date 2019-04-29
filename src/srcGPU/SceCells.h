@@ -3387,12 +3387,13 @@ class SceCells {
 	thrust::constant_iterator<double> initGrowthProgress;
 
 	uint totalNodeCountForActiveCells;
-
+	
 	double dt;
-		bool addNode  ; 
-        double Damp_Coef ;   //Ali
-        double InitTimeStage ;  //A & A 
-		int freqPlotData ;
+	bool isBasalActinPresent ; 
+	bool addNode  ; 
+    double Damp_Coef ;   //Ali
+    double InitTimeStage ;  //A & A 
+	int freqPlotData ;
 	double centerShiftRatio;
 	double shrinkRatio;
 	double memNewSpacing;
