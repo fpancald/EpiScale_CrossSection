@@ -807,12 +807,13 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	double* _nodeLocYArrAddr;
 	double* _nodeGrowProAddr;
 	int* _nodeAdhAddr ;
-	double * _nodeDppAddr ; 
+	double * _nodeDppAddr ;
+	bool _isApicalAdhPresent ; 
 // comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
-	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr , double * nodeDppAddr  ) :
+	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr , double * nodeDppAddr, bool isApicalAdhPresent) :
 			_nodeLocXArrAddr(nodeLocXArrAddr), _nodeLocYArrAddr(nodeLocYArrAddr), _nodeGrowProAddr(nodeGrowProAddr), _nodeAdhAddr(nodeAdhAddr),
-		    _nodeDppAddr(nodeDppAddr) 	{
+		    _nodeDppAddr(nodeDppAddr), _isApicalAdhPresent(isApicalAdhPresent) 	{
 	}
 	__device__
 	CVec2 operator()(const BoolIUiDDT& adhInput) const {
@@ -828,11 +829,17 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 		//bool adhSkipped = false;	
 		double alpha = getMitoticAdhCoef(growProg, growProgNeigh);//to adjust the mitotic values of stiffness
 		double beta=1 ; // every other pair is one for apical is different. 
-	   	if (nodeType==apical1) {
+	   	if (nodeType==apical1 && _isApicalAdhPresent) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			beta=0.1;   
-			}
+		}
+		if (nodeType==apical1 && _isApicalAdhPresent==false) {
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			beta=0.0;   
+		}
+
 		/*int maxNodePerCell=680  ; 
 		int cellRank=nodeIndx/maxNodePerCell ;
 		int nodeRank=nodeIndx%maxNodePerCell ;
@@ -1142,7 +1149,8 @@ class SceCells ;   // forward declaration to be used in the class SceNodes
 class SceNodes {
 //	SceCells* cells ;
 	SceCells * cellsSceNodes ; 
-	bool adhNotSet ; 
+	bool adhNotSet ;
+	bool isApicalAdhPresent ; 
 	SceDomainPara domainPara;
 	SceMechPara mechPara;
 	NodeAllocPara allocPara;
@@ -1409,6 +1417,9 @@ public:
 
 	void setActiveCellCount(uint activeCellCount) {
 		allocPara_M.currentActiveCellCount = activeCellCount;
+	}
+	void SetApicalAdhPresence( bool isApicalAdhPresent) {  //Ali
+		this->isApicalAdhPresent=isApicalAdhPresent ; 
 	}
 };
 

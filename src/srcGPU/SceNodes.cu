@@ -86,6 +86,8 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 
 SceNodes::SceNodes() {
 	readDomainPara();
+	isApicalAdhPresent=true ;
+	cout<< " I am inside SceNodes constructor with zero elements" << endl ; 
 }
 
 int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
@@ -2998,7 +3000,7 @@ void SceNodes::applyMembrAdh_M() {
 			thrust::make_zip_iterator(
 					thrust::make_tuple(infoVecs.nodeVelX.begin(),
 							infoVecs.nodeVelY.begin())),
-			ApplyAdh(nodeLocXAddress, nodeLocYAddress, nodeGrowProAddr,nodeAdhAddr,nodedppLevelAddr));
+			ApplyAdh(nodeLocXAddress, nodeLocYAddress, nodeGrowProAddr,nodeAdhAddr,nodedppLevelAddr,isApicalAdhPresent));
 		//for (int i=0 ; i<140 ; i++){
 		//	cout <<"adhesion index for "<<i << " is "<<infoVecs.nodeAdhereIndex[i]<< endl ; 
 //		}
