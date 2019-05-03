@@ -660,6 +660,21 @@ struct AniRawData {
 	std::vector<BondInfo> bondsArr;
 };
 
+struct AniResumeData {
+	std::vector<CVector> NodePosArr;
+	std::vector<MembraneType1> NodeType;//AAMIRI // AliE
+	std::vector<int>  NodeCellRank; //AliE
+	std::vector<ECellType>  NodeCellType; //AliE
+};
+
+struct WriteResumeData {
+
+	void writeForMembAndIntnl(AniResumeData, AniResumeData, std::string); 
+	void writeForECM(AniResumeData, std::string) ; 
+
+} ; 
+
+
 struct VecVal {
 	CVector vec;
 	double val;

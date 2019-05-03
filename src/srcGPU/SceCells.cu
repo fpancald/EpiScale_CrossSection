@@ -4642,6 +4642,87 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	return rawAniData;
 }
 
+vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
+	
+	//Copy from GPU to CPU node properties
+	uint activeCellCount = allocPara_m.currentActiveCellCount;
+	uint maxNodePerCell = allocPara_m.maxAllNodePerCell;
+	uint maxMemNodePerCell = allocPara_m.maxMembrNodePerCell;
+	
+	uint maxActiveNode = activeCellCount * maxNodePerCell;
+
+	thrust::host_vector<double> hostTmpNodeLocX(maxActiveNode);
+	thrust::host_vector<double> hostTmpNodeLocY(maxActiveNode);
+	thrust::host_vector<bool>   hostTmpNodeIsActive(maxActiveNode);
+	thrust::host_vector<MembraneType1>   hostTmpMemNodeType(maxActiveNode);
+
+	thrust::copy(
+			thrust::make_zip_iterator(
+					thrust::make_tuple(   
+							nodes->getInfoVecs().nodeIsActive.begin(),
+									   nodes->getInfoVecs().nodeLocX.begin(),
+									   nodes->getInfoVecs().nodeLocY.begin(),
+									   nodes->getInfoVecs().memNodeType1.begin())),
+			thrust::make_zip_iterator(
+					thrust::make_tuple(
+								       nodes->getInfoVecs().nodeIsActive.begin(),
+								       nodes->getInfoVecs().nodeLocX.begin(),
+									   nodes->getInfoVecs().nodeLocY.begin(),
+									   nodes->getInfoVecs().memNodeType1.begin()))
+					+ maxActiveNode,
+			thrust::make_zip_iterator(
+					thrust::make_tuple(hostTmpNodeIsActive.begin(),
+									   hostTmpNodeLocX.begin(),
+							           hostTmpNodeLocY.begin(),
+									   hostTmpMemNodeType.begin())));  
+
+	// Copy from GPU to CPU cell properties
+	thrust::host_vector<uint> 		hostTmpActiveMemNodeCounts   =cellInfoVecs.activeMembrNodeCounts;
+//  thrust::host_vector<uint> 		hostTmpActiveIntnlNodeCounts =cellInfoVecs.activeIntnlNodeCounts;
+	thrust::host_vector<ECellType>	hostTmpCellType				 =cellInfoVecs.eCellTypeV2 ; 
+
+	// Write it nicely in CPU vectorial form that can be easily wirtten in an output file.
+	vector <AniResumeData> aniResumeDatas ; 
+	AniResumeData membraneResumeData;
+	AniResumeData internalResumeData;
+	
+	CVector tmpPos;
+	uint index1;
+
+    //loop on membrane nodes
+	for (uint i = 0; i < activeCellCount; i++) {
+		for (uint j = 0; j < hostTmpActiveMemNodeCounts[i]; j++) {
+			index1 = i * maxNodePerCell + j;
+			if ( hostTmpNodeIsActive[index1]==true) {
+				membraneResumeData.NodeCellRank.push_back(i);
+				membraneResumeData.NodeCellType.push_back(hostTmpCellType[i]);
+				membraneResumeData.NodeType.push_back(hostTmpMemNodeType[index1]);
+
+				tmpPos=CVector(hostTmpNodeLocX[index1],hostTmpNodeLocY[index1],0)  ; 
+				membraneResumeData.NodePosArr.push_back(tmpPos) ;  
+			}
+		}
+	}
+	aniResumeDatas.push_back(membraneResumeData) ; 
+
+    //loop on internal nodes
+	for (uint i=0; i<activeCellCount; i++){
+		for (uint j = maxMemNodePerCell; j < maxNodePerCell; j++) {
+			index1 = i * maxNodePerCell + j;
+			if ( hostTmpNodeIsActive[index1]==true ) {
+				internalResumeData.NodeCellRank.push_back(i);
+				
+				tmpPos=CVector(hostTmpNodeLocX[index1],hostTmpNodeLocY[index1],0)  ; 
+				internalResumeData.NodePosArr.push_back(tmpPos) ;  
+			}
+		}
+	}
+	aniResumeDatas.push_back(internalResumeData) ; 
+
+   return aniResumeDatas;
+}
+
+
 void SceCells::copyInitActiveNodeCount_M(
 		std::vector<uint>& initMembrActiveNodeCounts,
 		std::vector<uint>& initIntnlActiveNodeCounts,

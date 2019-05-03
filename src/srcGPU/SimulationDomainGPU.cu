@@ -269,6 +269,17 @@ void SimulationDomainGPU::outputVtkColorByCell_polySide(
 	outputVtkGivenCellColor(scriptNameBase, rank, aniCri, polySideColorVec,cellsPerimeter);
         cellsPerimeter.clear(); 
 }
+void SimulationDomainGPU::outputResumeData(std::string resumeNameBase, int frame) {
+	WriteResumeData writeResumeData ; 
+    std::cout  <<"I am writing Resume Data file" <<std:: endl; 
+	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ; 
+	//0 is for membrane nodes and 1 is for internal node
+	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), resumeNameBase) ;   
+	//2 is for ECM nodes 
+	//writeResumeData.writeForECM(aniResumeData) ; 
+
+}
+
 std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<double> & cellsPerimeter) {
 	CellsStatsData cellStatsVec = cells.outputPolyCountData();
 	

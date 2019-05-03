@@ -41,6 +41,7 @@ MembraneType1 StringToMembraneType1Convertor (const string & mTypeString) ;// Al
 struct SimulationGlobalParameter {
 public:
 	std::string animationNameBase;
+	std::string ResumeNameBase;
         double InitTimeStage ; 
 	double totalSimuTime;
 	double dt;

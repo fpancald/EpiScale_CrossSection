@@ -3740,6 +3740,8 @@ public:
 	}
 
 	AniRawData obtainAniRawData(AnimationCriteria& aniCri);
+	
+	std::vector<AniResumeData> obtainResumeData(); //Ali
 
 	AniRawData obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 			AnimationCriteria& aniCri,vector<double>& cellsPerimeter);

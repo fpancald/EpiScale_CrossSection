@@ -110,6 +110,8 @@ void inputInitialData::addNewPoints(std::vector<SceInputPoint>& newPoints) {
 	}
 }
 
+
+
 bool AnimationCriteria::isPairQualify(uint seq1, uint seq2, double x1,
 		double y1, double z1, SceNodeType t1, uint r1, double x2, double y2,
 		double z2, SceNodeType t2, uint r2) {
@@ -255,6 +257,39 @@ void VtkAnimationData::outputVtkAni(std::string scriptNameBase, int rank) {
 	fs.close();
 }
 
+
+void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData intnlData, std::string resumeNameBase) {
+
+	std::string resumeFileNameM = resumeNameBase + "Membrane.txt";
+	std::cout << "start to create resume file for membrane nodes " << resumeFileNameM << std::endl;
+	std::ofstream fsM;
+	fsM.open(resumeFileNameM.c_str());
+	fsM << fixed << setprecision(4) << endl ; 
+	for (int i=0 ; i< membData.NodePosArr.size() ; i++) {
+		 fsM<<membData.NodeCellRank.at(i)     <<"	"<< 
+			  membData.NodePosArr.at(i).GetX() <<"	"<<
+			  membData.NodePosArr.at(i).GetY() <<"	"<<
+			  0.0			     			   <<"	"<<
+			  membData.NodeCellType.at(i)      <<endl;
+	}
+	fsM.close() ; 
+
+	std::string resumeFileNameI = resumeNameBase + "Internal.txt";
+	std::cout << "start to create resume file for internal nodes " << resumeFileNameI << std::endl;
+	std::ofstream fsI;
+	fsI.open(resumeFileNameI.c_str());
+	fsI << fixed << setprecision(4) << endl ; 
+	for (int i=0 ; i< intnlData.NodePosArr.size() ; i++) {
+		 fsI<<intnlData.NodeCellRank.at(i)      <<"	"<< 
+			  intnlData.NodePosArr.at(i).GetX() <<"	"<<
+			  intnlData.NodePosArr.at(i).GetY() <<"	"<<
+			  0.0								<<"	"<<endl ; 
+	}
+	fsI.close() ; 
+	//exit (EXIT_FAILURE) ; 
+
+
+}
 std::vector<double> getArrayXComp(std::vector<CVector>& nodePosVec) {
 	std::vector<double> result;
 	for (uint i = 0; i < nodePosVec.size(); i++) {
