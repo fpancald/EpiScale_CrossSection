@@ -923,4 +923,30 @@ void  SceECM:: PrintECMRemoved(double curTime) {
 
 
 
+AniResumeData  SceECM:: obtainResumeData() {
+	AniResumeData aniResumeData ;
+	thrust:: host_vector<double> hostTmpLocX; 
+	thrust:: host_vector<double> hostTmpLocY; 
+	thrust:: host_vector<EType>  hostTmpType; 
+    
+	hostTmpLocX.resize(numNodesECM) ; 
+	hostTmpLocY.resize(numNodesECM) ; 
+	hostTmpType.resize(numNodesECM) ; 
+	cout << " I am in obtainResumeData function" << endl ; 
+	thrust::copy ( 
+		thrust::make_zip_iterator(
+			thrust::make_tuple(nodeECMLocX.begin(),nodeECMLocY.begin(),peripORexcm.begin())),
+		thrust::make_zip_iterator(
+			thrust::make_tuple(nodeECMLocX.begin(),nodeECMLocY.begin(),peripORexcm.begin()))+numNodesECM,
+		thrust::make_zip_iterator(
+			thrust::make_tuple(hostTmpLocX.begin(),hostTmpLocY.begin(),hostTmpType.begin()))); 
 
+	cout << " I start passing to regular vector variables" << endl ; 
+	CVector tmp; 
+	for( int i=0  ; i<numNodesECM ; i++) {
+		tmp=CVector (hostTmpLocX[i], hostTmpLocY[i], 0.0) ; 
+		aniResumeData.nodePosArr.push_back(tmp) ; 
+		aniResumeData.nodeECMType.push_back(hostTmpType[i]) ; 
+	}
+	return aniResumeData ; 
+}

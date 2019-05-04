@@ -1,7 +1,7 @@
 /**
  * @file SimulationDomainGPU.cu
  * @brief this file contains domain level logic.
- * @author Wenzhao Sun wsun2@nd.edu
+ * @author Wenzhao Sun wsun2@nd.edu Ali Nematbakhsh nematba@ucr.edu
  * @bug no know bugs
  */
 
@@ -271,13 +271,16 @@ void SimulationDomainGPU::outputVtkColorByCell_polySide(
 }
 void SimulationDomainGPU::outputResumeData(std::string resumeNameBase, int frame) {
 	WriteResumeData writeResumeData ; 
-    std::cout  <<"I am writing Resume Data file" <<std:: endl; 
-	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ; 
-	//0 is for membrane nodes and 1 is for internal node
-	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), resumeNameBase) ;   
-	//2 is for ECM nodes 
-	//writeResumeData.writeForECM(aniResumeData) ; 
+    std::cout  <<"I am writing Resume Data file" <<std:: endl;
 
+	//Gather information
+	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ;
+	aniResumeDatas.push_back                    (eCM.obtainResumeData()); 
+	//Write the gathered information 
+	//0 is for membrane nodes and 1 is for internal node, 2 for cells, 	3 is for ECM nodes 
+	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), resumeNameBase) ;  
+	writeResumeData.writeForCells       (aniResumeDatas.at(2)                      ,resumeNameBase) ; 
+	writeResumeData.writeForECM         (aniResumeDatas.at(3)                      ,resumeNameBase) ; 
 }
 
 std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<double> & cellsPerimeter) {

@@ -4653,38 +4653,44 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 
 	thrust::host_vector<double> hostTmpNodeLocX(maxActiveNode);
 	thrust::host_vector<double> hostTmpNodeLocY(maxActiveNode);
+	thrust::host_vector<double> hostTmpDppLevel(maxActiveNode);
 	thrust::host_vector<bool>   hostTmpNodeIsActive(maxActiveNode);
 	thrust::host_vector<MembraneType1>   hostTmpMemNodeType(maxActiveNode);
 
 	thrust::copy(
 			thrust::make_zip_iterator(
 					thrust::make_tuple(   
-							nodes->getInfoVecs().nodeIsActive.begin(),
+									   nodes->getInfoVecs().dppLevel.begin(),
+									   nodes->getInfoVecs().nodeIsActive.begin(),
 									   nodes->getInfoVecs().nodeLocX.begin(),
 									   nodes->getInfoVecs().nodeLocY.begin(),
 									   nodes->getInfoVecs().memNodeType1.begin())),
 			thrust::make_zip_iterator(
 					thrust::make_tuple(
+								       nodes->getInfoVecs().dppLevel.begin(),
 								       nodes->getInfoVecs().nodeIsActive.begin(),
 								       nodes->getInfoVecs().nodeLocX.begin(),
 									   nodes->getInfoVecs().nodeLocY.begin(),
 									   nodes->getInfoVecs().memNodeType1.begin()))
 					+ maxActiveNode,
 			thrust::make_zip_iterator(
-					thrust::make_tuple(hostTmpNodeIsActive.begin(),
+					thrust::make_tuple(hostTmpDppLevel.begin(),
+									   hostTmpNodeIsActive.begin(),
 									   hostTmpNodeLocX.begin(),
 							           hostTmpNodeLocY.begin(),
 									   hostTmpMemNodeType.begin())));  
 
-	// Copy from GPU to CPU cell properties
+	// Copy from GPU to CPU cell properties. Since cell vectors are small copy with thrust function seems unnecessary
 	thrust::host_vector<uint> 		hostTmpActiveMemNodeCounts   =cellInfoVecs.activeMembrNodeCounts;
-//  thrust::host_vector<uint> 		hostTmpActiveIntnlNodeCounts =cellInfoVecs.activeIntnlNodeCounts;
-	thrust::host_vector<ECellType>	hostTmpCellType				 =cellInfoVecs.eCellTypeV2 ; 
+	thrust::host_vector<ECellType>	hostTmpCellType				 =cellInfoVecs.eCellTypeV2  ; 
+	thrust::host_vector<double>hostTmpCellCntrX                  =cellInfoVecs.centerCoordX ; 
+	thrust::host_vector<double>hostTmpCellCntrY 			     =cellInfoVecs.centerCoordY ;
 
 	// Write it nicely in CPU vectorial form that can be easily wirtten in an output file.
 	vector <AniResumeData> aniResumeDatas ; 
 	AniResumeData membraneResumeData;
 	AniResumeData internalResumeData;
+	AniResumeData cellResumeData;
 	
 	CVector tmpPos;
 	uint index1;
@@ -4694,12 +4700,12 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 		for (uint j = 0; j < hostTmpActiveMemNodeCounts[i]; j++) {
 			index1 = i * maxNodePerCell + j;
 			if ( hostTmpNodeIsActive[index1]==true) {
-				membraneResumeData.NodeCellRank.push_back(i);
-				membraneResumeData.NodeCellType.push_back(hostTmpCellType[i]);
-				membraneResumeData.NodeType.push_back(hostTmpMemNodeType[index1]);
-
+				membraneResumeData.cellRank.push_back(i);  // it is cell rank
+				membraneResumeData.nodeType.push_back(hostTmpMemNodeType[index1]);
+				membraneResumeData.signalLevel.push_back(hostTmpDppLevel[index1]); 
+				
 				tmpPos=CVector(hostTmpNodeLocX[index1],hostTmpNodeLocY[index1],0)  ; 
-				membraneResumeData.NodePosArr.push_back(tmpPos) ;  
+				membraneResumeData.nodePosArr.push_back(tmpPos) ;  
 			}
 		}
 	}
@@ -4710,15 +4716,24 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 		for (uint j = maxMemNodePerCell; j < maxNodePerCell; j++) {
 			index1 = i * maxNodePerCell + j;
 			if ( hostTmpNodeIsActive[index1]==true ) {
-				internalResumeData.NodeCellRank.push_back(i);
+				internalResumeData.cellRank.push_back(i);  // it is cell rank
 				
 				tmpPos=CVector(hostTmpNodeLocX[index1],hostTmpNodeLocY[index1],0)  ; 
-				internalResumeData.NodePosArr.push_back(tmpPos) ;  
+				internalResumeData.nodePosArr.push_back(tmpPos) ;  
 			}
 		}
 	}
 	aniResumeDatas.push_back(internalResumeData) ; 
+	// loop for cells 
+	for (uint i=0; i<activeCellCount; i++){
+		cellResumeData.cellRank.push_back(i);
+		cellResumeData.cellType.push_back(hostTmpCellType[i]);
+		
+		tmpPos=CVector(hostTmpCellCntrX[i],hostTmpCellCntrY[i],0)  ; 
+		cellResumeData.nodePosArr.push_back(tmpPos) ;  
 
+	}
+	aniResumeDatas.push_back(cellResumeData) ; 
    return aniResumeDatas;
 }
 

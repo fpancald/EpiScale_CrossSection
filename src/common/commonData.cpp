@@ -265,12 +265,12 @@ void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData
 	std::ofstream fsM;
 	fsM.open(resumeFileNameM.c_str());
 	fsM << fixed << setprecision(4) << endl ; 
-	for (int i=0 ; i< membData.NodePosArr.size() ; i++) {
-		 fsM<<membData.NodeCellRank.at(i)     <<"	"<< 
-			  membData.NodePosArr.at(i).GetX() <<"	"<<
-			  membData.NodePosArr.at(i).GetY() <<"	"<<
-			  0.0			     			   <<"	"<<
-			  membData.NodeCellType.at(i)      <<endl;
+	for (int i=0 ; i< membData.nodePosArr.size() ; i++) {
+		 fsM<<membData.cellRank.at(i)     <<"	"<< 
+			  membData.nodePosArr.at(i).GetX() <<"	"<<
+			  membData.nodePosArr.at(i).GetY() <<"	"<<
+			  membData.signalLevel.at(i)	   <<"	"<<
+			  printNodeEnum(membData.nodeType.at(i))      <<endl;
 	}
 	fsM.close() ; 
 
@@ -279,17 +279,90 @@ void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData
 	std::ofstream fsI;
 	fsI.open(resumeFileNameI.c_str());
 	fsI << fixed << setprecision(4) << endl ; 
-	for (int i=0 ; i< intnlData.NodePosArr.size() ; i++) {
-		 fsI<<intnlData.NodeCellRank.at(i)      <<"	"<< 
-			  intnlData.NodePosArr.at(i).GetX() <<"	"<<
-			  intnlData.NodePosArr.at(i).GetY() <<"	"<<
+	for (int i=0 ; i< intnlData.nodePosArr.size() ; i++) {
+		 fsI<<intnlData.cellRank.at(i) 		    <<"	"<< 
+			  intnlData.nodePosArr.at(i).GetX() <<"	"<<
+			  intnlData.nodePosArr.at(i).GetY() <<"	"<<
 			  0.0								<<"	"<<endl ; 
 	}
 	fsI.close() ; 
-	//exit (EXIT_FAILURE) ; 
-
-
 }
+
+void WriteResumeData::writeForECM(AniResumeData eCMData, std::string resumeNameBase) {
+	std::string resumeFileName = resumeNameBase + "ECM.txt";
+	std::cout << "start to create resume file for ECM nodes " << resumeFileName << std::endl;
+	std::ofstream fs;
+	fs.open(resumeFileName.c_str());
+    fs<< eCMData.nodePosArr.size() ;  	
+	fs << fixed << setprecision(4) << endl ;
+	for (int i=0 ; i< eCMData.nodePosArr.size() ; i++) {
+		fs <<eCMData.nodePosArr.at(i).GetX() <<"	"<<
+			 eCMData.nodePosArr.at(i).GetY() <<"	"<<
+			 printECMEnum(eCMData.nodeECMType.at(i))      <<endl;
+	}
+	fs.close() ; 
+}
+
+void WriteResumeData::writeForCells(AniResumeData cellsData, std::string resumeNameBase) {
+	std::string resumeFileName = resumeNameBase + "Cell.txt";
+	std::cout << "start to create resume file for cells" << resumeFileName << std::endl;
+	std::ofstream fs;
+	fs.open(resumeFileName.c_str());
+    fs<< cellsData.nodePosArr.size() ;  	
+	fs << fixed << setprecision(4) << endl ;
+	for (int i=0 ; i< cellsData.nodePosArr.size() ; i++) {
+		fs<<cellsData.nodePosArr.at(i).GetX() <<"	"<<
+			cellsData.nodePosArr.at(i).GetY() <<"	"<<
+			0.0								  <<"	"<<
+			 printCellsEnum(cellsData.cellType.at(i))      <<endl;
+	}
+	fs.close() ; 
+}
+
+
+std:: string WriteResumeData::printECMEnum( EType eCMType) {
+	switch (eCMType) {
+		case perip:
+			return "perip" ; 
+		case excm:
+			return "excm" ;
+		case bc2:
+			return "bc2";
+	}
+}
+
+std:: string WriteResumeData::printNodeEnum( MembraneType1  nodeType) {
+	switch (nodeType) {
+		case lateralB:
+			return "lateralB" ; 
+		case lateralA:
+			return "lateralA" ;
+		case apical1:
+			return "apical1";
+		case basal1: 
+			return "basal1" ; 
+		case notAssigned1:
+			return "notAssigned1" ; 
+	}
+}
+
+std:: string WriteResumeData::printCellsEnum( ECellType  cellType) {
+	switch (cellType) {
+		case notActive:
+			return "notActive" ; 
+		case lateralA:
+			return "pouch" ;
+		case apical1:
+			return "peri";
+		case basal1: 
+			return "bc" ; 
+	}
+}
+
+
+
+
+
 std::vector<double> getArrayXComp(std::vector<CVector>& nodePosVec) {
 	std::vector<double> result;
 	for (uint i = 0; i < nodePosVec.size(); i++) {

@@ -32,7 +32,7 @@ class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
 
-bool   eCMRemoved ; 
+	bool   eCMRemoved ; 
 public:
 	SceECM() ; 
 	void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
@@ -46,7 +46,7 @@ public:
 
 	bool GetIfECMIsRemoved() 
 		const { return eCMRemoved  ;}  
-
+	AniResumeData obtainResumeData(); 
 
     void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
 	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 

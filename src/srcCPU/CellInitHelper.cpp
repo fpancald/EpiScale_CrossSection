@@ -8,6 +8,7 @@
 //1- The ID of cells to which asymmetric nuclear position is assigned, is given manually in generateInitIntnlNodes_M function. It should be updated if the number of cells are changed. It is better to be automatically detected.
 //2-In the function generateInitIntnlNodes_M, the location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
 #include <fstream>
+#include <stdexcept>
 #include "CellInitHelper.h"
 //Ali 
 ForReadingData_M2 ReadFile_M2(std::string CellCentersFileName) {
@@ -17,9 +18,6 @@ ForReadingData_M2 ReadFile_M2(std::string CellCentersFileName) {
           ForReadingData_M2  ForReadingData1; 
           double TempPos_X,TempPos_Y,TempPos_Z ; 
 		  string eCellTypeString ; 
-          //inputc.open("./resources/CellCenters_General.txt");
-          //inputc.open("./resources/CellCenters_General.txt");
-//          inputc.open("./resources/CellCenters2.txt");
           inputc.open(CellCentersFileName.c_str());
 
           if (inputc.is_open())
@@ -714,21 +712,42 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
 		vector<vector<CVector> >& initIntnlPos, 
 		vector<vector<double> >& mDppV2, 
-		vector<vector<MembraneType1> >& mTypeV2 ) {
+		vector<vector<MembraneType1> >& mTypeV2 )
+{
+	
 	assert(initCenters.size() == initGrowProg.size());
 	vector<CVector> initMembrPosTmp;
 	vector<CVector> initIntnlPosTmp;
 	vector<double> mDppVTmp;  
 	vector<MembraneType1> mTypeVTmp;  
-	for (uint i = 0; i < initCenters.size(); i++) {
-	//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
-	//			initGrowProg[i]);
-	//	initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
-	//			initGrowProg[i]);
-		initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
+
+
+	uint resumeSimulation = globalConfigVars.getConfigValue(
+			"ResumeSimulation").toInt();
+	
+	if (resumeSimulation==0) {
+		for (uint i = 0; i < initCenters.size(); i++) {
+			//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
+			//			initGrowProg[i]);
+			//	initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
+			//			initGrowProg[i]);
+			initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
 				initGrowProg[i],int(i)); //Ali
-	//	initMembrPos.push_back(initMembrPosTmp);
-		initIntnlPos.push_back(initIntnlPosTmp);
+			//	initMembrPos.push_back(initMembrPosTmp);
+			initIntnlPos.push_back(initIntnlPosTmp);
+		}
+	}
+	else if (resumeSimulation==1) {
+		for (uint i = 0; i < initCenters.size(); i++) {
+			initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
+				initGrowProg[i],int(i)); //Ali
+			initIntnlPos.push_back(initIntnlPosTmp);
+		}
+		cout<< " The simulation is in Resume mode" << endl ; 
+	}
+	else {
+		throw std::invalid_argument(" ResumeSimulation in the input file must be either 1 or 0"); 
+
 	}
 
 	uint initMembrNodeCount = globalConfigVars.getConfigValue(
@@ -812,7 +831,7 @@ vector<CVector> CellInitHelper::generateInitCellNodes() {
 	return attemptedPoss;
 }
 
-//Active function
+//Not Active function
 vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 		double initProg) {
 	bool isSuccess = false;

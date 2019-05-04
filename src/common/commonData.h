@@ -661,16 +661,23 @@ struct AniRawData {
 };
 
 struct AniResumeData {
-	std::vector<CVector> NodePosArr;
-	std::vector<MembraneType1> NodeType;//AAMIRI // AliE
-	std::vector<int>  NodeCellRank; //AliE
-	std::vector<ECellType>  NodeCellType; //AliE
+	std::vector<CVector> nodePosArr; //general resume data. It can be node, cell, or ECM
+	std::vector<int>     cellRank; 		 //It is cell rank with the size of number of cells, internal nodes, or membrane nodes
+	std::vector<double>  signalLevel; //general resume data. It can be node, cell, or ECM
+
+	std::vector<MembraneType1> nodeType;// for membrane and internal nodes resume data
+	std::vector<EType>  nodeECMType; 	// for ECM resume data
+	std::vector<ECellType>  cellType;   // for cell resume data
 };
 
 struct WriteResumeData {
 
 	void writeForMembAndIntnl(AniResumeData, AniResumeData, std::string); 
-	void writeForECM(AniResumeData, std::string) ; 
+	void writeForECM(AniResumeData, std::string) ;
+	void writeForCells(AniResumeData, std::string) ;
+	std::string printNodeEnum(MembraneType1); 
+	std::string printECMEnum(EType); 
+	std::string printCellsEnum(ECellType); 
 
 } ; 
 
