@@ -300,6 +300,7 @@ SceCells::SceCells() {
 	//curTime = 0 + 55800.0;//AAMIRI // Ali I comment that out safely on 04/04/2017
     std ::cout << "I am in SceCells constructor with zero element "<<InitTimeStage<<std::endl ;
 	isBasalActinPresent=true ;
+	isCellGrowSet=false ;
 	cout <<" Basal actinomyosin is active on pouch cells" << endl ; 
     addNode=true ;
 	cout << " addNode boolean is initialized " <<addNode <<endl ; 
@@ -1504,10 +1505,9 @@ void SceCells::runAllCellLevelLogicsDisc(double dt) {
 //Ali void SceCells::runAllCellLogicsDisc_M(double dt) {
 void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double InitTimeStage) {   //Ali
 	std::cout << "     *** 1 ***" << endl;
-	std::cout.flush();
 	this->dt = dt;
-        this->Damp_Coef=Damp_Coef ; //Ali 
-        this->InitTimeStage=InitTimeStage   ;  //A & A 
+    this->Damp_Coef=Damp_Coef ; //Ali 
+    this->InitTimeStage=InitTimeStage   ;  //A & A 
 	growthAuxData.prolifDecay = exp(-curTime * miscPara.prolifDecayCoeff);
         //cout<< "Current Time in simulation is: "<<curTime <<endl; 
 	growthAuxData.randomGrowthSpeedMin = growthAuxData.prolifDecay
@@ -1539,27 +1539,13 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		EnergyExportCell <<"curTime"<<","<<"totalMembrLinSpringEnergyCell" << "," <<"totalMembrBendSpringEnergyCell" <<"," <<
 		"totalNodeIIEnergyCell"<<"," <<"totalNodeIMEnergyCell"<<","<<"totalNodeEnergyCell"<< std::endl;
 	}
-	/*
-	double minDt=0.002 ;
-	double maxDt=0.006 ; 
-	double adaptiveLevelCoef=0.001  ;
-
-	if (curTime>=10 ){
-		UpdateTimeStepByAdaptiveMethod(adaptiveLevelCoef,minDt,maxDt,dt) ;
-		this->dt = dt;
-	}
-	//if (curTime>=30 ){
-	//	nodes->isInitPhase=false ; 
-	//	}
-	*/
 	curTime = curTime + dt;
 	bool tmpIsInitPhase= nodes->isInitPhase ;
 
-
-
- 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
+ 	if (nodes->isMemNodeTypeAssigned==false) {
     	assignMemNodeType();  // Ali
 		cout << " I assigned boolen values for membrane node types " << endl; 
+		nodes->isMemNodeTypeAssigned=true ; 
 	}
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
@@ -1568,21 +1554,25 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
 
- 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
-		computeNucleusIniLocPercent(); //Ali  
+ 	if ( isInitNucPercentCalculated==false && ResumeSimulation==0 ) {
+		computeNucleusIniLocPercent(); //Ali 
+		writeNucleusIniLocPercent(); //Ali 
+		isInitNucPercentCalculated=true ; 
 		cout << " I computed initial location of nucleus positions in percent" << endl; 
 	}
+	else if (isInitNucPercentCalculated==false && ResumeSimulation==1){
+		readNucleusIniLocPercent(); //Ali 
+		isInitNucPercentCalculated=true ; 
+		cout << " I read initial location of nucleus positions in percent, since I am in resume mode" << endl; 
+	}
+
 	computeNucleusDesireLoc() ; // Ali
 //	if (tmpIsInitPhase==false) {
 //		updateInternalAvgPosByNucleusLoc_M ();
 //	}
 	//PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
     //BC_Imp_M() ;  //Ali 
-	std::cout << "     ***1.5 ***" << endl;
-	std::cout.flush();
-
 	std::cout << "     *** 2 ***" << endl;
-	std::cout.flush();
 	applySceCellDisc_M();
 	if (isBasalActinPresent) {
 		cout << " I am applying basal contraction" << endl ; 
@@ -1592,46 +1582,35 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	//	applyNucleusEffect() ;
 	//	applyForceInteractionNucleusAsPoint() ; 
 	std::cout << "     *** 3 ***" << endl;
-	std::cout.flush();
-//Ali        
-	
-
 	applyMemForce_M(cellPolar,subCellPolar);
 	applyVolumeConstraint();  //Ali 
 	//ApplyExtForces() ; // now for single cell stretching
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
-	std::cout.flush();
 
 //	computeCenterPos_M();    //Ali cmment //
 	std::cout << "     *** 5 ***" << endl;
-	std::cout.flush();
-	
 
- 	if ( abs (curTime-(InitTimeStage+dt))<0.1*dt   ) {
+ 	if (isCellGrowSet==false) {
 		growAtRandom_M(dt);
-		cout << "I set the growth level. Since the cells are not growing a divising for this simulation I won't go inside this function any more" << endl ; 
+		cout << "I set the growth level. Since the cells are not growing a divising for this simulation I won't go inside this function any more" << endl ;
+		isCellGrowSet=true ;
 	}
 	std::cout << "     *** 6 ***" << endl;
-	std::cout.flush();
 
 //	enterMitoticCheckForDivAxisCal() ; 
     relaxCount=relaxCount+1 ; 
 	if (relaxCount==1000) { 
 	//	divide2D_M();
-
 		nodes->adhUpdate=true; 
 	}
 	std::cout << "     *** 7 ***" << endl;
-	std::cout.flush();
 	distributeCellGrowthProgress_M();
 	std::cout << "     *** 8 ***" << endl;
-	std::cout.flush();
 
     findTangentAndNormal_M();//AAMIRI ADDED May29
 	allComponentsMove_M();
-   std::cout << "     *** 9 ***" << endl;
-	std::cout.flush();
+    std::cout << "     *** 9 ***" << endl;
 //	updateMembrGrowthProgress_M();  
 //	if (relaxCount==10) { 
 //		handleMembrGrowth_M();

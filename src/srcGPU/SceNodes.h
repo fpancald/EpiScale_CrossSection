@@ -691,16 +691,15 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 	int* _nodeAdhereIndex;
 	int* _membrIntnlIndex;
 	double* _nodeGroProAddr;
-	bool _adhNotSet ; 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
 	AddForceDisc_M(uint* valueAddress, double* nodeLocXAddress,
 			double* nodeLocYAddress, int* nodeAdhereIndex, int* membrIntnlIndex,
-			double* nodeGrowProAddr,bool adhNotSet) :
+			double* nodeGrowProAddr) :
 			_extendedValuesAddress(valueAddress), _nodeLocXAddress(
 					nodeLocXAddress), _nodeLocYAddress(nodeLocYAddress), _nodeAdhereIndex(
 					nodeAdhereIndex), _membrIntnlIndex(membrIntnlIndex), _nodeGroProAddr(
-					nodeGrowProAddr),_adhNotSet(adhNotSet) {
+					nodeGrowProAddr) {
 	}
 	__device__
 	CVec2 operator()(const Tuuudd &u3d2) const {
@@ -717,9 +716,6 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 		uint index;
 		double dist;
                 bool  Lennard_Jones = false ;// Is_Lennard_Jones() ;
-//		if (_adhNotSet){
-	//	_nodeAdhereIndex[myValue] = -1 ;  Ali commented to deactive this part of the code
-//		}
 		for (uint i = begin; i < end; i++) {
 			uint nodeRankOther = _extendedValuesAddress[i];
 			if (nodeRankOther == myValue) {
@@ -734,23 +730,8 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 				calAndAddInter_M(xPos, yPos, _nodeLocXAddress[nodeRankOther],
 						_nodeLocYAddress[nodeRankOther], xRes, yRes);
                                                }
-		//	if(_adhNotSet){
-				//if (_nodeAdhereIndex[myValue] == -1) {
-	//				attemptToAdhere(isSuccess, index, dist, nodeRankOther, xPos,
-	//						yPos, _nodeLocXAddress[nodeRankOther],
-	//						_nodeLocYAddress[nodeRankOther]);
-			//	}
-//Ali
-
-		//	}
-			}
+					}
 		}
-	//	if (_adhNotSet) {
-	//		if (isSuccess) {
-		//			_nodeAdhereIndex[myValue] = index;  //Ali commented to deactive this part of the code
-		//		_nodeAdhereIndex[index] = myValue; Ali added and then commentted out
-	//		}
-	//	}
 		return thrust::make_tuple(xRes, yRes);
 	}
 };
@@ -1149,7 +1130,7 @@ class SceCells ;   // forward declaration to be used in the class SceNodes
 class SceNodes {
 //	SceCells* cells ;
 	SceCells * cellsSceNodes ; 
-	bool adhNotSet ;
+	bool isMemNodeTypeAssigned ; 
 	bool isApicalAdhPresent ; 
 	SceDomainPara domainPara;
 	SceMechPara mechPara;

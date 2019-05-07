@@ -86,6 +86,7 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 
 SceNodes::SceNodes() {
 	readDomainPara();
+	isMemNodeTypeAssigned==false ; 
 	isApicalAdhPresent=true ;
 	cout<< " I am inside SceNodes constructor with zero elements" << endl ; 
 }
@@ -383,9 +384,7 @@ SceNodes::SceNodes(uint maxTotalCellCount, uint maxAllNodePerCell, uint currentA
         std::cout << " I am in SceNodes constructor with short input which includes copyParaToGPUConstMem_M  function " << endl ; 
 	//std::cout << "at the end" << std::endl;
 	//std::cout.flush();
-	adhNotSet=true ; //Ali 
 	adhUpdate=true ; //Ali 
-	cout << "adhesion not set is initialized as " << adhNotSet << endl ; 
 	cout << "adhesion update is initialized as " << adhUpdate  << endl ; 
 }
 
@@ -2299,9 +2298,7 @@ void SceNodes::applySceForcesDisc_M() {
      	thrust :: copy (infoVecs.nodeCellRankFront.begin() ,infoVecs.nodeCellRankFront.end() ,infoVecs.nodeCellRankFrontHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.nodeCellRankBehind.begin(),infoVecs.nodeCellRankBehind.end(),infoVecs.nodeCellRankBehindHost.begin()) ; // Ali 	
      	thrust :: copy (infoVecs.memNodeType1.begin(),infoVecs.memNodeType1.end(),infoVecs.memNodeType1Host.begin()) ; // Ali 
-		cout << " I am right before cell type vector" << endl ; 
 		thrust :: copy (cellsSceNodes->getCellInfoVecs().eCellTypeV2.begin(),cellsSceNodes->getCellInfoVecs().eCellTypeV2.begin()+allocPara_M.currentActiveCellCount,					eCellTypeVHost.begin()) ;
-		cout << " I am right after cell type vector" << endl ; 
 	 	thrust::fill(infoVecs.nodeAdhereIndexHost.begin(),infoVecs.nodeAdhereIndexHost.end(), -1) ;  //Ali it is important to reset the values
 	 	thrust::fill(infoVecs.nodeMemMirrorIndexHost.begin(),infoVecs.nodeMemMirrorIndexHost.end(), -1) ;  //Ali it is important to reset the values
 	 	//thrust::fill(infoVecs.nodeIsLateralMemHost.begin(),infoVecs.nodeIsLateralMemHost.end(), false) ;  //Ali
@@ -2322,7 +2319,6 @@ void SceNodes::applySceForcesDisc_M() {
 		std::vector <SubApicalInfoEachCell> subApicalInfo ; 
 		
 
-		cout << "I am inside the function for finding adhesion pair" << endl ; 
 		//setup required basic parameters 
         for (int i=0 ; i< allocPara_M.currentActiveCellCount ; i++ ){
 			activeMemCount[i] = 0 ; 
@@ -2363,7 +2359,7 @@ void SceNodes::applySceForcesDisc_M() {
 
 							if (cellRank !=cellRankOld) {
 
-								cout << " for cell rank= " << cellRank << " subapicalInfo has been created." << endl ;
+						//		cout << " for cell rank= " << cellRank << " subapicalInfo has been created." << endl ;
 								SubApicalInfoEachCell subApicalInfoEachCell(maxNumAdh); 
 								subApicalInfo.push_back(subApicalInfoEachCell); 
 								cellRankOld=cellRank ; 
@@ -2376,7 +2372,7 @@ void SceNodes::applySceForcesDisc_M() {
 				
 				}
 		}
-		cout << "first set of adhesion joints are found" << endl ; 
+		//cout << "first set of adhesion joints are found" << endl ; 
 		
 		//Find the subapical nodes supposingly behind (Before) the cell
 		for (int i=0 ; i<totalActiveNodes ;  i++) {
@@ -2412,7 +2408,7 @@ void SceNodes::applySceForcesDisc_M() {
 		 //	}
 	//	}
 
-		cout << " size of vector storing information of apical junctions is " << subApicalInfo.size() << endl ; 
+		//cout << " size of vector storing information of apical junctions is " << subApicalInfo.size() << endl ; 
 		if (subApicalInfo.size() != 0 ) {  // to pass the first time step in which the membrane node type is not defined.
 			for ( int i= 0 ; i<allocPara_M.currentActiveCellCount ; i++) {
 				
@@ -2450,7 +2446,7 @@ void SceNodes::applySceForcesDisc_M() {
 							distP2=pow( infoVecs.nodeLocXHost[i]-infoVecs.nodeLocXHost[j],2)+
 			         	    	   pow( infoVecs.nodeLocYHost[i]-infoVecs.nodeLocYHost[j],2) ;
 							if (distP2<distMinP2   && distP2<maxAdhLen*maxAdhLen) {
-								cout << " I am inside a function where there is one apical pouch and one apical perip node and it is min" << endl ; 
+							//	cout << " I am inside a function where there is one apical pouch and one apical perip node and it is min" << endl ; 
 								distMinP2=distP2 ;
 								indexAdhNode=j ; 
 								findAnyNode=true ;
@@ -2460,10 +2456,10 @@ void SceNodes::applySceForcesDisc_M() {
 		 	   	}
                 
 			   	if ( findAnyNode && sqrt(distMinP2)<infoVecs.nodeAdhMinDist[indexAdhNode]){
-					cout << " I am inside apical adhesion" << endl ; 
+				//	cout << " I am inside apical adhesion" << endl ; 
 	     			deactiveIdAdhPair=infoVecs.nodeAdhereIndexHost[indexAdhNode] ;
 					if (deactiveIdAdhPair != -1){	
-						cout << " I am inside deactiving one perip adhesion" << endl ; 
+				//		cout << " I am inside deactiving one perip adhesion" << endl ; 
 	     				infoVecs.nodeAdhereIndexHost[deactiveIdAdhPair]=-1 ;
 	     				infoVecs.nodeAdhMinDist[deactiveIdAdhPair]=10000 ;
 					}
@@ -2528,7 +2524,7 @@ void SceNodes::applySceForcesDisc_M() {
 							make_permutation_iterator(infoVecs.nodeVelY.begin(),
 									auxVecs.bucketValues.begin()))),
 			AddForceDisc_M(valueAddress, nodeLocXAddress, nodeLocYAddress,
-					nodeAdhIdxAddress, membrIntnlAddress, nodeGrowProAddr,adhNotSet));
+					nodeAdhIdxAddress, membrIntnlAddress, nodeGrowProAddr));
 	
 }
 

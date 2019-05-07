@@ -3390,6 +3390,7 @@ class SceCells {
 	
 	double dt;
 	bool isBasalActinPresent ; 
+	bool isCellGrowSet ; 
 	bool addNode  ; 
     double Damp_Coef ;   //Ali
     double InitTimeStage ;  //A & A 

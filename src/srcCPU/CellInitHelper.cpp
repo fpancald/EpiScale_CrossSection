@@ -556,9 +556,6 @@ RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function
 		ECellType eCellTypeTmp=ForReadingData2.eCellTypeV.at(i);  
 		rawData.cellsTypeCPU.push_back(eCellTypeTmp);
 	}
-	for (uint i = 0; i < initCellCt; i++) {
-    	cout << "second check for cell type" <<rawData.cellsTypeCPU.at(i) << endl ; 
-	}
 
 	std::cout << "Printing initial cell center positions ......" << std::endl;
 	for (unsigned int i = 0; i < insideCellCenters.size(); i++) {
@@ -715,17 +712,27 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 		vector<vector<MembraneType1> >& mTypeV2 )
 {
 	
-	assert(initCenters.size() == initGrowProg.size());
-	vector<CVector> initMembrPosTmp;
 	vector<CVector> initIntnlPosTmp;
-	vector<double> mDppVTmp;  
-	vector<MembraneType1> mTypeVTmp;  
 
-
+	assert(initCenters.size() == initGrowProg.size());
+	
 	uint resumeSimulation = globalConfigVars.getConfigValue(
 			"ResumeSimulation").toInt();
-	
+	uint initMembrNodeCount = globalConfigVars.getConfigValue(
+			"InitMembrNodeCount").toInt();
+	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
+			"MaxMembrNodeCountPerCell").toInt();
+	uint maxIntnlNodeCountPerCell = globalConfigVars.getConfigValue(
+			"MaxIntnlNodeCountPerCell").toInt();
+	std::string MembraneNodesFileName = globalConfigVars.getConfigValue(
+			"MembraneNodes_FileName").toString() ;
+	std::string intnlNodesFileNameResume = globalConfigVars.getConfigValue(
+			"IntnlNodes_FileName_Resume").toString() ;
+	std::string membNodesFileNameResume = globalConfigVars.getConfigValue(
+			"MembraneNodes_FileName_Resume").toString() ;
+
 	if (resumeSimulation==0) {
+		cout<< " The simulation is in start mode" << endl ; 
 		for (uint i = 0; i < initCenters.size(); i++) {
 			//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
 			//			initGrowProg[i]);
@@ -736,72 +743,18 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 			//	initMembrPos.push_back(initMembrPosTmp);
 			initIntnlPos.push_back(initIntnlPosTmp);
 		}
+		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, MembraneNodesFileName ); 			
 	}
 	else if (resumeSimulation==1) {
-		for (uint i = 0; i < initCenters.size(); i++) {
-			initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
-				initGrowProg[i],int(i)); //Ali
-			initIntnlPos.push_back(initIntnlPosTmp);
-		}
 		cout<< " The simulation is in Resume mode" << endl ; 
+		initIntnlPos=readResumeIntnlNodes( initCenters.size(),maxIntnlNodeCountPerCell,intnlNodesFileNameResume) ;   
+		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, membNodesFileNameResume ); 			
 	}
 	else {
-		throw std::invalid_argument(" ResumeSimulation in the input file must be either 1 or 0"); 
-
+		throw std::invalid_argument(" ResumeSimulation parameter in the input file must be either 1 or 0"); 
 	}
 
-	uint initMembrNodeCount = globalConfigVars.getConfigValue(
-			"InitMembrNodeCount").toInt();
-
-	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
-			"MaxMembrNodeCountPerCell").toInt();
-	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane7.txt");
-    //inputc.open(CellCentersFileName.c_str());
-    if (inputc.is_open()){
-       cout << "File for reading membrane nodes coordinates opened successfully ";
-    }
-	else{
-       cout << "failed opening membrane nodes coordinates ";
-    }
-	int cellIDOld=-1;
-	int cellID ;
-    CVector mCoordinate ;
-	double mDpp ; 
-	string mTypeString ; 
-	MembraneType1 mType ; 
-	for (int j=0 ; j<initCenters.size() ; j++) {
-		initMembrPosTmp.clear() ;
-		mDppVTmp.clear() ; 
-		mTypeVTmp.clear() ; 
-		cellIDOld++  ;
-		if (j!=0) {
-	    	initMembrPosTmp.push_back(mCoordinate);
-	    	mDppVTmp.push_back(mDpp);
-	    	mTypeVTmp.push_back(mType);
-		}
-        for (int i = 0; i <maxMembrNodeCountPerCell; i++) {
-	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mDpp >> mTypeString ;
-			mType =StringToMembraneType1Convertor (mTypeString) ; 
-			if (cellID != cellIDOld) {
-				break ;// for reading the next cell's membrane coordinates
-			}
-			
-			if (inputc.eof()) {  
-				break ; // to not push backing data when the read file is finished.
-			}
-	    	initMembrPosTmp.push_back(mCoordinate);
-	    	mDppVTmp.push_back(mDpp);
-	    	mTypeVTmp.push_back(mType);
-			cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" dpp level=" << mDpp <<" type membrane="<<mType << endl ;  
-      	}
-		initMembrPos.push_back(initMembrPosTmp);
-		mDppV2.push_back(mDppVTmp);
-		mTypeV2.push_back(mTypeVTmp);
-	}
-	cout << " I read membrane nodes successfully" << endl ; 	
 	
-
 }
 
 double CellInitHelper::getRandomNum(double min, double max) {
@@ -1138,6 +1091,117 @@ void SimulationGlobalParameter::initFromConfig() {
 	}
 
 }
+
+
+
+vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int maxIntnlNodeCountPerCell, string intnlFileName) {
+
+   CVector iCoordinate ;
+   vector <CVector> intnlPosTmp ;
+   vector<vector<CVector> > intnlPos ;
+   ifstream inputc ; 
+
+   inputc.open(intnlFileName.c_str());
+   if (inputc.is_open()){
+      cout << "File for reading internal nodes coordinates in resume mode is opened successfully " << endl ; 
+   }
+   else{
+      cout << "Failed opening internal nodes coordinates in resme mode " << endl ; 
+   }
+
+   int cellIDOld=-1;
+   int cellID ;
+   for (int j=0 ; j<numCells  ; j++) {
+		intnlPosTmp.clear() ;
+		cellIDOld++  ;
+		if (j!=0) {
+	    	intnlPosTmp.push_back(iCoordinate);
+		}
+        for (int i = 0; i <maxIntnlNodeCountPerCell; i++) {
+	    	inputc >> cellID >> iCoordinate.x >> iCoordinate.y >> iCoordinate.z  ;
+			if (cellID != cellIDOld) {
+				break ;// for reading the next cell's internal coordinates
+			}
+			if (inputc.eof()) {  
+				break ; // to not push backing data when the read file is finished.
+			}
+	    	intnlPosTmp.push_back(iCoordinate);
+		//	cout <<"cell ID= "<<cellID<<"x internal= "<<iCoordinate.x << " y internal= "<<iCoordinate.y <<" z internal="<<iCoordinate.z << endl ;  
+      	}
+		intnlPos.push_back(intnlPosTmp);
+	}
+	cout << " I read internal nodes successfully in resume mode" << endl ; 	
+	
+	return intnlPos ; 
+}
+
+  
+
+vector<vector<CVector> > CellInitHelper::readMembNodes(int numCells,int maxMembrNodeCountPerCell,
+                                                           vector<vector<MembraneType1> >& mTypeV2,vector<vector<double> >& mDppV2, string membFileName) 
+{
+	vector<CVector> initMembrPosTmp;
+	vector<vector<CVector> > initMembrPos ; 
+	vector<double> mDppVTmp;  
+	vector<MembraneType1> mTypeVTmp;  
+	std::fstream inputc;
+
+
+    inputc.open(membFileName.c_str());
+    if (inputc.is_open()){
+       cout << "File for reading membrane nodes coordinates opened successfully " << endl ; 
+    }
+	else{
+       cout << "failed opening membrane nodes coordinates " << endl ; 
+    }
+
+	int cellIDOld=-1;
+	int cellID ;
+    CVector mCoordinate ;
+	double mDpp ; 
+	string mTypeString ; 
+	MembraneType1 mType ; 
+	for (int j=0 ; j<numCells ; j++) {
+		initMembrPosTmp.clear() ;
+		mDppVTmp.clear() ; 
+		mTypeVTmp.clear() ; 
+		cellIDOld++  ;
+		if (j!=0) {
+	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
+	    	mTypeVTmp.push_back(mType);
+		}
+        for (int i = 0; i <maxMembrNodeCountPerCell; i++) {
+	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mDpp >> mTypeString ;
+			mType =StringToMembraneType1Convertor (mTypeString) ; 
+			if (cellID != cellIDOld) {
+				break ;// for reading the next cell's membrane coordinates
+			}
+			
+			if (inputc.eof()) {  
+				break ; // to not push backing data when the read file is finished.
+			}
+	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
+	    	mTypeVTmp.push_back(mType);
+	//		cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" dpp level=" << mDpp <<" type membrane="<<mType << endl ;  
+      	}
+		initMembrPos.push_back(initMembrPosTmp);
+		mDppV2.push_back(mDppVTmp);
+		mTypeV2.push_back(mTypeVTmp);
+	}
+	cout << " I read membrane nodes successfully" << endl ; 	
+	return initMembrPos ;  
+}
+
+
+
+
+
+
+
+
+
 /* CGAL DEACTIVATION
 RawDataInput CellInitHelper::generateRawInput_singleCell() {
 	RawDataInput rawData;

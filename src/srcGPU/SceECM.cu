@@ -147,20 +147,36 @@ SceECM::SceECM() {
 
 void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
 
-maxAllNodePerCell=maxAllNodePerCellECM ; 
-maxMembrNodePerCell= maxMembrNodePerCellECM ; 
-maxTotalNodes=maxTotalNodesECM ; //Ali 
-this->freqPlotData=freqPlotData ; 
-this->uniqueSymbolOutput=uniqueSymbolOutput ; 
+	maxAllNodePerCell=maxAllNodePerCellECM ; 
+	maxMembrNodePerCell= maxMembrNodePerCellECM ; 
+    maxTotalNodes=maxTotalNodesECM ; //Ali 
+    this->freqPlotData=freqPlotData ; 
+    this->uniqueSymbolOutput=uniqueSymbolOutput ; 
+
+	std::fstream readCoord_ECM ;
+	std::fstream readInput_ECM ;
+	int numberNodes_ECM ; 
+	double tmpPosX_ECM,tmpPosY_ECM ; 
+	vector<double> posXIni_ECM,posYIni_ECM ;
+	vector <EType> eNodeVec ; 
 
 
-std::fstream readCoord_ECM ;
-std::fstream readInput_ECM ;
-int numberNodes_ECM ; 
-double tmpPosX_ECM,tmpPosY_ECM ; 
-vector<double> posXIni_ECM,posYIni_ECM ;
-vector <EType> eNodeVec ;  
-readCoord_ECM.open("./resources/coordinate_ECM21.txt") ;
+	int resumeSimulation = globalConfigVars.getConfigValue(
+	"ResumeSimulation").toInt();
+	
+	if (resumeSimulation==0) { 
+		cout << " In the ECM module, I am in start mode" << endl ; 
+		readCoord_ECM.open("./resources/coordinate_ECM21.txt") ;
+	}
+	else if(resumeSimulation==1) { 
+		cout << " In the ECM module, I am in resume mode" << endl ; 
+		readCoord_ECM.open("ResumeDataFileECM.txt") ;
+	}
+	else{
+
+		throw std::invalid_argument(" ResumeSimulation parameter in the input file must be either 1 or 0. Error from ECM module"); 
+	}
+ 
 if (readCoord_ECM.is_open()) {
 	cout << "ECM coordinates file opened successfully" <<endl ; 
 }
