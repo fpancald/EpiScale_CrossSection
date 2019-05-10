@@ -1130,7 +1130,6 @@ class SceCells ;   // forward declaration to be used in the class SceNodes
 class SceNodes {
 //	SceCells* cells ;
 	SceCells * cellsSceNodes ; 
-	bool isMemNodeTypeAssigned ; 
 	bool isApicalAdhPresent ; 
 	SceDomainPara domainPara;
 	SceMechPara mechPara;
@@ -1242,6 +1241,7 @@ public:
     
 	bool adhUpdate ; //Ali 
 	bool isInitPhase ; //Ali 
+	bool isMemNodeTypeAssigned ; 
 
 	NodeInfoVecs infoVecs; //Ali 
 	/**

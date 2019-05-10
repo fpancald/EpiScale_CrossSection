@@ -89,11 +89,12 @@ double CalMembrLinSpringEnergy(double& length, double kAvg) {
 
 
 
-__host__ __device__
+ __device__
 double DefaultMembraneStiff() {
-			return membrStiff;
-		 
 
+	int kStiff=membrStiff ; 
+	return kStiff;
+		 
 }
 
 
@@ -298,13 +299,7 @@ void MembrPara::initFromConfig() {
 
 SceCells::SceCells() {
 	//curTime = 0 + 55800.0;//AAMIRI // Ali I comment that out safely on 04/04/2017
-    std ::cout << "I am in SceCells constructor with zero element "<<InitTimeStage<<std::endl ;
-	isBasalActinPresent=true ;
-	isCellGrowSet=false ;
-	cout <<" Basal actinomyosin is active on pouch cells" << endl ; 
-    addNode=true ;
-	cout << " addNode boolean is initialized " <<addNode <<endl ; 
-}
+    }
 
 void SceCells::growAtRandom(double d_t) {
 	totalNodeCountForActiveCells = allocPara.currentActiveCellCount
@@ -712,9 +707,9 @@ SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
 		std::vector<double> &initGrowProgVec, 
 		std::vector<ECellType> &eCellTypeV1, 
 		double InitTimeStage) {
-//	curTime = 0.0 + 55800.0;//AAMIRIi
         curTime=InitTimeStage ; 
         std ::cout << "I am in SceCells constructor with number of inputs "<<InitTimeStage<<std::endl ; 
+
 	tmpDebug = false;
 	aniDebug = false;
 	membrPara.initFromConfig();
@@ -728,6 +723,16 @@ SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
 			globalConfigVars.getConfigValue("SimulationTimeStep").toDouble();
 	int TotalNumOfOutputFrames =
 			globalConfigVars.getConfigValue("TotalNumOfOutputFrames").toInt();
+
+	std ::cout << "I am in SceCells constructor with zero element "<<InitTimeStage<<std::endl ;
+	isInitNucPercentCalculated=false ; 
+	isBasalActinPresent=true ;
+	isCellGrowSet=false ;
+	cout <<" Basal actinomyosin is active on pouch cells" << endl ; 
+    addNode=true ;
+	cout << " addNode boolean is initialized " <<addNode <<endl ; 
+
+
 	relaxCount=0 ;
 	freqPlotData=int ( (simulationTotalTime-InitTimeStage)/(simulationTimeStep*TotalNumOfOutputFrames) ) ; 
 
@@ -941,7 +946,7 @@ void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput) {
 
 	//std::cout << "break point 1 " << std::endl;
 	//std::cout.flush();
-	controlPara = nodes->getControlPara();
+	controlPara = nodes->getControlPara();  // It copies the controlPara from nstance of class SceNodes to the instance of class of SceCells
 	//std::cout << "break point 2 " << std::endl;
 	//std::cout.flush();
 	readMiscPara_M();
@@ -1504,6 +1509,7 @@ void SceCells::runAllCellLevelLogicsDisc(double dt) {
 
 //Ali void SceCells::runAllCellLogicsDisc_M(double dt) {
 void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double InitTimeStage) {   //Ali
+
 	std::cout << "     *** 1 ***" << endl;
 	this->dt = dt;
     this->Damp_Coef=Damp_Coef ; //Ali 
@@ -1531,7 +1537,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		nodes->isInitPhase=false ; // This bool variable is not active in the code anymore
 
 		string uniqueSymbolOutput =
-			globalConfigVars.getConfigValue("UniqueSymbol").toString();
+		globalConfigVars.getConfigValue("UniqueSymbol").toString();
 
 		std::string cSVFileName = "EnergyExportCell_" + uniqueSymbolOutput + ".CSV";
 		ofstream EnergyExportCell ;
@@ -1554,13 +1560,13 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
 
- 	if ( isInitNucPercentCalculated==false && ResumeSimulation==0 ) {
+ 	if (isInitNucPercentCalculated==false && controlPara.resumeSimulation==0) {
 		computeNucleusIniLocPercent(); //Ali 
 		writeNucleusIniLocPercent(); //Ali 
 		isInitNucPercentCalculated=true ; 
 		cout << " I computed initial location of nucleus positions in percent" << endl; 
 	}
-	else if (isInitNucPercentCalculated==false && ResumeSimulation==1){
+	else if (isInitNucPercentCalculated==false && controlPara.resumeSimulation==1){
 		readNucleusIniLocPercent(); //Ali 
 		isInitNucPercentCalculated=true ; 
 		cout << " I read initial location of nucleus positions in percent, since I am in resume mode" << endl; 
@@ -7050,6 +7056,50 @@ void calAndAddNucleusEffect(double& xPos, double& yPos, double& xPos2, double& y
 
 }
 
+
+
+void SceCells::writeNucleusIniLocPercent() {
+	
+	ofstream output ; 
+	thrust::host_vector <double> nucleusLocPercentHost ; 
+	
+	output.open ("InitLocNucleusPercentResume.txt") ; 
+	nucleusLocPercentHost=cellInfoVecs.nucleusLocPercent ; 
+
+	for (int i=0 ; i<allocPara_m.currentActiveCellCount  ; i++){
+		output << i <<"	"<<nucleusLocPercentHost[i] << endl ; 
+	}
+	
+	output.close() ; 
+}
+
+
+void SceCells::readNucleusIniLocPercent() {
+
+	ifstream input ; 
+	vector <double> nucleusLocPercentHost ; 
+	int dummy ; 
+	double percent ;
+
+	input.open ("InitLocNucleusPercentResume.txt") ;
+	
+	if (input.is_open()) {
+		cout << " I suceessfully openend InitLocNucleusPercentResume.txt" << endl ; 
+	}
+	else{
+		throw std::invalid_argument (" I failed openening InitLocNucleusPercentResume.txt")  ; 
+
+	}
+
+	for (int i=0 ; i<allocPara_m.currentActiveCellCount ; i++){
+		input >> dummy >> percent ;  
+		nucleusLocPercentHost.push_back(percent) ;  
+	}
+
+	input.close() ;
+
+	cellInfoVecs.nucleusLocPercent= nucleusLocPercentHost ; 
+}
 
 
 

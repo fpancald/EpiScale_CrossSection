@@ -34,6 +34,7 @@ class SceECM {
 //	SceNodes* nodes;
 
 	bool   eCMRemoved ; 
+	bool   isECMNeighborSet ; 
 public:
 	SceECM() ; 
 	void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {

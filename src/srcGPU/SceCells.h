@@ -56,7 +56,7 @@ typedef thrust::tuple<double, uint, double, double, uint, uint, bool, double, do
 __device__
 double CalExtForce(double  curTime);
 
-__host__ __device__
+ __device__
 double DefaultMembraneStiff();
 //Ali comment 
 //__device__
@@ -328,11 +328,11 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 	bool _subMembPolar ; 
 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__host__ __device__ ActinLevelCal(uint maxNodePerCell, bool* isActiveAddr, int* cellRoot, double minY, double maxY,bool membPolar, bool subMembPolar) :
+	 __host__  __device__ ActinLevelCal(uint maxNodePerCell, bool* isActiveAddr, int* cellRoot, double minY, double maxY,bool membPolar, bool subMembPolar) :
 			 _maxNodePerCell(maxNodePerCell), _isActiveAddr(isActiveAddr),_cellRoot(cellRoot), _minY(minY),_maxY(maxY),_membPolar(membPolar), _subMembPolar(subMembPolar) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__host__  __device__ double operator()(const ActinData &actinData) const {
+	  __device__ double operator()(const ActinData &actinData) const {
 		ECellType  cellType= thrust::get<0>(actinData);
 		int activeMembrCount = thrust::get<1>(actinData);
 		double cell_CenterY = thrust::get<2>(actinData);
@@ -3389,6 +3389,7 @@ class SceCells {
 	uint totalNodeCountForActiveCells;
 	
 	double dt;
+	bool isInitNucPercentCalculated ; 
 	bool isBasalActinPresent ; 
 	bool isCellGrowSet ; 
 	bool addNode  ; 
@@ -3404,7 +3405,8 @@ class SceCells {
 	int outputFrameNucleus ; 
 	void readMiscPara();
 	void readBioPara();
-
+	void writeNucleusIniLocPercent() ; 
+	void readNucleusIniLocPercent() ; 
 	void copyInitActiveNodeCount(
 			std::vector<uint>& numOfInitActiveNodesOfCells);
 	void copyInitActiveNodeCount_M(std::vector<uint>& initMembrActiveNodeCounts,

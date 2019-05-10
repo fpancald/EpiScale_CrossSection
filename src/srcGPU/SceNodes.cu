@@ -86,7 +86,7 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 
 SceNodes::SceNodes() {
 	readDomainPara();
-	isMemNodeTypeAssigned==false ; 
+	isMemNodeTypeAssigned=false ; 
 	isApicalAdhPresent=true ;
 	cout<< " I am inside SceNodes constructor with zero elements" << endl ; 
 }
@@ -320,6 +320,9 @@ SceNodes::SceNodes(uint maxTotalCellCount, uint maxAllNodePerCell, uint currentA
 	int simuTypeConfigValue =
 			globalConfigVars.getConfigValue("SimulationType").toInt();
 	controlPara.simuType = parseTypeFromConfig(simuTypeConfigValue);
+	controlPara.resumeSimulation = globalConfigVars.getConfigValue(
+			"ResumeSimulation").toInt();
+
 	readDomainPara();
 	uint maxTotalNodeCount = maxTotalCellCount * maxAllNodePerCell;
 

@@ -116,6 +116,7 @@ struct ControlSwitchs {
 struct ControlPara {
 	SimulationType simuType;
 	ControlSwitchs controlSwitchs;
+	uint resumeSimulation ; 
 };
 
 /**

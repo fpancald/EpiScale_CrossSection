@@ -287,8 +287,8 @@ std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<doubl
 	CellsStatsData cellStatsVec = cells.outputPolyCountData();
 	
         for (int i=0; i< int (cellStatsVec.cellsStats.size());  i++) {
-        std::cout << cellStatsVec.cellsStats.size() <<"cellsStatsvec vector size is" <<std:: endl; 
-        cellsPerimeter.push_back(cellStatsVec.cellsStats[i].cellPerim) ;
+        //std::cout << cellStatsVec.cellsStats.size() <<"cellsStatsvec vector size is" <<std:: endl; 
+       	   cellsPerimeter.push_back(cellStatsVec.cellsStats[i].cellPerim) ;
         }
 
          //AliE        
