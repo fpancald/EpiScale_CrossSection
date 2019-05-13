@@ -4331,6 +4331,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	thrust::host_vector<double> hostTmpVectorNodeActinLevel(maxActiveNode);//Ali
 	thrust::host_vector<double> hostTmpVectorInterCellForceTangent(maxActiveNode);//AAMIRI
 	thrust::host_vector<double> hostTmpVectorInterCellForceNormal(maxActiveNode);//AAMIRI
+	thrust::host_vector<int> hostTmpContractPair(maxActiveNode);
 
 
 
@@ -4389,6 +4390,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 							)));
 */
 	thrust::copy(nodes->getInfoVecs().nodeActinLevel.begin(),nodes->getInfoVecs().nodeActinLevel.begin()+ maxActiveNode,hostTmpVectorNodeActinLevel.begin()); //Ali 
+	thrust::copy(nodes->getInfoVecs().basalContractPair.begin()  ,nodes->getInfoVecs().basalContractPair.begin()  + maxActiveNode,hostTmpContractPair.begin()); //Ali 
 
 
 
@@ -4483,7 +4485,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 	}
 
 
-
+// for adhesion pair
 	for (uint i = 0; i < activeCellCount; i++) {
 		for (uint j = 0; j < maxMemNodePerCell; j++) {
 			index1 = beginIndx + i * maxNodePerCell + j;
@@ -4561,10 +4563,32 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 				LinkAniData linkData;
 				linkData.node1Index = aniIndex1;
 				linkData.node2Index = aniIndex2;
-				rawAniData.memLinks.push_back(linkData);
+		//		rawAniData.memLinks.push_back(linkData); I don't want this type of membrane nodes links be shown.
 			}
 		}
+	}
+
+// loop for links for basal contraction. Since the links are between membrane nodes, no new map needs to be created.
+	for (uint i = 0; i < activeCellCount; i++) {
+		for (uint j = 0; j < curActiveMemNodeCounts[i]; j++) {
+			index1 = beginIndx + i * maxNodePerCell + j;
+			index2 = hostTmpContractPair[index1];
+			if (index2 == -1) {
+				continue; 
+			}
+			IndexMap::iterator it = locIndexToAniIndexMap.find(index1);
+			uint aniIndex1 = it->second;
+			it = locIndexToAniIndexMap.find(index2);
+			uint aniIndex2 = it->second;
+
+			LinkAniData linkData;
+			linkData.node1Index = aniIndex1;
+			linkData.node2Index = aniIndex2;
+			rawAniData.memLinks.push_back(linkData);
+		}
 	} 
+
+
         //loop on internal nodes
 	for (uint i = 0; i < activeCellCount; i++) {
 	//	for (uint j = 0; j < allocPara_m.maxAllNodePerCell; j++) {
@@ -4618,7 +4642,7 @@ AniRawData SceCells::obtainAniRawDataGivenCellColor(vector<double>& cellColors,
 						LinkAniData linkData;
 						linkData.node1Index = aniIndex1;
 						linkData.node2Index = aniIndex2;
-						rawAniData.internalLinks.push_back(linkData);
+					//	rawAniData.internalLinks.push_back(linkData); I don't want internal node links be shown.
 					}
 				}
 			}
@@ -6651,7 +6675,8 @@ void SceCells::applyMembContraction() {
 							   	nodes->getInfoVecs().nodeVelY.begin(),
 							    nodes->getInfoVecs().nodeF_MM_C_X.begin(),   
 							    nodes->getInfoVecs().nodeF_MM_C_Y.begin(),
-							   nodes->getInfoVecs().nodeContractEnergyT.begin())),
+							    nodes->getInfoVecs().nodeContractEnergyT.begin(),
+							    nodes->getInfoVecs().basalContractPair.begin())),
 			AddMemContractForce(maxAllNodePerCell, maxMemNodePerCell, nodeLocXAddr,nodeLocYAddr, nodeTypeAddr,nodeMemMirrorIndexAddr));
 
 	

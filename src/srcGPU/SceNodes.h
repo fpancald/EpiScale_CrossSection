@@ -977,6 +977,7 @@ public:
 // E.g, max number of nodes of a cell is 100 maybe the first 75 nodes are active.
 // The value of this vector will be changed by external process.
 	thrust::device_vector<bool> nodeIsActive;
+	thrust::device_vector<int> basalContractPair; //Ali
 	thrust::host_vector<bool> nodeIsActiveHost; //Ali
 // X locations of nodes
 	thrust::device_vector<double> nodeLocX;

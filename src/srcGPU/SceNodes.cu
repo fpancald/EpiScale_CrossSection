@@ -2731,8 +2731,6 @@ void SceNodes::setInfoVecs(const NodeInfoVecs& infoVecs) {
 }
 
 void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint currentActiveCellCount) {
-    cout << " inside function allocSpaceForNodes current active cells are " << currentActiveCellCount << endl ;  
-    cout << " inside function allocSpaceForNodes max number of cells is " << maxNumCells << endl ;  
 	infoVecs.nodeLocX.resize(maxTotalNodeCount);
 	infoVecs.nodeLocXHost.resize(maxTotalNodeCount); //Ali 
 	infoVecs.nodeLocY.resize(maxTotalNodeCount);
@@ -2741,8 +2739,8 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 	infoVecs.nodeVelX.resize(maxTotalNodeCount);
 	infoVecs.nodeVelY.resize(maxTotalNodeCount);
 	infoVecs.nodeVelZ.resize(maxTotalNodeCount);
+	infoVecs.basalContractPair.resize(maxTotalNodeCount,-1); // Ali
 
-    cout << " I am here 0  " << maxNumCells << endl ;  
 	//infoVecs.nodeContractLevel.resize(maxTotalNodeCount,0.0);// Ali
 	infoVecs.nodeF_MM_C_X.resize(maxTotalNodeCount,0.0);// Ali
 	infoVecs.nodeF_MM_C_Y.resize(maxTotalNodeCount,0.0);// Ali

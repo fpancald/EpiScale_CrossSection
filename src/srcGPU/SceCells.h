@@ -1458,7 +1458,7 @@ struct AddSceCellForce: public thrust::unary_function<CellData, CVec6> {
 	}
 };
 
-struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5> {
+struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec6> {
 	uint _maxNodePerCell;
 	uint _maxMemNodePerCell;
 	double* _locXAddr;
@@ -1472,7 +1472,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 					maxMemNodePerCell), _locXAddr(locXAddr), _locYAddr(locYAddr),_MemTypeAddr(MemTypeAddr), _MirrorIndexAddr(MirrorIndexAddr) {
 	}
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
-	__device__ CVec5 operator()(const DUiDDUiUiBDDT & dUiDDUiUiBDDT ) const {
+	__device__ CVec6 operator()(const DUiDDUiUiBDDT & dUiDDUiUiBDDT ) const {
 		double nucDistToApical  = thrust::get<0>(dUiDDUiUiBDDT );
 		uint   activeMembrCount = thrust::get<1>(dUiDDUiUiBDDT );
 		double apicalX		    = thrust::get<2>(dUiDDUiUiBDDT);
@@ -1493,10 +1493,11 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 		uint   index ; 
 		int    index_Other ; 
 		MembraneType1 nodeTypeOther ;
+		int basalContractPairId=-1 ; 
 
 		
 		if ( isActive == false || nodeRank >= _maxMemNodePerCell  ) {
-			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
+			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0,basalContractPairId); //AliE
 		}
 				// means membrane node
 
@@ -1516,6 +1517,7 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 
 			if ( (nodeDistToApical>nucDistToApical)&& (nodeDistToApicalOther>nucDistToApical) ) { 
             	calAndAddMM_ContractAdh(locX, locY, locXOther, locYOther,oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y);
+				basalContractPairId=index_Other ; 
 			}
 
 			//finished calculating adhesion force
@@ -1538,10 +1540,10 @@ struct AddMemContractForce: public thrust::unary_function<DUiDDUiUiBDDT , CVec5>
 
 				}
 			}
-			return thrust::make_tuple(oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y,contractEnergyT);
+			return thrust::make_tuple(oriVelX, oriVelY,F_MM_C_X,F_MM_C_Y,contractEnergyT,basalContractPairId);
 		} 
 		else {
-			return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0); //AliE
+		    return thrust::make_tuple(oriVelX, oriVelY,0.0,0.0,0.0,basalContractPairId); //AliE
 		}
 	}
 };
