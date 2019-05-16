@@ -32,17 +32,17 @@ __device__
 void DefineECMStiffnessAndLknot ( EType nodeType, double & stiffness, double & sponLen) {
 
 	if (nodeType==excm) {
-		stiffness=stiffnessECMBasalGPU ;  //* stiffness ; 
+		stiffness=stiffnessECMBasalGPU ;   
 		sponLen=lknotECMBasalGPU  ; 
 	}
 	if (nodeType==perip) {
-		stiffness=stiffnessECMPeripGPU ; //*stiffness ; 
-		sponLen=lknotECMPeripGPU ; // 0.1 ; 
+		stiffness=stiffnessECMPeripGPU ; 
+		sponLen=lknotECMPeripGPU ;
 	}
 
 	if (nodeType==bc2) {
-		stiffness=stiffnessECMBCGPU;  // *stiffness ; 
-		sponLen=lknotECMBCGPU ;// _sponLen ; 
+		stiffness=stiffnessECMBCGPU;  
+		sponLen=lknotECMBCGPU ; 
 	}
 
 }
@@ -329,8 +329,7 @@ adhEnergy.resize(numNodesECM,0.0);
 
 
 bendSpringForceECMX.resize(numNodesECM,0.0); 
-bendSpringForceECMY.resize(numNodesECM,0.0); 
- 
+bendSpringForceECMY.resize(numNodesECM,0.0);  
 memMorseForceECMX.resize(numNodesECM,0.0); 
 memMorseForceECMY.resize(numNodesECM,0.0);
  
@@ -344,6 +343,8 @@ fBendRightY.resize(numNodesECM,0.0);
 totalForceECMX.resize(numNodesECM,0.0); 
 totalForceECMY.resize(numNodesECM,0.0);
 
+totalExplicitForceECMX.resize(numNodesECM,0.0); 
+totalExplicitForceECMY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
@@ -361,6 +362,11 @@ thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
 //	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
 //}
 
+thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
+         thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
+
+
+
 PrintECM(0.0) ;
 std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".CSV";
 			ofstream EnergyExport ;
@@ -368,9 +374,11 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 
 			EnergyExport <<"Time,"<<"TotalMorseEnergyECM," << "TotalAdhEnergyECM,"<<"TotalLinSpringEnergy,"<<"TotalEnergy, " <<"TotalEnergyDerivative"<< std::endl;
 
+
 } //initilaization function finished
 
 
+//void SceECM::Solver3DiagCoef (double dt , double Damp_Coef, double   
 
 
 
@@ -536,12 +544,6 @@ bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
 int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
 			&adhPairECM_Cell[0]) ; 
 
-
-thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
-                    thrust::make_zip_iterator (thrust::make_tuple (
-											                        stiffLevel.begin(),
-																	sponLen.begin()    ))
-					                           ,MechProp(isInitPhase));
 
 
 double* stiffLevelAddr=thrust::raw_pointer_cast (
@@ -715,13 +717,52 @@ thrust:: transform (
 					totalForceECMY.begin())),
 				TotalECMForceCompute(dummy));
 
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin())),
+				TotalExplicitECMForceCompute());
+
+
+	thrust::host_vector<double> hTmpTotalExplicitForceECMX ; 
+	thrust::host_vector<double> hTmpTotalExplicitForceECMY ; 
+
+	hTmpTotalExplicitForceECMX.resize(numNodesECM); 
+	hTmpTotalExplicitForceECMY.resize(numNodesECM);
+
+	hTmpTotalExplicitForceECMX=totalExplicitForceECMX;  
+	hTmpTotalExplicitForceECMY=totalExplicitForceECMY;  
+
+	vector <double> tmpTotalExplicitForceECMX; 
+	vector <double> tmpTotalExplicitForceECMY; 
+	for ( int i=0 ; i< numNodesECM ; i++) {
+		tmpTotalExplicitForceECMX.push_back(hTmpTotalExplicitForceECMX[i]) ;   
+		tmpTotalExplicitForceECMY.push_back(hTmpTotalExplicitForceECMY[i]) ;   
+	}
 #ifdef debugModeECM
 	cudaEventRecord(start8, 0);
 	cudaEventSynchronize(start8);
 	cudaEventElapsedTime(&elapsedTime7, start7, start8);
 #endif
 
+EquMotionCoef (dt,Damp_Coef);  
 
+//vector<double> ans=solver.solver3Diag (hCoefLd, hCoefUd, hCoefD, RHS) 
+
+    
 
 double Damp_CoefECM=Damp_Coef ; 
 double Damp_CoefPerip=Damp_Coef ; 
@@ -969,3 +1010,24 @@ AniResumeData  SceECM:: obtainResumeData() {
 	}
 	return aniResumeData ; 
 }
+
+void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
+
+   double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
+   hCoefLd.clear() ; 
+   hCoefUd.clear() ;  
+   hCoefD.clear()  ; 
+
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+      hCoefD.push_back (1 +2* k*dt/Damp_Coef) ; 
+	  hCoefUd.push_back(-k*dt/Damp_Coef) ; 
+	  hCoefLd.push_back(-k*dt/Damp_Coef) ; 
+   }
+   //modify the first and last element
+   hCoefLd.at(0)=0 ; 
+   hCoefUd.at(numNodesECM-1)= 0 ; 
+
+
+}
+
+

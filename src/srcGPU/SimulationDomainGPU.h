@@ -10,7 +10,9 @@
 #include <iomanip>
 #include <fstream>
 #include <string>
+#include <cusparse_v2.h>
 
+using namespace std; 
 /**
  * This class will control the process of stabilizing cell centers.
  */
@@ -28,11 +30,22 @@ public:
 /**
  * This class is responsible for domain-wise highest level logic, e.g. output animation.
  */
+
+class Solver {
+	public :
+    vector<double> solve3Diag ( const vector <double> & lDiag, 
+	                            const vector <double> & Diag, 
+								const vector <double> & uDiag,
+								const vector <double> & rHS ) ; 
+}; 
+
 class SimulationDomainGPU {
 	/**
 	 * Variable that contains information for nodes.
 	 * Handles node level interaction logic.
 	 */
+
+	Solver solver ; 
 	SceNodes nodes;
 
 	SceECM   eCM ;  // Ali 
@@ -41,6 +54,7 @@ class SimulationDomainGPU {
 	 * Handles cell level logics like growth and division.
 	 */
 	SceCells cells;
+
 	NetworkInfo netInfo;
 
 	std::vector<std::vector<PreT1State> > preT1Vec;
@@ -190,5 +204,7 @@ public:
 
 	void processT1Info(int maxStepTraceBack, CellsStatsData &polyData);
 };
+
+
 
 #endif

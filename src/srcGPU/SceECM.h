@@ -8,7 +8,8 @@
 #include <string>
 #include <sstream>
 #include <fstream>  
-//#include "SimulationDomainGPU.h"
+#include <cusparse_v2.h>
+#include "SimulationDomainGPU.h"
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 
@@ -33,13 +34,18 @@ class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
 
+    vector<double> hCoefLd ; 
+    vector<double> hCoefUd ;  
+    vector<double> hCoefD  ; 
 	bool   eCMRemoved ; 
-	bool   isECMNeighborSet ; 
+	bool   isECMNeighborSet ;
+	void EquMotionCoef( double dt , double Damp_Coef) ; 
 public:
 	SceECM() ; 
-	void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
+	void Initialize_SceECM(SceNodes * nodes, SceCells * cells, Solver *solver) {
 		nodesPointerECM =nodes ; 
-		cellsPointerECM= cells ;  
+		cellsPointerECM= cells ; 
+		solverPointer=solver ; 
 	}
 
 	void SetIfECMIsRemoved(bool eCMRemoved) {
@@ -55,8 +61,9 @@ public:
 		EType ConvertStringToEType (string eNodeRead) ;
 	void PrintECM(double curTime);
 	void PrintECMRemoved(double curTime);
-SceNodes * nodesPointerECM ; 
-SceCells * cellsPointerECM ; 
+	SceNodes * nodesPointerECM ; 
+	SceCells * cellsPointerECM ; 
+	Solver   * solverPointer ; 
 double restLenECMSpring ;
 double eCMLinSpringStiff ; 
 double restLenECMAdhSpring ; 
@@ -129,12 +136,24 @@ thrust::device_vector<double> fBendRightY ;
 
 thrust::device_vector<double> totalForceECMX ; 
 thrust::device_vector<double> totalForceECMY ;
+thrust::device_vector<double> totalExplicitForceECMX ; 
+thrust::device_vector<double> totalExplicitForceECMY ;
 thrust::device_vector<EType>  peripORexcm ;
 
 thrust::device_vector<double> stiffLevel ;
 thrust::device_vector<double> sponLen ;
 };
- 
+
+/*
+class Solver{
+
+	public:
+
+		vector < double> Solver3Diag( const & vector <double> h_ld, const & vector< double> h_d, 
+									  const & vector <double> h_ud, const & vector < double> rhs ) ;  
+}; 
+*/
+
 __device__
 double calMorse_ECM (const double & linkLength); 
 
@@ -636,23 +655,41 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 	}
 }; 
 
+struct TotalExplicitECMForceCompute: public thrust::unary_function<DDDD,DD> {
+
+
+	__host__ __device__ TotalExplicitECMForceCompute(){
+	}
+
+	__host__ __device__ DD operator() (const DDDD & dDDD) const {
+
+	double fBendSpringX= thrust:: get<0>(dDDD); 
+	double fBendSpringY= thrust:: get<1>(dDDD); 
+	double fMembX       = thrust:: get<2>(dDDD); 
+	double fMembY       = thrust:: get<3>(dDDD); 
+
+
+	return thrust::make_tuple(fBendSpringX+fMembX,fBendSpringY+fMembY); 
+	}
+}; 
+
+
+
+
 struct MechProp: public thrust::unary_function<EType,DD> {
 
-	bool _isInitPhase ;
 
-	__host__ __device__ MechProp(bool isInitPhase): _isInitPhase(isInitPhase) {
+	__host__ __device__ MechProp() {
 	}
 
 	__device__ DD operator() (const EType  & nodeType) const {
 
-	double stiffness ;
-	double sponLen   ;    
-	//if (_isInitPhase == false ) {
+		double stiffness ;
+		double sponLen   ;    
 
 		DefineECMStiffnessAndLknot (nodeType, stiffness, sponLen) ;  
-//	}
 
-	return thrust::make_tuple(stiffness,sponLen); 
+		return thrust::make_tuple(stiffness,sponLen); 
 	}
 }; 
 
