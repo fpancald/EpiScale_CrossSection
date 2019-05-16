@@ -4,12 +4,11 @@
 #include "commonData.h"
 #include "SceNodes.h" 
 #include "ConfigParser.h"
+#include "Solver.h"
 #include <stdexcept>
 #include <string>
 #include <sstream>
 #include <fstream>  
-#include <cusparse_v2.h>
-#include "SimulationDomainGPU.h"
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 
@@ -41,12 +40,18 @@ class SceECM {
 	bool   isECMNeighborSet ;
 	void EquMotionCoef( double dt , double Damp_Coef) ; 
 public:
-	SceECM() ; 
+	SceECM() ;
+
+	SceNodes * nodesPointerECM ; 
+	SceCells * cellsPointerECM ;
+	Solver   * solverPointer ; 
+	//void Initialize_SceECM(SceNodes * nodes, SceCells * cells) ; 
 	void Initialize_SceECM(SceNodes * nodes, SceCells * cells, Solver *solver) {
 		nodesPointerECM =nodes ; 
 		cellsPointerECM= cells ; 
-		solverPointer=solver ; 
+    	solverPointer=solver ; 
 	}
+
 
 	void SetIfECMIsRemoved(bool eCMRemoved) {
 		this->eCMRemoved=eCMRemoved ; 
@@ -61,9 +66,7 @@ public:
 		EType ConvertStringToEType (string eNodeRead) ;
 	void PrintECM(double curTime);
 	void PrintECMRemoved(double curTime);
-	SceNodes * nodesPointerECM ; 
-	SceCells * cellsPointerECM ; 
-	Solver   * solverPointer ; 
+	//Solver   * solverPointer ; 
 double restLenECMSpring ;
 double eCMLinSpringStiff ; 
 double restLenECMAdhSpring ; 

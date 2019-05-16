@@ -6,6 +6,8 @@ include_directories(${COMMON_INCLUDES} ${GOOGLETEST_DIR}/include/)
 MESSAGE(${GOOGLETEST_DIR}/include/)
 
 CUDA_ADD_LIBRARY(SceGPU
+	Solver.h
+	Solver.cu
 	SceNodes.h
 	SceNodes.cu
 	SceECM.h

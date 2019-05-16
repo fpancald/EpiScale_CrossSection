@@ -35,7 +35,7 @@
 
 // include google test files in order to test private functions.
 #include "gtest/gtest_prod.h"
-#include "SceNodes.h"
+//#include "SceNodes.h"
 //#include "SceCells.h"
 
 // I wish I could include some c++ 11 data structure here but it seems

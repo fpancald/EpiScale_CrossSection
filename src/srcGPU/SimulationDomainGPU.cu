@@ -468,7 +468,7 @@ void SimulationDomainGPU::processT1Info(int maxStepTraceBack,
 	std::vector<PreT1State> preT1States = netInfo.scanForPreT1States();
 	preT1Vec.push_back(preT1States);
 }
-
+/*
 vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <double> & Diag, const vector <double> & uDiag,
 	                               const vector <double> & rHS) {
 
@@ -521,4 +521,5 @@ vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <
 	return ans ; 
 
 }
- 
+*/
+

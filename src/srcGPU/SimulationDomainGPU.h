@@ -6,11 +6,11 @@
 #include "SceCells.h"
 #include "commonData.h"
 #include "NetworkInfo.h"
+#include "Solver.h"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <string>
-#include <cusparse_v2.h>
 
 using namespace std; 
 /**
@@ -30,14 +30,6 @@ public:
 /**
  * This class is responsible for domain-wise highest level logic, e.g. output animation.
  */
-
-class Solver {
-	public :
-    vector<double> solve3Diag ( const vector <double> & lDiag, 
-	                            const vector <double> & Diag, 
-								const vector <double> & uDiag,
-								const vector <double> & rHS ) ; 
-}; 
 
 class SimulationDomainGPU {
 	/**
