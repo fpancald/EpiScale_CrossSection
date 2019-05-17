@@ -347,6 +347,10 @@ totalForceECMY.resize(numNodesECM,0.0);
 
 totalExplicitForceECMX.resize(numNodesECM,0.0); 
 totalExplicitForceECMY.resize(numNodesECM,0.0);
+
+
+rHSX.resize(numNodesECM,0.0); 
+rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
@@ -738,21 +742,41 @@ thrust:: transform (
 					totalExplicitForceECMY.begin())),
 				TotalExplicitECMForceCompute());
 
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					rHSX.begin(),
+					rHSY.begin())),
+				RHSCompute(dt,Damp_Coef));
 
-	thrust::host_vector<double> hTmpTotalExplicitForceECMX ; 
-	thrust::host_vector<double> hTmpTotalExplicitForceECMY ; 
 
-	hTmpTotalExplicitForceECMX.resize(numNodesECM); 
-	hTmpTotalExplicitForceECMY.resize(numNodesECM);
 
-	hTmpTotalExplicitForceECMX=totalExplicitForceECMX;  
-	hTmpTotalExplicitForceECMY=totalExplicitForceECMY;  
+	thrust::host_vector<double> hTmpRHSX ; 
+	thrust::host_vector<double> hTmpRHSY ; 
 
-	vector <double> tmpTotalExplicitForceECMX; 
-	vector <double> tmpTotalExplicitForceECMY; 
+	hTmpRHSX.resize(numNodesECM); 
+	hTmpRHSY.resize(numNodesECM);
+
+	hTmpRHSX=rHSX;  
+	hTmpRHSY=rHSY;  
+
+	vector <double> tmpRHSX; 
+	vector <double> tmpRHSY; 
 	for ( int i=0 ; i< numNodesECM ; i++) {
-		tmpTotalExplicitForceECMX.push_back(hTmpTotalExplicitForceECMX[i]) ;   
-		tmpTotalExplicitForceECMY.push_back(hTmpTotalExplicitForceECMY[i]) ;   
+		tmpRHSX.push_back(hTmpRHSX[i]) ;   
+		tmpRHSY.push_back(hTmpRHSY[i]) ;   
 	}
 #ifdef debugModeECM
 	cudaEventRecord(start8, 0);
@@ -761,7 +785,8 @@ thrust:: transform (
 #endif
 
 EquMotionCoef (dt,Damp_Coef);  
-
+vector<double>  ans =solverPointer->solve3Diag( hCoefLd, hCoefUd, hCoefD,tmpRHSX); 
+vector<double>  ans2=solverPointer->solve3Diag( hCoefLd, hCoefUd, hCoefD,tmpRHSY); 
 //vector<double> ans=solver.solver3Diag (hCoefLd, hCoefUd, hCoefD, RHS) 
 
     

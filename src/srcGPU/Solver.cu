@@ -2,7 +2,7 @@
 
 using namespace std ; 
 
-vector<double>  solve3Diag(const vector <double> & lDiag, const vector <double> & Diag, const vector <double> & uDiag,
+vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <double> & Diag, const vector <double> & uDiag,
 	                               const vector <double> & rHS) {
 
    // --- Initialize cuSPARSE

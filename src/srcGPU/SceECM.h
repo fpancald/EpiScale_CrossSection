@@ -143,6 +143,8 @@ thrust::device_vector<double> totalExplicitForceECMX ;
 thrust::device_vector<double> totalExplicitForceECMY ;
 thrust::device_vector<EType>  peripORexcm ;
 
+thrust::device_vector<double> rHSX ; 
+thrust::device_vector<double> rHSY ;
 thrust::device_vector<double> stiffLevel ;
 thrust::device_vector<double> sponLen ;
 };
@@ -657,6 +659,27 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 //	return thrust::make_tuple(fLinSpringX+fMembX,fLinSpringY+fMembY); 
 	}
 }; 
+
+struct RHSCompute: public thrust::unary_function<DDDD,DD> {
+
+	double _dt ;
+	double _dampCoef ; 
+
+	__host__ __device__ RHSCompute(double dt, double dampCoef):_dt(dt), _dampCoef(dampCoef) {
+	}
+
+	__host__ __device__ DD operator() (const DDDD & dDDD) const {
+
+	double fExplicitX=  thrust:: get<0>(dDDD); 
+	double fExplicitY=  thrust:: get<1>(dDDD); 
+	double locX= thrust:: get<2>(dDDD); 
+	double locY= thrust:: get<3>(dDDD); 
+
+
+	return thrust::make_tuple(fExplicitX*_dt/_dampCoef+locX, fExplicitY*_dt/_dampCoef+locY); 
+	}
+}; 
+
 
 struct TotalExplicitECMForceCompute: public thrust::unary_function<DDDD,DD> {
 
