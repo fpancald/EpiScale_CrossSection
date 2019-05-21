@@ -4,6 +4,7 @@
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
+//Right now it is assumed that ECM stiffness is the same everywhere.
 __constant__ double sceInterCell_ECM[5]; 
 //__constant__ double wLCPara_ECM[4]; 
 __constant__ double restLenECMAdhSpringGPU  ;  
@@ -227,9 +228,9 @@ else {
 
 std::fstream secondInput_ECM ; 
 std:: string secondInputInfo ;  //dummy 
-std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
-
-secondInput_ECM.open(secondInputFileName.c_str()) ;
+//std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
+//secondInput_ECM.open(secondInputFileName.c_str()) ;
+secondInput_ECM.open("./resources/ECM_N01G00_input.cfg" ) ;
 if (secondInput_ECM.is_open()) {
 	cout << "Second ECM Mech input opened successfully" <<endl ; 
 }
@@ -253,15 +254,7 @@ else {
  cout <<" rest len basal ECM is="<<lknotECMBasal<<endl ;
  cout <<" rest len boundary ECM is= "<<lknotECMBC<<endl ;
  cout << "rest len peripodial ECM is=" <<lknotECMPerip <<endl ; 
-
-
-
-
-cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
-//for (int i=0 ; i<posXIni_ECM.size() ; i++){
-//	cout << "ECM nodes read in cpu"<<endl; 
-//	cout << posXIni_ECM[i] <<", "<<posYIni_ECM[i]<<", " << eNodeVec[i] <<endl;  ; 
-//}
+ cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
 
 
 
@@ -354,23 +347,15 @@ rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+604,excm );
-//thrust::fill (peripORexcm.begin()+1166,peripORexcm.end(),excm );
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+int(numNodesECM/2),excm );
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+int(numNodesECM/2),excm );
  
 thrust::copy(posXIni_ECM.begin(),posXIni_ECM.end(),nodeECMLocX.begin()) ; 
 thrust::copy(posYIni_ECM.begin(),posYIni_ECM.end(),nodeECMLocY.begin()) ; 
 thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
 
-//cout << "GPU level initial coordinates and type of external nodes are: " << endl ; 
-//for (int i=0;  i<nodeECMLocX.size() ;  i++) {
-//	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
-//}
-
-thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
-         thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
-
+cout << "GPU level initial coordinates and type of external nodes are: " << endl ; 
+for (int i=0;  i<nodeECMLocX.size() ;  i++) {
+	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
+}
 
 
 PrintECM(0.0) ;
@@ -384,7 +369,6 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 } //initilaization function finished
 
 
-//void SceECM::Solver3DiagCoef (double dt , double Damp_Coef, double   
 
 
 
@@ -433,6 +417,10 @@ thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->ge
 
 double eCMBendStiff=6.0 ; // need to be an input
 
+thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
+         thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
+
+cout << " Mechanical properties after assignment is " << stiffLevel[0] << endl ; 
 //if (cellPolar) {eCMLinSpringStiff=100 ; }
 //if (subCellPolar) {eCMLinSpringStiff=100 ; }
 
@@ -742,15 +730,24 @@ thrust:: transform (
 					totalExplicitForceECMY.begin())),
 				TotalExplicitECMForceCompute());
 
+
+
+//double * nodeECMLocXAddr =thrust::raw_pointer_cast( & nodeECMLocX[0]); 
+//double * nodeECMLocYAddr =thrust::raw_pointer_cast( & nodeECMLocY[0]); 
+//double * sponLenAddr =thrust::raw_pointer_cast( & sponLen[0]); 
+thrust::counting_iterator<uint> iBegin3(0) ; 
+
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
+					iBegin3,
 					totalExplicitForceECMX.begin(),
 					totalExplicitForceECMY.begin(),
 					nodeECMLocX.begin(),
 					nodeECMLocY.begin())),
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
+					iBegin3,
 					totalExplicitForceECMX.begin(),
 					totalExplicitForceECMY.begin(),
 					nodeECMLocX.begin(),
@@ -759,25 +756,20 @@ thrust:: transform (
 				thrust::make_tuple (
 					rHSX.begin(),
 					rHSY.begin())),
-				RHSCompute(dt,Damp_Coef));
+				RHSCompute(dt,Damp_Coef,numNodesECM,stiffLevel[0],nodeECMLocXAddr, nodeECMLocYAddr,sponLenAddr));
+	
 
 
+	vector <double> tmpRHSX(numNodesECM); 
+	vector <double> tmpRHSY(numNodesECM); 
+	tmpHostNodeECMLocX.resize(numNodesECM); 
+	tmpHostNodeECMLocY.resize(numNodesECM); 
+	
+	thrust::copy (rHSX.begin(), rHSX.begin()+numNodesECM, tmpRHSX.begin()); 
+	thrust::copy (rHSY.begin(), rHSY.begin()+numNodesECM, tmpRHSY.begin()); 
+	thrust::copy (nodeECMLocX.begin(), nodeECMLocX.begin()+numNodesECM, tmpHostNodeECMLocX.begin()); 
+	thrust::copy (nodeECMLocY.begin(), nodeECMLocY.begin()+numNodesECM, tmpHostNodeECMLocY.begin());
 
-	thrust::host_vector<double> hTmpRHSX ; 
-	thrust::host_vector<double> hTmpRHSY ; 
-
-	hTmpRHSX.resize(numNodesECM); 
-	hTmpRHSY.resize(numNodesECM);
-
-	hTmpRHSX=rHSX;  
-	hTmpRHSY=rHSY;  
-
-	vector <double> tmpRHSX; 
-	vector <double> tmpRHSY; 
-	for ( int i=0 ; i< numNodesECM ; i++) {
-		tmpRHSX.push_back(hTmpRHSX[i]) ;   
-		tmpRHSY.push_back(hTmpRHSY[i]) ;   
-	}
 #ifdef debugModeECM
 	cudaEventRecord(start8, 0);
 	cudaEventSynchronize(start8);
@@ -785,15 +777,19 @@ thrust:: transform (
 #endif
 
 EquMotionCoef (dt,Damp_Coef);  
-vector<double>  ans =solverPointer->solve3Diag( hCoefLd, hCoefUd, hCoefD,tmpRHSX); 
-vector<double>  ans2=solverPointer->solve3Diag( hCoefLd, hCoefUd, hCoefD,tmpRHSY); 
-//vector<double> ans=solver.solver3Diag (hCoefLd, hCoefUd, hCoefD, RHS) 
+tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
+tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSY,tmpHostNodeECMLocY);
+//vector<double>  ans =solverPointer->solve3Diag( hCoefLd, hCoefD, hCoefUd,tmpRHSX); 
+//vector<double>  ans2=solverPointer->solve3Diag( hCoefLd, hCoefD, hCoefUd,tmpRHSY);
 
     
+thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
+thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
 
 double Damp_CoefECM=Damp_Coef ; 
 double Damp_CoefPerip=Damp_Coef ; 
 // move the nodes of ECM 
+/*
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -816,6 +812,7 @@ thrust:: transform (
 					nodeECMLocX.begin(),
 					nodeECMLocY.begin())),
 				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM,curTime));
+*/
 
 /* To reduce computational cost
 cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
@@ -849,7 +846,7 @@ if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)
 #endif
 
 PrintECM(curTime); 
-
+//throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
 }
 
 void  SceECM:: PrintECM(double curTime) {
@@ -1040,21 +1037,58 @@ AniResumeData  SceECM:: obtainResumeData() {
 
 void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
 
-   double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
+   vector<double> stiffLevelHost(numNodesECM) ;
+   vector<double> sponLenHost(numNodesECM) ;
+   vector <double> sponLenWithNext ; 
+   vector <double> sponLenWithPrev ; 
+   vector <double> distWithNext ; 
+   vector <double> distWithPrev ;
+   int indexNext ; 
+   int indexPrev ; 
+
+
+   sponLenWithNext.clear(); 
+   sponLenWithPrev.clear(); 
+   distWithNext.clear() ; 
+   distWithPrev.clear() ; 
    hCoefLd.clear() ; 
    hCoefUd.clear() ;  
-   hCoefD.clear()  ; 
+   hCoefD.clear()  ;
+
+
+   thrust::copy(sponLen.begin(),sponLen.begin()+numNodesECM, sponLenHost.begin()) ; 
+
+
+   double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
 
    for ( int i=0 ;  i< numNodesECM ; i++) {
-      hCoefD.push_back (1 +2* k*dt/Damp_Coef) ; 
-	  hCoefUd.push_back(-k*dt/Damp_Coef) ; 
-	  hCoefLd.push_back(-k*dt/Damp_Coef) ; 
+	   indexNext=i+1 ;
+	   indexPrev=i-1 ;
+	   if (i==numNodesECM-1){
+	      indexNext=0 ; 
+	   }
+	   if (i==0){
+	      indexPrev=numNodesECM-1 ; 
+	   }
+	   sponLenWithNext.push_back( 0.5*(sponLenHost[indexNext]+sponLenHost[i]) ); 
+	   sponLenWithPrev.push_back( 0.5*(sponLenHost[indexPrev]+sponLenHost[i]) );
+
+	   distWithNext.push_back(sqrt( pow(tmpHostNodeECMLocX[indexNext]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexNext]-tmpHostNodeECMLocY[i],2))) ;
+	   distWithPrev.push_back(sqrt( pow(tmpHostNodeECMLocX[indexPrev]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexPrev]-tmpHostNodeECMLocY[i],2)));  
    }
-   //modify the first and last element
-   hCoefLd.at(0)=0 ; 
-   hCoefUd.at(numNodesECM-1)= 0 ; 
 
-
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+      hCoefD.push_back (1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/distWithPrev.at(i) - sponLenWithNext.at(i)/distWithNext.at(i))) ; 
+	  hCoefLd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithPrev.at(i)/distWithPrev.at(i))) ; 
+	  hCoefUd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithNext.at(i)/distWithNext.at(i))) ; 
+   }
+   cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
+   cout << "constants for stiffness matrix calculated " << endl ; 
+   cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
+   cout << " number of ECM nodes is "<< numNodesECM << endl ; 
+   
 }
 
 
