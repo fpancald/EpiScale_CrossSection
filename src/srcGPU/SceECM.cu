@@ -1,6 +1,6 @@
 #include "SceECM.h"
 #include "SceCells.h"
-//# define debugModeECM 
+# define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
@@ -397,7 +397,6 @@ void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountFo
 	
 	cudaEventRecord(start1, 0);
 #endif
-thrust::counting_iterator<int> iBegin(0) ; 
 nodeDeviceTmpLocX.resize(totalNodeCountForActiveCellsECM,0.0) ;
 nodeDeviceTmpLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
 //isBasalMemNode.resize(totalNodeCountForActiveCellsECM,false) ;
@@ -415,7 +414,6 @@ thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->ge
 	cudaEventElapsedTime(&elapsedTime1, start1, start2);
 #endif
 
-double eCMBendStiff=6.0 ; // need to be an input
 
 thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
          thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
@@ -430,99 +428,15 @@ cout << " Mechanical properties after assignment is " << stiffLevel[0] << endl ;
 
 
 
-double* nodeECMLocXAddr= thrust::raw_pointer_cast (
-			&nodeECMLocX[0]) ; 
-double* nodeECMLocYAddr= thrust::raw_pointer_cast (
-			&nodeECMLocY[0]) ; 
-
-EType* peripORexcmAddr= thrust::raw_pointer_cast (
-			&peripORexcm[0]) ; 
-
-// move the nodes of epithelial cells 
-//// find the closest ECM node to each each cell //
-
- int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
 
 counter ++ ; 
 if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
 	isECMNeighborSet=true ; 
-	counter=0 ; 
-	thrust:: transform (
-		thrust::make_zip_iterator (
-					thrust:: make_tuple (
-						cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
-						cellsPointerECM->getCellInfoVecs().basalLocY.begin())),
-		thrust::make_zip_iterator (
-					thrust:: make_tuple (
-					 	cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
-                     	cellsPointerECM->getCellInfoVecs().basalLocY.begin()))+numCells, 
-	    cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-		FindECMNeighborPerCell(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM ));
-
- 	double * basalCellLocXAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
- 	double * basalCellLocYAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
-	// int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
- 	//cout << " Number of cells in ECM class is equal to " << numCells << endl; 
-	thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 nodeECMLocX.begin(),
-                     nodeECMLocY.begin()))+numNodesECM,
-	    cellNeighborId.begin(),
-		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
+	counter=0 ;
+	FindNeighborCandidateForCellsAndECMNodes(); 
 }
 
-
-
-
-thrust::counting_iterator<int> iBegin2(0) ; 
-//////////////////////////////////////////
- thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					make_permutation_iterator(
-						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-									make_transform_iterator(iBegin2,
-											DivideFunctor2(
-												maxAllNodePerCell))),
-					make_transform_iterator (iBegin,
-							DivideFunctor2(maxAllNodePerCell)),
-					make_transform_iterator (iBegin,
-							ModuloFunctor2(maxAllNodePerCell)),
-					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-					nodesPointerECM->getInfoVecs().nodeLocY.begin(), 
-					nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
-					nodesPointerECM->getInfoVecs().memNodeType1.begin()
-					)), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					make_permutation_iterator(
-						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-									make_transform_iterator(iBegin2,
-											DivideFunctor2(
-												maxAllNodePerCell))),
-					make_transform_iterator (iBegin,
-							DivideFunctor2(maxAllNodePerCell)),
-					 make_transform_iterator (iBegin,
-							ModuloFunctor2(maxAllNodePerCell)),
-					 nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-                     nodesPointerECM->getInfoVecs().nodeLocY.begin(),
-					 nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
-					 nodesPointerECM->getInfoVecs().memNodeType1.begin()
-					 ))+totalNodeCountForActiveCellsECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-					nodesPointerECM->getInfoVecs().nodeLocY.begin(),
-					adhPairECM_Cell.begin(),
-					morseEnergyCell.begin(),
-					adhEnergyCell.begin())),
-				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime,currentActiveCellCount));
-
+MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_Coef) ; 
 #ifdef debugModeECM
 	cudaEventRecord(start3, 0);
 	cudaEventSynchronize(start3);
@@ -532,53 +446,10 @@ thrust::counting_iterator<int> iBegin2(0) ;
 energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
 */
-bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
-			& (nodesPointerECM->getInfoVecs().nodeIsActive[0])) ; 
 
-int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
-			&adhPairECM_Cell[0]) ; 
-
-
-
-double* stiffLevelAddr=thrust::raw_pointer_cast (
-			&stiffLevel[0]) ; 
-
-double*  sponLenAddr =thrust::raw_pointer_cast (
-			&sponLen[0]) ; 
-
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                                         nodeECMLocY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					linSpringAvgTension.begin(),
-					linSpringEnergy.begin())),
-				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
-
-//////////////////////////////////// find the closest Cell to each ECM node ///////////
-
-
-
-///////////////////////////////////
-
-//cout << " I am after FindCellNeighbor functor" << endl ; 
-
-
-
-
-
-
+//CalLinSpringForce(); 
+CalBendSpringForce(); 
+CalCellForcesOnECM() ;
 
 #ifdef debugModeECM
 	cudaEventRecord(start4, 0);
@@ -586,92 +457,20 @@ thrust:: transform (
 	cudaEventElapsedTime(&elapsedTime3, start3, start4);
 #endif
 
-//energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                                         nodeECMLocY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					fBendCenterX.begin(),
-					fBendCenterY.begin(),
-					fBendLeftX.begin(),
-					fBendLeftY.begin(),
-					fBendRightX.begin(),
-					fBendRightY.begin())),
-				CalBendECM(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM,eCMBendStiff));
-
 #ifdef debugModeECM
 	cudaEventRecord(start5, 0);
 	cudaEventSynchronize(start5);
 	cudaEventElapsedTime(&elapsedTime4, start4, start5);
 #endif
-double* fBendLeftXAddr= thrust::raw_pointer_cast (
-			&fBendLeftX[0]) ; 
-double* fBendLeftYAddr= thrust::raw_pointer_cast (
-			&fBendLeftY[0]) ; 
-double* fBendRightXAddr= thrust::raw_pointer_cast (
-			&fBendRightX[0]) ; 
-double* fBendRightYAddr= thrust::raw_pointer_cast (
-			&fBendRightY[0]) ; 
-
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					fBendCenterX.begin(),
-					fBendCenterY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 fBendCenterX.begin(),
-                                         fBendCenterY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin())),
-				SumBendForce(fBendLeftXAddr,fBendLeftYAddr,fBendRightXAddr,fBendRightYAddr,numNodesECM));
 
 #ifdef debugModeECM
 	cudaEventRecord(start6, 0);
 	cudaEventSynchronize(start6);
 	cudaEventElapsedTime(&elapsedTime5, start5, start6);
 #endif
-//to make sure it is based on the distance used for action force calculation.
-double* nodeCellLocXAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocX[0]) ; 
-double* nodeCellLocYAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocY[0]) ;
- 
 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					cellNeighborId.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                     nodeECMLocY.begin(),
-					 cellNeighborId.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin(),
-					morseEnergy.begin(),
-					adhEnergy.begin())),
-				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
+//energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
+//to make sure it is based on the distance used for action force calculation.
 
 //cout << " I am after MorseAndAdhForceECM functor" << endl ; 
 
@@ -685,80 +484,15 @@ thrust:: transform (
 energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
 */
-
-double dummy=0.0 ;
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					totalForceECMX.begin(),
-					totalForceECMY.begin())),
-				TotalECMForceCompute(dummy));
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					totalExplicitForceECMX.begin(),
-					totalExplicitForceECMY.begin())),
-				TotalExplicitECMForceCompute());
-
-
-
-//double * nodeECMLocXAddr =thrust::raw_pointer_cast( & nodeECMLocX[0]); 
-//double * nodeECMLocYAddr =thrust::raw_pointer_cast( & nodeECMLocY[0]); 
-//double * sponLenAddr =thrust::raw_pointer_cast( & sponLen[0]); 
-thrust::counting_iterator<uint> iBegin3(0) ; 
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					iBegin3,
-					totalExplicitForceECMX.begin(),
-					totalExplicitForceECMY.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					iBegin3,
-					totalExplicitForceECMX.begin(),
-					totalExplicitForceECMY.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					rHSX.begin(),
-					rHSY.begin())),
-				RHSCompute(dt,Damp_Coef,numNodesECM,stiffLevel[0],nodeECMLocXAddr, nodeECMLocYAddr,sponLenAddr));
-	
-
+//CalSumForcesOnECM() ;
+//MoveNodesBySumForces(dt, Damp_Coef) ; 
+#ifdef debugModeECM
+	cudaEventRecord(start8, 0);
+	cudaEventSynchronize(start8);
+	cudaEventElapsedTime(&elapsedTime7, start7, start8);
+#endif
+CalSumExplicitForcesOnECM() ;
+CalRHS(dt, Damp_Coef) ;
 
 	vector <double> tmpRHSX(numNodesECM); 
 	vector <double> tmpRHSY(numNodesECM); 
@@ -770,11 +504,6 @@ thrust:: transform (
 	thrust::copy (nodeECMLocX.begin(), nodeECMLocX.begin()+numNodesECM, tmpHostNodeECMLocX.begin()); 
 	thrust::copy (nodeECMLocY.begin(), nodeECMLocY.begin()+numNodesECM, tmpHostNodeECMLocY.begin());
 
-#ifdef debugModeECM
-	cudaEventRecord(start8, 0);
-	cudaEventSynchronize(start8);
-	cudaEventElapsedTime(&elapsedTime7, start7, start8);
-#endif
 
 EquMotionCoef (dt,Damp_Coef);  
 tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
@@ -785,35 +514,6 @@ tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmp
     
 thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
 thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
-
-double Damp_CoefECM=Damp_Coef ; 
-double Damp_CoefPerip=Damp_Coef ; 
-// move the nodes of ECM 
-/*
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					totalForceECMX.begin(),
-					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					totalForceECMX.begin(),
-					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())),
-				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM,curTime));
-*/
-
 /* To reduce computational cost
 cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
 cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
@@ -845,8 +545,8 @@ if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)
 	std::cout << "time 8 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
 #endif
 
+throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
 PrintECM(curTime); 
-//throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
 }
 
 void  SceECM:: PrintECM(double curTime) {
@@ -1037,8 +737,8 @@ AniResumeData  SceECM:: obtainResumeData() {
 
 void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
 
-   vector<double> stiffLevelHost(numNodesECM) ;
-   vector<double> sponLenHost(numNodesECM) ;
+   vector <double> stiffLevelHost(numNodesECM) ;
+   vector <double> sponLenHost(numNodesECM) ;
    vector <double> sponLenWithNext ; 
    vector <double> sponLenWithPrev ; 
    vector <double> distWithNext ; 
@@ -1084,11 +784,356 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
 	  hCoefLd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithPrev.at(i)/distWithPrev.at(i))) ; 
 	  hCoefUd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithNext.at(i)/distWithNext.at(i))) ; 
    }
-   cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
-   cout << "constants for stiffness matrix calculated " << endl ; 
-   cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
-   cout << " number of ECM nodes is "<< numNodesECM << endl ; 
+   //cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
+   //cout << "constants for stiffness matrix calculated " << endl ; 
+   //cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
+   //cout << " number of ECM nodes is "<< numNodesECM << endl ; 
    
 }
 
+void SceECM::MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_Coef) 
+{
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
 
+EType* peripORexcmAddr= thrust::raw_pointer_cast (
+			&peripORexcm[0]) ; 
+
+// move the nodes of epithelial cells 
+//// find the closest ECM node to each each cell //
+
+ int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+thrust::counting_iterator<int> iBegin(0) ; 
+thrust::counting_iterator<int> iBegin2(0) ; 
+//////////////////////////////////////////
+ thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
+					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
+					make_transform_iterator (iBegin,
+							ModuloFunctor2(maxAllNodePerCell)),
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(), 
+					nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					nodesPointerECM->getInfoVecs().memNodeType1.begin()
+					)), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
+					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
+					 make_transform_iterator (iBegin,
+							ModuloFunctor2(maxAllNodePerCell)),
+					 nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+                     nodesPointerECM->getInfoVecs().nodeLocY.begin(),
+					 nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					 nodesPointerECM->getInfoVecs().memNodeType1.begin()
+					 ))+totalNodeCountForActiveCellsECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(),
+					adhPairECM_Cell.begin(),
+					morseEnergyCell.begin(),
+					adhEnergyCell.begin())),
+				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,peripORexcmAddr,currentActiveCellCount));
+}
+
+
+void SceECM::CalLinSpringForce()
+{
+
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+double* stiffLevelAddr=thrust::raw_pointer_cast (
+			&stiffLevel[0]) ; 
+double*  sponLenAddr =thrust::raw_pointer_cast (
+			&sponLen[0]) ; 
+
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                                         nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					linSpringAvgTension.begin(),
+					linSpringEnergy.begin())),
+				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
+
+//////////////////////////////////// find the closest Cell to each ECM node ///////////
+
+
+
+///////////////////////////////////
+
+//cout << " I am after FindCellNeighbor functor" << endl ; 
+
+}
+
+void SceECM::CalBendSpringForce()
+{
+
+const double eCMBendStiff=6.0 ; // need to be an input
+
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                                         nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					fBendCenterX.begin(),
+					fBendCenterY.begin(),
+					fBendLeftX.begin(),
+					fBendLeftY.begin(),
+					fBendRightX.begin(),
+					fBendRightY.begin())),
+				CalBendECM(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM,eCMBendStiff));
+
+double* fBendLeftXAddr= thrust::raw_pointer_cast (
+			&fBendLeftX[0]) ; 
+double* fBendLeftYAddr= thrust::raw_pointer_cast (
+			&fBendLeftY[0]) ; 
+double* fBendRightXAddr= thrust::raw_pointer_cast (
+			&fBendRightX[0]) ; 
+double* fBendRightYAddr= thrust::raw_pointer_cast (
+			&fBendRightY[0]) ; 
+
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					fBendCenterX.begin(),
+					fBendCenterY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 fBendCenterX.begin(),
+                                         fBendCenterY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin())),
+				SumBendForce(fBendLeftXAddr,fBendLeftYAddr,fBendRightXAddr,fBendRightYAddr,numNodesECM));
+
+
+}
+void SceECM::CalCellForcesOnECM() 
+{
+bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
+			& (nodesPointerECM->getInfoVecs().nodeIsActive[0])) ; 
+
+int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
+			&adhPairECM_Cell[0]) ; 
+
+double* nodeCellLocXAddr= thrust::raw_pointer_cast (
+			&nodeDeviceTmpLocX[0]) ; 
+double* nodeCellLocYAddr= thrust::raw_pointer_cast (
+			&nodeDeviceTmpLocY[0]) ;
+ 
+
+int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					cellNeighborId.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                     nodeECMLocY.begin(),
+					 cellNeighborId.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin(),
+					morseEnergy.begin(),
+					adhEnergy.begin())),
+				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
+}
+
+void SceECM::CalSumForcesOnECM()
+{
+double dummy=0.0 ;
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					totalForceECMX.begin(),
+					totalForceECMY.begin())),
+				TotalECMForceCompute(dummy));
+}
+
+void SceECM::CalSumExplicitForcesOnECM() {
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin())),
+				TotalExplicitECMForceCompute());
+}
+
+
+void SceECM::CalRHS(double dt, double Damp_Coef)
+{
+/*
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					rHSX.begin(),
+					rHSY.begin())),
+				RHSCompute(dt,Damp_Coef));
+*/	
+}
+
+void  SceECM::MoveNodesBySumForces(double dt, double Damp_Coef)
+{ 
+double Damp_CoefECM=Damp_Coef ; 
+double Damp_CoefPerip=Damp_Coef ; 
+// move the nodes of ECM 
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					totalForceECMX.begin(),
+					totalForceECMY.begin(),
+					indexECM.begin(),
+					peripORexcm.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					totalForceECMX.begin(),
+					totalForceECMY.begin(),
+					indexECM.begin(),
+					peripORexcm.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())),
+				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM));
+}
+void SceECM::FindNeighborCandidateForCellsAndECMNodes() 
+{
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+double * basalCellLocXAddr= thrust::raw_pointer_cast (
+                            & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
+double * basalCellLocYAddr= thrust::raw_pointer_cast ( 
+                            & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
+EType* peripORexcmAddr= thrust::raw_pointer_cast (
+			&peripORexcm[0]) ; 
+
+int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+
+//// find the closest ECM node to each each cell //
+thrust:: transform (
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+						cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+						cellsPointerECM->getCellInfoVecs().basalLocY.begin())),
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+					 	cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+                     	cellsPointerECM->getCellInfoVecs().basalLocY.begin()))+numCells, 
+	    cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+		FindECMNeighborPerCell(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM ));
+
+	thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 nodeECMLocX.begin(),
+                     nodeECMLocY.begin()))+numNodesECM,
+	    cellNeighborId.begin(),
+		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
+}

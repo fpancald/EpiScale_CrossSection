@@ -16,7 +16,6 @@ typedef thrust ::tuple<int,double,double,int> IDDI ;
 typedef thrust ::tuple<int,int,int,double,double,bool,MembraneType1> IIIDDBT ; 
 typedef thrust ::tuple<double,double> DD ; 
 typedef thrust ::tuple<double,double,double,double> DDDD ; 
-typedef thrust ::tuple<int,double,double,double,double> IDDDD ; 
 typedef thrust ::tuple<double,double,bool> DDB ; 
 typedef thrust ::tuple<double,double,int,double,double> DDIDD ; 
 typedef thrust ::tuple<double,double,double,double,double,double> DDDDDD ;
@@ -41,7 +40,16 @@ class SceECM {
 	vector <double> tmpHostNodeECMLocY; 
 	bool   eCMRemoved ; 
 	bool   isECMNeighborSet ;
-	void EquMotionCoef( double dt , double Damp_Coef) ; 
+	void   FindNeighborCandidateForCellsAndECMNodes(); 
+	void MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_Coef);  
+	void CalLinSpringForce() ; 
+	void CalBendSpringForce() ; 
+	void CalCellForcesOnECM() ; 
+	void CalSumForcesOnECM() ; 
+	void MoveNodesBySumForces(double dt, double Damp_Coef); 
+	void CalSumExplicitForcesOnECM(); 
+	void EquMotionCoef( double dt , double Damp_Coef) ;
+	void CalRHS(double dt, double Damp_Coef); 
 public:
 	SceECM() ;
 
@@ -333,13 +341,11 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIIDDBT,DDIDD> {
 	 int _numNodes_ECM ;
 	 double _dt ; 
 	 double _Damp_Coef ;
-	 bool _isInitPhase ;
 	 EType*  _peripORexcmAddr ;
-	 double _curTime ; 
 	 int _activeCellCount ; 
-	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef, bool isInitPhase, EType * peripORexcmAddr, double curTime, int activeCellCount) :
+	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef,EType * peripORexcmAddr, int activeCellCount) :
 				_locXAddr_ECM(locXAddr_ECM),_locYAddr_ECM(locYAddr_ECM),_maxMembrNodePerCell(maxMembrNodePerCell),_numNodes_ECM(numNodes_ECM),_dt(dt),
-			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime), _activeCellCount (activeCellCount)	{
+			    _Damp_Coef(Damp_Coef), _peripORexcmAddr(peripORexcmAddr), _activeCellCount (activeCellCount)	{
 	}
 	__device__ DDIDD  operator()(const IIIDDBT & iIIDDBT) const {
 	int eCMNeighborId=				thrust::get<0>(iIIDDBT) ; 
@@ -663,53 +669,27 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 	}
 }; 
 
-struct RHSCompute: public thrust::unary_function<IDDDD,DD> {
+struct RHSCompute: public thrust::unary_function<DDDD,DD> {
 
 	double _dt ;
 	double _dampCoef ;
-	int _numNodes ; 
-	double _kStiff ; 
-	double *_locXAddr ; 
-	double *_locYAddr ;
-	double *_sponLenAddr; 
 
 	__host__ __device__ 
-	          RHSCompute(double dt, double dampCoef, int numNodes , double kStiff, double * locXAddr, double * locYAddr, double *sponLenAddr):
-	                      _dt(dt), _dampCoef(dampCoef),_numNodes(numNodes),_kStiff(kStiff),_locXAddr(locXAddr), _locYAddr(locYAddr),
-						  _sponLenAddr(sponLenAddr)
+	          RHSCompute(double dt, double dampCoef):
+	                      _dt(dt), _dampCoef(dampCoef)
 	
 	{
 	}
 
-	__host__ __device__ DD operator() (const IDDDD & iDDDD) const {
+	__host__ __device__ DD operator() (const DDDD & dDDD) const {
     
-		uint    nodeRank  = thrust:: get<0>(iDDDD); 
-		double fExplicitX=thrust:: get<1>(iDDDD); 
-		double fExplicitY=thrust:: get<2>(iDDDD); 
-		double locX= thrust:: get<3>(iDDDD); 
-		double locY= thrust:: get<4>(iDDDD);
+		double fExplicitX=thrust:: get<0>(dDDD); 
+		double fExplicitY=thrust:: get<1>(dDDD); 
+		double locX= thrust:: get<2>(dDDD); 
+		double locY= thrust:: get<3>(dDDD);
 		
-		double sponLenPrev, sponLenNext ;
-		double distPrev, distNext ; 
-		/*	
-		if (nodeRank==0) {
-			sponLenPrev=0.5*(_sponLenAddr[_numNodes-1] + _sponLenAddr[nodeRank]) ; 
-			distPrev=sqrt( pow( _locXAddr[_numNodes-1] - locX,2) + pow( _locYAddr[_numNodes-1] - locY,2));  
-			
-			return thrust::make_tuple(fExplicitX*_dt/_dampCoef + locX + _dt/_dampCoef*_kStiff*(1 - distPrev/sponLenPrev)*_locXAddr[_numNodes-1], 
-		 	                          fExplicitY*_dt/_dampCoef + locY + _dt/_dampCoef*_kStiff*(1 - distPrev/sponLenPrev)*_locYAddr[_numNodes-1]); 
-		}
-		else if (nodeRank==_numNodes-1) {
-			sponLenNext=0.5*(_sponLenAddr[0] + _sponLenAddr[nodeRank]) ; 
-			distNext=sqrt( pow( _locXAddr[0] - locX,2) + pow( _locYAddr[0] - locY,2));  
-
-			return thrust::make_tuple(fExplicitX*_dt/_dampCoef + locX + _dt/_dampCoef*_kStiff*(1 - distNext/sponLenNext)*_locXAddr[0], 
-		    	                      fExplicitY*_dt/_dampCoef + locY + _dt/_dampCoef*_kStiff*(1 - distNext/sponLenNext)*_locYAddr[0]); 
-		}
-		else {*/
-			return thrust::make_tuple(fExplicitX*_dt/_dampCoef + locX , 
+		return thrust::make_tuple(fExplicitX*_dt/_dampCoef + locX , 
 		    	                      fExplicitY*_dt/_dampCoef + locY); 
-	//	}
 
 	}
 	
@@ -763,8 +743,7 @@ struct MoveNodeECM: public thrust::unary_function<DDDDIT,DD> {
 	double _dampECM ; 
 	double _dampPeri ; 
 	int _numNodes ;
-	double _curTime ; 
-	__host__ __device__ MoveNodeECM (double dt, double dampECM, double dampPeri, int numNodes, double curTime): _dt(dt), _dampECM(dampECM),_dampPeri(dampPeri), _numNodes(numNodes),_curTime(curTime) {
+	__host__ __device__ MoveNodeECM (double dt, double dampECM, double dampPeri, int numNodes): _dt(dt), _dampECM(dampECM),_dampPeri(dampPeri), _numNodes(numNodes) {
 	}
 	__host__ __device__ DD operator() (const DDDDIT & dDDDIT) const  {
 	double 			  locXOld= thrust:: get <0> (dDDDIT) ;
