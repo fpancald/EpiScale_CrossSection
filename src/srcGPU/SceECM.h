@@ -116,8 +116,8 @@ thrust::device_vector<double> nodeECMTmpLocY ;
 
 //thrust::device_vector<double> nodeDeviceLocX ; 
 //thrust::device_vector<double> nodeDeviceLocY ; 
-thrust::device_vector<double> nodeDeviceTmpLocX ; 
-thrust::device_vector<double> nodeDeviceTmpLocY ;
+thrust::device_vector<double> nodeCellLocXOld ; 
+thrust::device_vector<double> nodeCellLocYOld ;
 //thrust::device_vector<MembraneType1> memNodeType ;
 thrust::device_vector<int>   adhPairECM_Cell ;
  

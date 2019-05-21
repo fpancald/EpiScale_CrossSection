@@ -397,17 +397,13 @@ void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountFo
 	
 	cudaEventRecord(start1, 0);
 #endif
-nodeDeviceTmpLocX.resize(totalNodeCountForActiveCellsECM,0.0) ;
-nodeDeviceTmpLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
-//isBasalMemNode.resize(totalNodeCountForActiveCellsECM,false) ;
+nodeCellLocXOld.resize(totalNodeCountForActiveCellsECM) ;
+nodeCellLocYOld.resize(totalNodeCountForActiveCellsECM) ;
 adhPairECM_Cell.resize(totalNodeCountForActiveCellsECM,-1) ;
 morseEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
 adhEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
-thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
-thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
-//cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
-//cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
-//cout<< "I am in ECM module and dt is: " << dt << endl ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeCellLocXOld.begin()) ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeCellLocYOld.begin()) ; 
 #ifdef debugModeECM
 	cudaEventRecord(start2, 0);
 	cudaEventSynchronize(start2);
@@ -417,17 +413,7 @@ thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->ge
 
 thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
          thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
-
 cout << " Mechanical properties after assignment is " << stiffLevel[0] << endl ; 
-//if (cellPolar) {eCMLinSpringStiff=100 ; }
-//if (subCellPolar) {eCMLinSpringStiff=100 ; }
-
-//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
-//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
-
-
-
-
 
 counter ++ ; 
 if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
@@ -435,64 +421,43 @@ if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
 	counter=0 ;
 	FindNeighborCandidateForCellsAndECMNodes(); 
 }
-
-MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_Coef) ; 
 #ifdef debugModeECM
 	cudaEventRecord(start3, 0);
 	cudaEventSynchronize(start3);
 	cudaEventElapsedTime(&elapsedTime2, start2, start3);
 #endif
+
+MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_Coef) ; 
 /* To reduce computational cost
 energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
 */
 
 //CalLinSpringForce(); 
-CalBendSpringForce(); 
-CalCellForcesOnECM() ;
+CalBendSpringForce();
 
 #ifdef debugModeECM
 	cudaEventRecord(start4, 0);
 	cudaEventSynchronize(start4);
 	cudaEventElapsedTime(&elapsedTime3, start3, start4);
 #endif
-
-#ifdef debugModeECM
-	cudaEventRecord(start5, 0);
-	cudaEventSynchronize(start5);
-	cudaEventElapsedTime(&elapsedTime4, start4, start5);
-#endif
-
-#ifdef debugModeECM
-	cudaEventRecord(start6, 0);
-	cudaEventSynchronize(start6);
-	cudaEventElapsedTime(&elapsedTime5, start5, start6);
-#endif
-
+CalCellForcesOnECM() ;
 //energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
 //to make sure it is based on the distance used for action force calculation.
-
-//cout << " I am after MorseAndAdhForceECM functor" << endl ; 
-
-#ifdef debugModeECM
-	cudaEventRecord(start7, 0);
-	cudaEventSynchronize(start7);
-	cudaEventElapsedTime(&elapsedTime6, start6, start7);
-#endif
-
 /* To reduce computational cost 
 energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
 */
 //CalSumForcesOnECM() ;
 //MoveNodesBySumForces(dt, Damp_Coef) ; 
-#ifdef debugModeECM
-	cudaEventRecord(start8, 0);
-	cudaEventSynchronize(start8);
-	cudaEventElapsedTime(&elapsedTime7, start7, start8);
-#endif
 CalSumExplicitForcesOnECM() ;
 CalRHS(dt, Damp_Coef) ;
+
+#ifdef debugModeECM
+	cudaEventRecord(start5, 0);
+	cudaEventSynchronize(start5);
+	cudaEventElapsedTime(&elapsedTime4, start4, start5);
+#endif
 
 	vector <double> tmpRHSX(numNodesECM); 
 	vector <double> tmpRHSY(numNodesECM); 
@@ -505,15 +470,33 @@ CalRHS(dt, Damp_Coef) ;
 	thrust::copy (nodeECMLocY.begin(), nodeECMLocY.begin()+numNodesECM, tmpHostNodeECMLocY.begin());
 
 
-EquMotionCoef (dt,Damp_Coef);  
+#ifdef debugModeECM
+	cudaEventRecord(start6, 0);
+	cudaEventSynchronize(start6);
+	cudaEventElapsedTime(&elapsedTime5, start5, start6);
+#endif
+
+EquMotionCoef (dt,Damp_Coef); 
+
+#ifdef debugModeECM
+	cudaEventRecord(start7, 0);
+	cudaEventSynchronize(start7);
+	cudaEventElapsedTime(&elapsedTime6, start6, start7);
+#endif
+
+
 tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
 tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSY,tmpHostNodeECMLocY);
-//vector<double>  ans =solverPointer->solve3Diag( hCoefLd, hCoefD, hCoefUd,tmpRHSX); 
-//vector<double>  ans2=solverPointer->solve3Diag( hCoefLd, hCoefD, hCoefUd,tmpRHSY);
-
     
 thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
 thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
+
+#ifdef debugModeECM
+	cudaEventRecord(start8, 0);
+	cudaEventSynchronize(start8);
+	cudaEventElapsedTime(&elapsedTime7, start7, start8);
+#endif
+
 /* To reduce computational cost
 cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
 cout << "total Morse energy for ECM-cell  is= "<< energyECM.totalMorseEnergyECMCell << endl ;
@@ -545,7 +528,7 @@ if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)
 	std::cout << "time 8 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
 #endif
 
-throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
+//throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
 PrintECM(curTime); 
 }
 
@@ -963,10 +946,11 @@ bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
 int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
 			&adhPairECM_Cell[0]) ; 
 
+//Old locations are chosen to make sure action-reaction balance of forces between ECM and cell nodes are fully satisfied. 
 double* nodeCellLocXAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocX[0]) ; 
+			&nodeCellLocXOld[0]) ; 
 double* nodeCellLocYAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocY[0]) ;
+			&nodeCellLocYOld[0]) ;
  
 
 int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
