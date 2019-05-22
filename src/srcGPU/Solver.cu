@@ -65,7 +65,7 @@ vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <
 
 }
  
- vector<double>  Solver::SOR3DiagPeriodic(const vector <double> & lDiag, const vector <double> & diag, const vector <double> & uDiag,
+ vector<double>  Solver::SOR3DiagPeriodic(const vector <bool> & nodeIsActive, const vector <double> & lDiag, const vector <double> & diag, const vector <double> & uDiag,
 	                                      const vector <double> & rHS,         vector<double>  & firstGuess) {
 				
 	const int maxIteration=2500 ; 
@@ -91,6 +91,9 @@ vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <
 		maxError=0 ; 
 		numIterator ++ ; 
 		for (int i=0; i<diag.size() ; i++) {
+			if (!nodeIsActive.at(i)) {
+				continue ; 
+			}
 			ansOld.at(i)=ans.at(i) ; 
 			ans.at(i)=beta*(rHS.at(i)-lDiag.at(i)*ans[prevIndex.at(i)]-uDiag.at(i)*ans[nextIndex.at(i)])/diag.at(i)+ (1-beta)*ansOld.at(i); 
 			if ( abs (ansOld.at(i)-ans.at(i)) >maxError) {

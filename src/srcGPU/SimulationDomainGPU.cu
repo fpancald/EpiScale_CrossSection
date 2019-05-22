@@ -77,7 +77,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 
 	eCM.Initialize(memPara.maxAllNodePerCell, memPara.maxMembrNodePerCell,memPara.maxAllNodePerCell*memPara.maxCellInDomain, freqPlotData, uniqueSymbolOutput);
 
-	cells = SceCells(&nodes, & eCM, initActiveMembrNodeCounts,
+	cells = SceCells(&nodes, & eCM, & solver, initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1, InitTimeStage);  //Ali
 
 	nodes.Initialize_SceNodes  ( &cells) ;

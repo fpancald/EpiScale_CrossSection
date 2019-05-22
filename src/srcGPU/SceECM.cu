@@ -346,6 +346,7 @@ rHSX.resize(numNodesECM,0.0);
 rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
+nodeIsActive.resize(numNodesECM,true) ; 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
  
 thrust::copy(posXIni_ECM.begin(),posXIni_ECM.end(),nodeECMLocX.begin()) ; 
@@ -485,8 +486,8 @@ EquMotionCoef (dt,Damp_Coef);
 #endif
 
 
-tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
-tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(hCoefLd, hCoefD, hCoefUd,tmpRHSY,tmpHostNodeECMLocY);
+tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
+tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSY,tmpHostNodeECMLocY);
     
 thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
 thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
@@ -720,7 +721,6 @@ AniResumeData  SceECM:: obtainResumeData() {
 
 void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
 
-   vector <double> stiffLevelHost(numNodesECM) ;
    vector <double> sponLenHost(numNodesECM) ;
    vector <double> sponLenWithNext ; 
    vector <double> sponLenWithPrev ; 
@@ -1029,7 +1029,7 @@ thrust:: transform (
 
 void SceECM::CalRHS(double dt, double Damp_Coef)
 {
-/*
+
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -1048,7 +1048,7 @@ thrust:: transform (
 					rHSX.begin(),
 					rHSY.begin())),
 				RHSCompute(dt,Damp_Coef));
-*/	
+	
 }
 
 void  SceECM::MoveNodesBySumForces(double dt, double Damp_Coef)

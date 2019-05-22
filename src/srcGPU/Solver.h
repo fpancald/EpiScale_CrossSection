@@ -13,7 +13,8 @@ class Solver {
 							   const vector <double> & uDiag,
 							   const vector <double> & rHS) ;
 
-    vector<double> SOR3DiagPeriodic (const vector <double> & lDiag, 
+    vector<double> SOR3DiagPeriodic (const vector  <bool>  & nodeIsActive,
+									 const vector <double> & lDiag, 
 	                                 const vector <double> & Diag, 
 								     const vector <double> & uDiag,
 								     const vector <double> & rHS,

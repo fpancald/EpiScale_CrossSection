@@ -701,7 +701,7 @@ SceCells::SceCells(SceNodes* nodesInput,
 }
 
 
-SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
+SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput, Solver * solver,
 		std::vector<uint>& initActiveMembrNodeCounts,
 		std::vector<uint>& initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
@@ -738,7 +738,7 @@ SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
 
 	memNewSpacing = globalConfigVars.getConfigValue("MembrLenDiv").toDouble();
 	cout << "relax count is initialized as" << relaxCount << endl ; 
-	initialize_M(nodesInput, eCMInput);
+	initialize_M(nodesInput, eCMInput, solver);
 	copyToGPUConstMem();
 	copyInitActiveNodeCount_M(initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1);
@@ -935,11 +935,12 @@ void SceCells::initialize(SceNodes* nodesInput) {
 	distributeIsCellRank();
 }
 
-void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput) {
+void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput, Solver *solver) {
 	std::cout << "Initializing cells ...... " << std::endl;
 	//std::cout.flush();
 	nodes = nodesInput; //pointer assigned
-	eCMPointerCells=eCMInput ; //pointer assigned  
+	eCMPointerCells=eCMInput ; //pointer assigned 
+	solverPointer=solver ; 
 	allocPara_m = nodesInput->getAllocParaM();
 	// max internal node count must be even number.
 	assert(allocPara_m.maxIntnlNodePerCell % 2 == 0);
@@ -1617,6 +1618,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
     findTangentAndNormal_M();//AAMIRI ADDED May29
 	allComponentsMove_M();
     std::cout << "     *** 9 ***" << endl;
+	allComponentsMoveImplicitPart() ; 
 //	updateMembrGrowthProgress_M();  
 //	if (relaxCount==10) { 
 //		handleMembrGrowth_M();
@@ -2277,9 +2279,6 @@ void SceCells::moveNodes_BC_M() {
 							nodes->getInfoVecs().nodeLocY.begin())),
 			SaxpyFunctorDim2_BC_Damp(dt)); 
 
-//cout << "I am in move_nodes and total nodes for active cells is" <<  totalNodeCountForActiveCells << endl ; 
-//cout << "I am in move_nodes and dt is equal to:" << dt  << endl ; 
-//cout << "I am in move_nodes and bdry node count is" << allocPara_m.bdryNodeCount << endl ; 
 
 }
 
@@ -7129,4 +7128,144 @@ void SceCells::readNucleusIniLocPercent() {
 
 
 
+
+void SceCells::allComponentsMoveImplicitPart() 
+{
+  CalRHS();
+  EquMotionCoef();
+  UpdateLocations(); 
+
+}
+
+void SceCells::CalRHS () {
+//	uint totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
+//			* allocPara_m.maxAllNodePerCell;
+
+	nodes->getInfoVecs().locXHost.clear();
+	nodes->getInfoVecs().locYHost.clear(); 
+	nodes->getInfoVecs().locXHost.resize(totalNodeCountForActiveCells) ; 
+	nodes->getInfoVecs().locYHost.resize(totalNodeCountForActiveCells) ;
+
+	nodes->getInfoVecs().rHSXHost.clear() ; 
+	nodes->getInfoVecs().rHSYHost.clear() ; 
+	nodes->getInfoVecs().rHSXHost.resize(totalNodeCountForActiveCells) ; 
+	nodes->getInfoVecs().rHSYHost.resize(totalNodeCountForActiveCells) ; 
+
+
+	thrust::copy (nodes->getInfoVecs().nodeLocX.begin(), nodes->getInfoVecs().nodeLocX.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locXHost.begin()); 
+	thrust::copy (nodes->getInfoVecs().nodeLocY.begin() , nodes->getInfoVecs().nodeLocY.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locYHost.begin()); 
+
+	nodes->getInfoVecs().rHSXHost=nodes->getInfoVecs().locXHost ; 
+	nodes->getInfoVecs().rHSYHost=nodes->getInfoVecs().locYHost ; 
+}
+
+void SceCells::EquMotionCoef()
+{
+   int activeMemCount [ allocPara_m.currentActiveCellCount] ;
+   double distWithNext[totalNodeCountForActiveCells]  ; 
+   double distWithPrev[totalNodeCountForActiveCells]  ;
+   int indexNext ; 
+   int indexPrev ; 
+   int cellRank ; 
+   int nodeRank ;
+
+   nodes->getInfoVecs().hCoefD.clear() ; 
+   nodes->getInfoVecs().hCoefLd.clear() ; 
+   nodes->getInfoVecs().hCoefUd.clear() ;
+   nodes->getInfoVecs().nodeIsActiveH.clear(); 
+   
+   nodes->getInfoVecs().hCoefD.resize(totalNodeCountForActiveCells,0.0) ; 
+   nodes->getInfoVecs().hCoefLd.resize(totalNodeCountForActiveCells,0.0) ; 
+   nodes->getInfoVecs().hCoefUd.resize(totalNodeCountForActiveCells,0.0) ;
+   nodes->getInfoVecs().nodeIsActiveH.resize(totalNodeCountForActiveCells) ; 
+   
+   thrust::copy (nodes->getInfoVecs().nodeIsActive.begin(),
+        	     nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCells,
+		         nodes->getInfoVecs().nodeIsActiveH.begin()); 
+	
+
+   //setup required basic parameters 
+   for (int i=0 ; i< allocPara_m.currentActiveCellCount ; i++ ){
+		activeMemCount[i] = 0 ; 
+   }
+
+   for (int i=0 ; i<totalNodeCountForActiveCells  ;  i++) {
+      if (nodes->getInfoVecs().nodeIsActiveH.at(i)==true &&
+	     (i%allocPara_m.maxAllNodePerCell) < allocPara_m.maxMembrNodePerCell){
+		 cellRank=i/allocPara_m.maxAllNodePerCell  ; 
+	     activeMemCount [cellRank]=activeMemCount [cellRank]+1 ; 
+	  }
+   }
+   for ( int i=0 ;  i< totalNodeCountForActiveCells ; i++) {
+	   cellRank=i/allocPara_m.maxAllNodePerCell ; 
+	   nodeRank=i%allocPara_m.maxAllNodePerCell ;
+	   if ( nodeRank<activeMemCount [cellRank]) {
+	      indexNext=i+1 ;
+	   	  indexPrev=i-1 ;
+	   	  if ( nodeRank==activeMemCount [cellRank]-1){
+	         indexNext=cellRank*allocPara_m.maxAllNodePerCell ; 
+	      }
+	      if (nodeRank==0){
+	         indexPrev=cellRank*allocPara_m.maxAllNodePerCell  +activeMemCount [cellRank]-1  ; 
+	      }
+	      distWithNext[i]=(sqrt( pow(nodes->getInfoVecs().locXHost[indexNext] - 
+		                             nodes->getInfoVecs().locXHost[i],2) + 
+	                             pow(nodes->getInfoVecs().locYHost[indexNext] - 
+								     nodes->getInfoVecs().locYHost[i],2))) ;
+	      distWithPrev[i]=(sqrt( pow(nodes->getInfoVecs().locXHost[indexPrev] - 
+		                             nodes->getInfoVecs().locXHost[i],2) + 
+	                             pow(nodes->getInfoVecs().locYHost[indexPrev] - 
+								     nodes->getInfoVecs().locYHost[i],2)));  
+   	   }
+   }
+
+   double sponLen= globalConfigVars.getConfigValue("MembrEquLen").toDouble();
+   double k= globalConfigVars.getConfigValue("MembrStiff").toDouble();
+   for ( int i=0 ;  i< totalNodeCountForActiveCells ; i++) {
+
+      if (nodes->getInfoVecs().nodeIsActiveH.at(i)==false) {
+		  continue ; 
+	  }
+	  cellRank=i / allocPara_m.maxAllNodePerCell; 
+	  nodeRank=i % allocPara_m.maxAllNodePerCell;
+
+	  if (nodeRank<activeMemCount [cellRank]) {
+      	nodes->getInfoVecs().hCoefD[i]= (1 + k*dt/Damp_Coef*( 2 - sponLen/distWithPrev[i] - sponLen/distWithNext[i])) ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=(    k*dt/Damp_Coef*(-1 + sponLen/distWithPrev[i])) ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=(    k*dt/Damp_Coef*(-1 + sponLen/distWithNext[i])) ; 
+   	  }
+	  else {
+      	nodes->getInfoVecs().hCoefD[i]=1 ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=0 ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=0 ; 
+	  }
+
+  }
+
+}
+
+
+void SceCells::UpdateLocations() {
+   nodes->getInfoVecs().locXHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+   												     		     nodes->getInfoVecs().hCoefLd, 
+													             nodes->getInfoVecs().hCoefD, 
+													             nodes->getInfoVecs().hCoefUd,
+													             nodes->getInfoVecs().rHSXHost,
+													             nodes->getInfoVecs().locXHost); 
+    
+   nodes->getInfoVecs().locXHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+												     		     nodes->getInfoVecs().hCoefLd, 
+													             nodes->getInfoVecs().hCoefD, 
+													             nodes->getInfoVecs().hCoefUd,
+													             nodes->getInfoVecs().rHSYHost,
+													             nodes->getInfoVecs().locYHost); 
+   thrust::copy(nodes->getInfoVecs().locXHost.begin(), 
+                nodes->getInfoVecs().locXHost.begin()+totalNodeCountForActiveCells , 
+				nodes->getInfoVecs().nodeLocX.begin()); 
+   thrust::copy(nodes->getInfoVecs().locYHost.begin(), 
+                nodes->getInfoVecs().locYHost.begin()+totalNodeCountForActiveCells , 
+				nodes->getInfoVecs().nodeLocY.begin());
+}
 

@@ -1093,6 +1093,13 @@ public:
 	thrust::device_vector<int>  nodeCellRankBehindOld;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankFrontHost;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankBehindHost;//Ali it is cell size
+	vector<bool> nodeIsActiveH ; //for solver
+	vector<double> locXHost  ; //for solver
+	vector<double> locYHost ; //for solver
+	vector<double> rHSXHost ; //for solver
+	vector<double> rHSYHost ; //for solver
+	vector<double> hCoefD,hCoefUd, hCoefLd ; // for solver
+
 };
 
 /**
@@ -1227,7 +1234,7 @@ class SceNodes {
 	void processMembrAdh_M();
 	void removeInvalidPairs_M();
 	void applyMembrAdh_M();
-
+	
 	void copyInterCellForces_M();//AAMIRI-Ali
 
 	uint endIndx_M;

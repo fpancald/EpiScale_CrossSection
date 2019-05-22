@@ -32,7 +32,7 @@ struct MechPara_ECM {
 class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
-
+	vector<bool> nodeIsActive ; 
     vector<double> hCoefLd ; 
     vector<double> hCoefUd ;  
     vector<double> hCoefD  ; 

@@ -6,7 +6,9 @@
 
 #include "SceNodes.h"
 #include "SceECM.h"
+#include "Solver.h"
 #include <time.h>
+#include <functional>
 #include <thrust/tabulate.h>
 #include <thrust/count.h>
 #define PI 3.14159265358979
@@ -755,7 +757,7 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				leftDiffY = leftPosY - locY;
 				lenLeft = sqrt(leftDiffX * leftDiffX + leftDiffY * leftDiffY);
 				//double forceVal = calMembrForce_Mitotic(lenLeft,progress, _mitoticCri,adhereIndex); //Ali & Abu June 30th
-				double forceVal = calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
+				double forceVal = 0 ; //calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
 			        //if (adhereIndex==-1 && _adhereIndexAddr[index_left]==-1) {
 				if (longEnough(lenLeft)) {
 					velX = velX + forceVal * leftDiffX / lenLeft;
@@ -780,7 +782,7 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				lenRight = sqrt(
 						rightDiffX * rightDiffX + rightDiffY * rightDiffY);
 				//double forceVal = calMembrForce_Mitotic(lenRight,progress, _mitoticCri,adhereIndex); // Ali & June 30th
-				double forceVal = calMembrForce_Actin(lenRight,kAvgRight); // Ali & June 30th
+				double forceVal =0 ; // calMembrForce_Actin(lenRight,kAvgRight); // Ali & June 30th
 				//if (adhereIndex==-1 && _adhereIndexAddr[index_right]==-1) {
 			if (longEnough(lenRight)) {
 					velX = velX + forceVal * rightDiffX / lenRight;
@@ -3369,7 +3371,8 @@ struct MembrPara {
  */
 class SceCells {
 	SceNodes* nodes;
-	SceECM  *eCMPointerCells;  //Ali 
+	SceECM  *eCMPointerCells;  //Ali
+	Solver  *solverPointer; 
 	NodeAllocPara allocPara;
 	SceMiscPara miscPara;
 	SceBioPara bioPara;
@@ -3421,7 +3424,7 @@ class SceCells {
 	void initGrowthAuxData();
 	void initGrowthAuxData_M();
 	void initialize(SceNodes* nodesInput);
-	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput);
+	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput, Solver *solver);
 
 	void distributeBdryIsActiveInfo();
 	void distributeProfileIsActiveInfo();
@@ -3603,6 +3606,11 @@ class SceCells {
 
 	void allComponentsMove_M();
 
+	void allComponentsMoveImplicitPart() ;
+	void CalRHS() ;
+    void EquMotionCoef();
+    void UpdateLocations(); 
+	
 	void randomizeGrowth_M();
 
 	void updateGrowthProgress_M();
@@ -3714,7 +3722,7 @@ public:
 			std::vector<uint> &numOfInitActiveNodesOfCells,
 			std::vector<SceNodeType> &cellTypes);
 
-	SceCells(SceNodes* nodesInput, SceECM * eCMInput,
+	SceCells(SceNodes* nodesInput, SceECM * eCMInput,Solver *solver,
 			std::vector<uint> &numOfInitActiveMembrNodeCounts,
 			std::vector<uint> &numOfInitActiveIntnlNodeCounts,
 			std::vector<double> &initGrowProgVec, std::vector<ECellType> &eCellTypeV1 
