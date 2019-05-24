@@ -486,8 +486,8 @@ EquMotionCoef (dt,Damp_Coef);
 #endif
 
 
-tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSX,tmpHostNodeECMLocX); 
-tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSY,tmpHostNodeECMLocY);
+tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSX,indexPrev, indexNext, tmpHostNodeECMLocX); 
+tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSY,indexPrev,indexNext, tmpHostNodeECMLocY);
     
 thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
 thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
@@ -726,8 +726,6 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    vector <double> sponLenWithPrev ; 
    vector <double> distWithNext ; 
    vector <double> distWithPrev ;
-   int indexNext ; 
-   int indexPrev ; 
 
 
    sponLenWithNext.clear(); 
@@ -737,7 +735,11 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    hCoefLd.clear() ; 
    hCoefUd.clear() ;  
    hCoefD.clear()  ;
+   indexNext.clear() ; 
+   indexPrev.clear() ; 
 
+   indexNext.resize(numNodesECM) ; 
+   indexPrev.resize(numNodesECM) ; 
 
    thrust::copy(sponLen.begin(),sponLen.begin()+numNodesECM, sponLenHost.begin()) ; 
 
@@ -745,21 +747,21 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
 
    for ( int i=0 ;  i< numNodesECM ; i++) {
-	   indexNext=i+1 ;
-	   indexPrev=i-1 ;
+	   indexNext.at(i)=i+1 ;
+	   indexPrev.at(i)=i-1 ;
 	   if (i==numNodesECM-1){
-	      indexNext=0 ; 
+	      indexNext.at(i)=0 ; 
 	   }
 	   if (i==0){
-	      indexPrev=numNodesECM-1 ; 
+	      indexPrev.at(i)=numNodesECM-1 ; 
 	   }
-	   sponLenWithNext.push_back( 0.5*(sponLenHost[indexNext]+sponLenHost[i]) ); 
-	   sponLenWithPrev.push_back( 0.5*(sponLenHost[indexPrev]+sponLenHost[i]) );
+	   sponLenWithNext.push_back( 0.5*(sponLenHost[indexNext.at(i)]+sponLenHost[i]) ); 
+	   sponLenWithPrev.push_back( 0.5*(sponLenHost[indexPrev.at(i)]+sponLenHost[i]) );
 
-	   distWithNext.push_back(sqrt( pow(tmpHostNodeECMLocX[indexNext]-tmpHostNodeECMLocX[i],2) + 
-	                                pow(tmpHostNodeECMLocY[indexNext]-tmpHostNodeECMLocY[i],2))) ;
-	   distWithPrev.push_back(sqrt( pow(tmpHostNodeECMLocX[indexPrev]-tmpHostNodeECMLocX[i],2) + 
-	                                pow(tmpHostNodeECMLocY[indexPrev]-tmpHostNodeECMLocY[i],2)));  
+	   distWithNext.push_back(sqrt( pow(tmpHostNodeECMLocX[indexNext.at(i)]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexNext.at(i)]-tmpHostNodeECMLocY[i],2))) ;
+	   distWithPrev.push_back(sqrt( pow(tmpHostNodeECMLocX[indexPrev.at(i)]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexPrev.at(i)]-tmpHostNodeECMLocY[i],2)));  
    }
 
    for ( int i=0 ;  i< numNodesECM ; i++) {

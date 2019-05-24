@@ -35,7 +35,9 @@ class SceECM {
 	vector<bool> nodeIsActive ; 
     vector<double> hCoefLd ; 
     vector<double> hCoefUd ;  
-    vector<double> hCoefD  ; 
+    vector<double> hCoefD  ;
+	vector<int> indexPrev ; 
+	vector<int> indexNext ;
 	vector <double> tmpHostNodeECMLocX; 
 	vector <double> tmpHostNodeECMLocY; 
 	bool   eCMRemoved ; 

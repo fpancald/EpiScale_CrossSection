@@ -813,7 +813,7 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	   	if (nodeType==apical1 && _isApicalAdhPresent) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
-			beta=0.1;   
+			beta=0 ; //0.1;   
 		}
 		if (nodeType==apical1 && _isApicalAdhPresent==false) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
@@ -1094,8 +1094,8 @@ public:
 	thrust::host_vector<int>  nodeCellRankFrontHost;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankBehindHost;//Ali it is cell size
 	vector<bool> nodeIsActiveH ; //for solver
-	vector<double> locXHost  ; //for solver
-	vector<double> locYHost ; //for solver
+	vector<double> locXOldHost  ; //for solver
+	vector<double> locYOldHost ; //for solver
 	vector<double> rHSXHost ; //for solver
 	vector<double> rHSYHost ; //for solver
 	vector<double> hCoefD,hCoefUd, hCoefLd ; // for solver

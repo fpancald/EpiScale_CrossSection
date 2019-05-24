@@ -66,31 +66,25 @@ vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <
 }
  
  vector<double>  Solver::SOR3DiagPeriodic(const vector <bool> & nodeIsActive, const vector <double> & lDiag, const vector <double> & diag, const vector <double> & uDiag,
-	                                      const vector <double> & rHS,         vector<double>  & firstGuess) {
+	                                      const vector <double> & rHS, 
+										  const vector <int> & prevIndex,
+										  const vector <int> & nextIndex,
+										  vector<double>  & firstGuess) {
 				
 	const int maxIteration=2500 ; 
 	const double beta=1.2 ; 
 	
 	vector <double> ans =firstGuess ;
 	vector<double> ansOld=firstGuess ; 
-	vector <double> prevIndex, nextIndex ; 
 	double maxError=10000 ;  // Just a big number to go inside while loop for the fist time. 
     const int N     =diag.size();        // --- Size of the linear system
-	//Assessing previous and next index of each unknown point
-	//Since it is periodic problem it is not just i-1 and i+1 in all the nodes.
-	for (int i=0; i<N ; i++) {
-		prevIndex.push_back(i-1) ; 
-		nextIndex.push_back(i+1) ; 
-	}
-	prevIndex[0]=N-1 ; 
-	nextIndex[N-1]=0 ; 
 	
 	//Simple iterative SOR solver
 	int numIterator=0 ; 
 	while (maxError>1.0E-6 && numIterator<maxIteration) {
 		maxError=0 ; 
 		numIterator ++ ; 
-		for (int i=0; i<diag.size() ; i++) {
+		for (int i=0; i<N ; i++) {
 			if (!nodeIsActive.at(i)) {
 				continue ; 
 			}

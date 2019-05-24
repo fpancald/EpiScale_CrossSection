@@ -757,11 +757,11 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				leftDiffY = leftPosY - locY;
 				lenLeft = sqrt(leftDiffX * leftDiffX + leftDiffY * leftDiffY);
 				//double forceVal = calMembrForce_Mitotic(lenLeft,progress, _mitoticCri,adhereIndex); //Ali & Abu June 30th
-				double forceVal = 0 ; //calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
+				double forceVal =calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
 			        //if (adhereIndex==-1 && _adhereIndexAddr[index_left]==-1) {
 				if (longEnough(lenLeft)) {
-					velX = velX + forceVal * leftDiffX / lenLeft;
-					velY = velY + forceVal * leftDiffY / lenLeft;
+			//		velX = velX + forceVal * leftDiffX / lenLeft;
+			//		velY = velY + forceVal * leftDiffY / lenLeft;
 					mag = forceVal + mag;
 				}
 			}
@@ -782,11 +782,11 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				lenRight = sqrt(
 						rightDiffX * rightDiffX + rightDiffY * rightDiffY);
 				//double forceVal = calMembrForce_Mitotic(lenRight,progress, _mitoticCri,adhereIndex); // Ali & June 30th
-				double forceVal =0 ; // calMembrForce_Actin(lenRight,kAvgRight); // Ali & June 30th
+				double forceVal = calMembrForce_Actin(lenRight,kAvgRight); // Ali & June 30th
 				//if (adhereIndex==-1 && _adhereIndexAddr[index_right]==-1) {
 			if (longEnough(lenRight)) {
-					velX = velX + forceVal * rightDiffX / lenRight;
-					velY = velY + forceVal * rightDiffY / lenRight;
+			//		velX = velX + forceVal * rightDiffX / lenRight;
+			//		velY = velY + forceVal * rightDiffY / lenRight;
 					mag = forceVal + mag;
 					rightMag = forceVal;
 					midX = (rightPosX + locX) / 2;
@@ -1932,19 +1932,8 @@ struct SaxpyFunctorDim2_BC_Damp: public thrust::binary_function<CVec3, CVec2, CV
 		double xRes = thrust::get<1>(vec1) * _dt/thrust::get<0>(vec1) + thrust::get<0>(vec2);
 		double yRes = thrust::get<2>(vec1) * _dt/thrust::get<0>(vec1) + thrust::get<1>(vec2);
 
-		if (yRes>21.5) {
-			//return thrust::make_tuple(xRes, 21.5);
+		
 			return thrust::make_tuple(xRes, yRes);
-		}
-		else if (yRes<17.1178) {
-
-		//	return thrust::make_tuple(xRes, 17.1178);
-			return thrust::make_tuple(xRes, yRes);
-		}
-		else {
-
-			return thrust::make_tuple(xRes, yRes);
-		}
 
 	}
 };
@@ -3604,12 +3593,13 @@ class SceCells {
 
 	void distributeCellGrowthProgress_M();
 
+	void StoreNodeOldPositions() ; 
 	void allComponentsMove_M();
 
 	void allComponentsMoveImplicitPart() ;
 	void CalRHS() ;
-    void EquMotionCoef();
-    void UpdateLocations(); 
+    void EquMotionCoef(vector<int> & indexPrev, vector<int> & indexNext);
+    void UpdateLocations(const vector<int> & indexPrev, const vector<int> & indexNext); 
 	
 	void randomizeGrowth_M();
 

@@ -87,7 +87,7 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 SceNodes::SceNodes() {
 	readDomainPara();
 	isMemNodeTypeAssigned=false ; 
-	isApicalAdhPresent=true ;
+	isApicalAdhPresent=false ;
 	cout<< " I am inside SceNodes constructor with zero elements" << endl ; 
 }
 

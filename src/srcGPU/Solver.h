@@ -18,6 +18,8 @@ class Solver {
 	                                 const vector <double> & Diag, 
 								     const vector <double> & uDiag,
 								     const vector <double> & rHS,
+								     const vector <int>    & prevIndex,
+								     const vector <int>    & nextIndex,
 									 vector <double> & firstGuess) ; 
 
 }; 

@@ -1616,6 +1616,8 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 8 ***" << endl;
 
     findTangentAndNormal_M();//AAMIRI ADDED May29
+
+	StoreNodeOldPositions() ; 
 	allComponentsMove_M();
     std::cout << "     *** 9 ***" << endl;
 	allComponentsMoveImplicitPart() ; 
@@ -7131,51 +7133,56 @@ void SceCells::readNucleusIniLocPercent() {
 
 void SceCells::allComponentsMoveImplicitPart() 
 {
+  vector <int> indexPrev, indexNext ; 
   CalRHS();
-  EquMotionCoef();
-  UpdateLocations(); 
+  EquMotionCoef(indexPrev, indexNext);
+  UpdateLocations(indexPrev,indexNext); 
 
 }
 
-void SceCells::CalRHS () {
-//	uint totalNodeCountForActiveCells = allocPara_m.currentActiveCellCount
-//			* allocPara_m.maxAllNodePerCell;
+void SceCells::StoreNodeOldPositions() {
+	nodes->getInfoVecs().locXOldHost.clear();
+	nodes->getInfoVecs().locYOldHost.clear(); 
+	nodes->getInfoVecs().locXOldHost.resize(totalNodeCountForActiveCells) ; 
+	nodes->getInfoVecs().locYOldHost.resize(totalNodeCountForActiveCells) ;
 
-	nodes->getInfoVecs().locXHost.clear();
-	nodes->getInfoVecs().locYHost.clear(); 
-	nodes->getInfoVecs().locXHost.resize(totalNodeCountForActiveCells) ; 
-	nodes->getInfoVecs().locYHost.resize(totalNodeCountForActiveCells) ;
+	thrust::copy (nodes->getInfoVecs().nodeLocX.begin(), nodes->getInfoVecs().nodeLocX.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locXOldHost.begin()); 
+	thrust::copy (nodes->getInfoVecs().nodeLocY.begin() , nodes->getInfoVecs().nodeLocY.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locYOldHost.begin()); 
+
+}
+void SceCells::CalRHS () {
+    cout << "total node count for active cells in CalRHS function is="<<totalNodeCountForActiveCells << endl ; 
 
 	nodes->getInfoVecs().rHSXHost.clear() ; 
 	nodes->getInfoVecs().rHSYHost.clear() ; 
 	nodes->getInfoVecs().rHSXHost.resize(totalNodeCountForActiveCells) ; 
 	nodes->getInfoVecs().rHSYHost.resize(totalNodeCountForActiveCells) ; 
 
-
 	thrust::copy (nodes->getInfoVecs().nodeLocX.begin(), nodes->getInfoVecs().nodeLocX.begin() +
-				totalNodeCountForActiveCells, nodes->getInfoVecs().locXHost.begin()); 
+				totalNodeCountForActiveCells, nodes->getInfoVecs().rHSXHost.begin()); 
 	thrust::copy (nodes->getInfoVecs().nodeLocY.begin() , nodes->getInfoVecs().nodeLocY.begin() +
-				totalNodeCountForActiveCells, nodes->getInfoVecs().locYHost.begin()); 
-
-	nodes->getInfoVecs().rHSXHost=nodes->getInfoVecs().locXHost ; 
-	nodes->getInfoVecs().rHSYHost=nodes->getInfoVecs().locYHost ; 
+				totalNodeCountForActiveCells, nodes->getInfoVecs().rHSYHost.begin()); 
 }
 
-void SceCells::EquMotionCoef()
+void SceCells::EquMotionCoef(vector<int> & indexPrev, vector<int> & indexNext)
 {
-   int activeMemCount [ allocPara_m.currentActiveCellCount] ;
+   vector <uint> activeMemCount(allocPara_m.currentActiveCellCount) ;
    double distWithNext[totalNodeCountForActiveCells]  ; 
    double distWithPrev[totalNodeCountForActiveCells]  ;
-   int indexNext ; 
-   int indexPrev ; 
    int cellRank ; 
    int nodeRank ;
 
+   indexPrev.clear() ; 
+   indexNext.clear() ;
    nodes->getInfoVecs().hCoefD.clear() ; 
    nodes->getInfoVecs().hCoefLd.clear() ; 
    nodes->getInfoVecs().hCoefUd.clear() ;
    nodes->getInfoVecs().nodeIsActiveH.clear(); 
    
+   indexPrev.resize(totalNodeCountForActiveCells) ; 
+   indexNext.resize(totalNodeCountForActiveCells) ; 
    nodes->getInfoVecs().hCoefD.resize(totalNodeCountForActiveCells,0.0) ; 
    nodes->getInfoVecs().hCoefLd.resize(totalNodeCountForActiveCells,0.0) ; 
    nodes->getInfoVecs().hCoefUd.resize(totalNodeCountForActiveCells,0.0) ;
@@ -7185,39 +7192,38 @@ void SceCells::EquMotionCoef()
         	     nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCells,
 		         nodes->getInfoVecs().nodeIsActiveH.begin()); 
 	
+   thrust::copy(cellInfoVecs.activeMembrNodeCounts.begin() , cellInfoVecs.activeMembrNodeCounts.begin()+ 
+         allocPara_m.currentActiveCellCount, activeMemCount.begin()); 
 
-   //setup required basic parameters 
-   for (int i=0 ; i< allocPara_m.currentActiveCellCount ; i++ ){
-		activeMemCount[i] = 0 ; 
-   }
-
-   for (int i=0 ; i<totalNodeCountForActiveCells  ;  i++) {
-      if (nodes->getInfoVecs().nodeIsActiveH.at(i)==true &&
-	     (i%allocPara_m.maxAllNodePerCell) < allocPara_m.maxMembrNodePerCell){
-		 cellRank=i/allocPara_m.maxAllNodePerCell  ; 
-	     activeMemCount [cellRank]=activeMemCount [cellRank]+1 ; 
-	  }
-   }
+   
+	cout << "Maximum all node per cells is " << allocPara_m.maxAllNodePerCell << endl ;  
    for ( int i=0 ;  i< totalNodeCountForActiveCells ; i++) {
 	   cellRank=i/allocPara_m.maxAllNodePerCell ; 
 	   nodeRank=i%allocPara_m.maxAllNodePerCell ;
 	   if ( nodeRank<activeMemCount [cellRank]) {
-	      indexNext=i+1 ;
-	   	  indexPrev=i-1 ;
+	      indexNext.at(i)=i+1 ;
+	   	  indexPrev.at(i)=i-1 ;
 	   	  if ( nodeRank==activeMemCount [cellRank]-1){
-	         indexNext=cellRank*allocPara_m.maxAllNodePerCell ; 
+	         indexNext.at(i)=cellRank*allocPara_m.maxAllNodePerCell ;
+			cout << "index next for cell rank " << cellRank << " is " << indexNext.at(i) << endl ; 
 	      }
 	      if (nodeRank==0){
-	         indexPrev=cellRank*allocPara_m.maxAllNodePerCell  +activeMemCount [cellRank]-1  ; 
+	         indexPrev.at(i)=cellRank*allocPara_m.maxAllNodePerCell  +activeMemCount [cellRank]-1  ; 
+             cout << "Active membrane nodes for cell rank " << cellRank << " is " <<activeMemCount [cellRank]<<endl ;  
+		     cout << "index previous for cell rank " << cellRank << " is " << indexPrev.at(i) << endl ; 
 	      }
-	      distWithNext[i]=(sqrt( pow(nodes->getInfoVecs().locXHost[indexNext] - 
-		                             nodes->getInfoVecs().locXHost[i],2) + 
-	                             pow(nodes->getInfoVecs().locYHost[indexNext] - 
-								     nodes->getInfoVecs().locYHost[i],2))) ;
-	      distWithPrev[i]=(sqrt( pow(nodes->getInfoVecs().locXHost[indexPrev] - 
-		                             nodes->getInfoVecs().locXHost[i],2) + 
-	                             pow(nodes->getInfoVecs().locYHost[indexPrev] - 
-								     nodes->getInfoVecs().locYHost[i],2)));  
+	      distWithNext[i]=sqrt( pow(nodes->getInfoVecs().locXOldHost[indexNext.at(i)] - 
+		                            nodes->getInfoVecs().locXOldHost[i],2) + 
+	                            pow(nodes->getInfoVecs().locYOldHost[indexNext.at(i)] - 
+								    nodes->getInfoVecs().locYOldHost[i],2)) ;
+	      distWithPrev[i]=sqrt( pow(nodes->getInfoVecs().locXOldHost[indexPrev.at(i)] - 
+		                            nodes->getInfoVecs().locXOldHost[i],2) + 
+	                            pow(nodes->getInfoVecs().locYOldHost[indexPrev.at(i)] - 
+								    nodes->getInfoVecs().locYOldHost[i],2)); 
+	      if (distWithPrev[i]==0 ||  distWithNext[i]==0 ) {
+			  throw:: invalid_argument ( "Distance between membrane nodes are zero" )  ; 
+
+		  }
    	   }
    }
 
@@ -7232,14 +7238,14 @@ void SceCells::EquMotionCoef()
 	  nodeRank=i % allocPara_m.maxAllNodePerCell;
 
 	  if (nodeRank<activeMemCount [cellRank]) {
-      	nodes->getInfoVecs().hCoefD[i]= (1 + k*dt/Damp_Coef*( 2 - sponLen/distWithPrev[i] - sponLen/distWithNext[i])) ; 
-	  	nodes->getInfoVecs().hCoefLd[i]=(    k*dt/Damp_Coef*(-1 + sponLen/distWithPrev[i])) ; 
-	  	nodes->getInfoVecs().hCoefUd[i]=(    k*dt/Damp_Coef*(-1 + sponLen/distWithNext[i])) ; 
+      	nodes->getInfoVecs().hCoefD[i]= 1 + k*dt/Damp_Coef*( 2 - sponLen/(distWithPrev[i]+0.2*sponLen) - sponLen/(distWithNext[i]+0.2*sponLen)) ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=    k*dt/Damp_Coef*(-1 + sponLen/(distWithPrev[i]+0.2*sponLen)) ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=    k*dt/Damp_Coef*(-1 + sponLen/(distWithNext[i]+0.2*sponLen)) ; 
    	  }
-	  else {
-      	nodes->getInfoVecs().hCoefD[i]=1 ; 
-	  	nodes->getInfoVecs().hCoefLd[i]=0 ; 
-	  	nodes->getInfoVecs().hCoefUd[i]=0 ; 
+	  else { // no spring between neighboring points exist 
+      	nodes->getInfoVecs().hCoefD[i]=1.0 ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=0.0 ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=0.0 ; 
 	  }
 
   }
@@ -7247,25 +7253,29 @@ void SceCells::EquMotionCoef()
 }
 
 
-void SceCells::UpdateLocations() {
-   nodes->getInfoVecs().locXHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+void SceCells::UpdateLocations(const vector <int> & indexPrev,const vector <int> & indexNext ) {
+   vector <double> locXTmpHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
    												     		     nodes->getInfoVecs().hCoefLd, 
 													             nodes->getInfoVecs().hCoefD, 
 													             nodes->getInfoVecs().hCoefUd,
 													             nodes->getInfoVecs().rHSXHost,
-													             nodes->getInfoVecs().locXHost); 
+																 indexPrev,indexNext,
+													             nodes->getInfoVecs().locXOldHost); 
     
-   nodes->getInfoVecs().locXHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+   vector <double> locYTmpHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
 												     		     nodes->getInfoVecs().hCoefLd, 
 													             nodes->getInfoVecs().hCoefD, 
 													             nodes->getInfoVecs().hCoefUd,
 													             nodes->getInfoVecs().rHSYHost,
-													             nodes->getInfoVecs().locYHost); 
-   thrust::copy(nodes->getInfoVecs().locXHost.begin(), 
-                nodes->getInfoVecs().locXHost.begin()+totalNodeCountForActiveCells , 
+																 indexPrev,indexNext,
+													             nodes->getInfoVecs().locYOldHost); 
+   
+   thrust::copy(locXTmpHost.begin(), 
+                locXTmpHost.begin()+totalNodeCountForActiveCells , 
 				nodes->getInfoVecs().nodeLocX.begin()); 
-   thrust::copy(nodes->getInfoVecs().locYHost.begin(), 
-                nodes->getInfoVecs().locYHost.begin()+totalNodeCountForActiveCells , 
+   thrust::copy(locYTmpHost.begin(), 
+                locYTmpHost.begin()+totalNodeCountForActiveCells , 
 				nodes->getInfoVecs().nodeLocY.begin());
+
 }
 
