@@ -1,6 +1,6 @@
 #include "SceECM.h"
-#include "SceCells.h"
-# define debugModeECM 
+#include "SceCells.h" // Because of forward declaration
+//# define debugModeECM 
 // task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
