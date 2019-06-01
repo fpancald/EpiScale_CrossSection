@@ -1549,7 +1549,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	bool cellPolar=true ; 
 	bool subCellPolar= true  ; 
 	
-	if (curTime>50000) {
+	if (curTime>500000) {
 		eCMPointerCells->SetIfECMIsRemoved(false) ; 
 		isBasalActinPresent=false ; 
 		nodes->SetApicalAdhPresence(true) ; 
@@ -1731,7 +1731,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 
 
     std::cout << "     *** 9 ***" << endl;
-	allComponentsMoveImplicitPart() ; 
+	//allComponentsMoveImplicitPart() ; 
 //	updateMembrGrowthProgress_M();  
 //	if (relaxCount==10) { 
 //		handleMembrGrowth_M();

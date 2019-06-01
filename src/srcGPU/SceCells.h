@@ -374,35 +374,35 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 
 	//		if (_subMembPolar) { // if # 6 s
 				if ( (cellType==pouch && memType==lateralB) || (cellType==pouch && memType==lateralA)  ) { 
-					actinLevel=kStiff ;  //0.5
+					actinLevel=3.0*kStiff ;  //0.5
 				}
 		        if (cellType==pouch &&  memType==apical1) {
-					 actinLevel=kStiff ; 
+					 actinLevel=3.0*kStiff ; 
 				}
 				if (cellType==pouch &&  memType==basal1) {
-					 actinLevel=kStiff ; // 0.55
+					 actinLevel=3.0*kStiff ; // 0.55
 				}
 
 				
 				if ( (cellType==peri && memType==lateralB) || (cellType==peri && memType==lateralA)  ) { 
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				if   (cellType==peri && memType == apical1) {
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				if   (cellType==peri && memType == basal1) {
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				
 
 				if ( (cellType==bc && memType==lateralB) || (cellType==bc && memType==lateralA)  ) { 
-					actinLevel=kStiff ; //1.5
+					actinLevel=3.0*kStiff ; //1.5
 				}
 		        if (cellType==bc &&  memType==apical1) {
-					 actinLevel=kStiff ; // 1.5
+					 actinLevel=3.0*kStiff ; // 1.5
 				}
 				if (cellType==bc &&  memType==basal1) {
-					 actinLevel=kStiff ;
+					 actinLevel=3.0*kStiff ;
 				}
 
 
@@ -760,8 +760,8 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				double forceVal =calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
 			        //if (adhereIndex==-1 && _adhereIndexAddr[index_left]==-1) {
 				if (longEnough(lenLeft)) {
-			//		velX = velX + forceVal * leftDiffX / lenLeft;
-			//		velY = velY + forceVal * leftDiffY / lenLeft;
+					velX = velX + forceVal * leftDiffX / lenLeft;
+					velY = velY + forceVal * leftDiffY / lenLeft;
 					mag = forceVal + mag;
 				}
 			}
@@ -785,8 +785,8 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				double forceVal = calMembrForce_Actin(lenRight,kAvgRight); // Ali & June 30th
 				//if (adhereIndex==-1 && _adhereIndexAddr[index_right]==-1) {
 			if (longEnough(lenRight)) {
-			//		velX = velX + forceVal * rightDiffX / lenRight;
-			//		velY = velY + forceVal * rightDiffY / lenRight;
+					velX = velX + forceVal * rightDiffX / lenRight;
+					velY = velY + forceVal * rightDiffY / lenRight;
 					mag = forceVal + mag;
 					rightMag = forceVal;
 					midX = (rightPosX + locX) / 2;

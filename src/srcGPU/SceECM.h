@@ -8,7 +8,8 @@
 #include <stdexcept>
 #include <string>
 #include <sstream>
-#include <fstream>  
+#include <fstream> 
+#include <algorithm>
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 

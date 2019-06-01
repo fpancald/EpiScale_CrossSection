@@ -228,9 +228,9 @@ else {
 
 std::fstream secondInput_ECM ; 
 std:: string secondInputInfo ;  //dummy 
-//std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
-//secondInput_ECM.open(secondInputFileName.c_str()) ;
-secondInput_ECM.open("./resources/ECM_N01G00_input.cfg" ) ;
+std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
+secondInput_ECM.open(secondInputFileName.c_str()) ;
+//secondInput_ECM.open("./resources/ECM_N01G00_input.cfg" ) ;
 if (secondInput_ECM.is_open()) {
 	cout << "Second ECM Mech input opened successfully" <<endl ; 
 }
@@ -434,7 +434,7 @@ energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),mors
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
 */
 
-//CalLinSpringForce(); 
+CalLinSpringForce(); 
 CalBendSpringForce();
 
 #ifdef debugModeECM
@@ -472,6 +472,11 @@ CalRHS(dt, Damp_Coef) ;
 
 
 #ifdef debugModeECM
+
+	cout << "max RHSX is " << *max_element(tmpRHSX.begin(), tmpRHSX.begin()+numNodesECM) << endl ;  
+	cout << "min RHSX is " << *min_element(tmpRHSX.begin(), tmpRHSX.begin()+numNodesECM) << endl ;
+	cout << "max RHSY is " << *max_element(tmpRHSY.begin(), tmpRHSY.begin()+numNodesECM) << endl ;  
+	cout << "min RHSY is " << *min_element(tmpRHSY.begin(), tmpRHSY.begin()+numNodesECM) << endl ; 
 	cudaEventRecord(start6, 0);
 	cudaEventSynchronize(start6);
 	cudaEventElapsedTime(&elapsedTime5, start5, start6);
@@ -765,15 +770,38 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    }
 
    for ( int i=0 ;  i< numNodesECM ; i++) {
-      hCoefD.push_back (1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/distWithPrev.at(i) - sponLenWithNext.at(i)/distWithNext.at(i))) ; 
-	  hCoefLd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithPrev.at(i)/distWithPrev.at(i))) ; 
-	  hCoefUd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithNext.at(i)/distWithNext.at(i))) ; 
+      hCoefD.push_back (1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                           - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
+	  hCoefLd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 ))) ; 
+	  hCoefUd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
    }
-   //cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
-   //cout << "constants for stiffness matrix calculated " << endl ; 
-   //cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
-   //cout << " number of ECM nodes is "<< numNodesECM << endl ; 
-   
+  
+#ifdef debugModeECM
+   cout <<"max distance with next node is" <<*max_element ( distWithNext.begin(), distWithNext.begin()+numNodesECM) <<endl ;  
+   cout <<"min distance with next node is" << *min_element ( distWithNext.begin(), distWithNext.begin()+numNodesECM) <<endl  ;
+
+   cout <<"max distance with previous node is" <<*max_element ( distWithPrev.begin(), distWithPrev.begin()+numNodesECM) <<endl ;  
+   cout <<"min distance with previous node is" << *min_element ( distWithPrev.begin(), distWithPrev.begin()+numNodesECM) <<endl  ; 
+
+   vector < double> hCoefDAbs;
+   hCoefDAbs.clear() ; 
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+      hCoefDAbs.push_back (abs(1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                                  - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 )))) ; 
+   }
+   cout <<"max main  diag. elment is "  << *max_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl ;  
+   cout <<"min main  diag. element is " << *min_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl  ;
+   cout <<"min main  Abs(diag.) element is " << *min_element ( hCoefDAbs.begin(),  hCoefDAbs.begin() +numNodesECM) <<endl  ;
+   cout <<"max upper diag. element is " << *max_element ( hCoefUd.begin(), hCoefUd.begin()+numNodesECM) <<endl  ;
+   cout <<"min upper diag. element is " << *min_element ( hCoefUd.begin(), hCoefUd.begin()+numNodesECM) <<endl  ;
+   cout <<"max lower diag. element is " << *max_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
+   cout <<"min lower diag. element is " << *min_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
+
+   cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
+   cout << "constants for stiffness matrix calculated " << endl ; 
+   cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
+   cout << " number of ECM nodes is "<< numNodesECM << endl ; 
+# endif  
 }
 
 void SceECM::MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_Coef) 
