@@ -18,6 +18,7 @@ __constant__ double lknotECMBCGPU ;
 __constant__ double lknotECMPeripGPU ;
 
 
+
 namespace patch{
 	template <typename  T> std::string to_string (const T& n) 
 	{
@@ -245,6 +246,9 @@ else {
  secondInput_ECM>>lknotECMBasal ;
  secondInput_ECM>>lknotECMBC ;
  secondInput_ECM>>lknotECMPerip ;
+ secondInput_ECM>>dampBasal ;
+ secondInput_ECM>>dampBC ;
+ secondInput_ECM>>dampApical ;
 
  cout <<" stiffness of ECM at the basal side is="<<stiffnessECMBasal <<endl ;   
 
@@ -305,7 +309,7 @@ numNodesECM= numberNodes_ECM ; //(eCMMaxX-eCMMinX)/eCMMinDist ;
 
 indexECM.resize(numNodesECM,0) ;
 peripORexcm.resize(numNodesECM,perip) ;
-
+dampCoef.resize(numNodesECM) ; 
 nodeECMLocX.resize(numNodesECM,0.0) ;
 nodeECMLocY.resize(numNodesECM,0.0) ;
 
@@ -346,6 +350,8 @@ rHSX.resize(numNodesECM,0.0);
 rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
+AssignDampCoef() ; 
+
 nodeIsActive.resize(numNodesECM,true) ; 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
  
@@ -374,7 +380,7 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 
 
 
-void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){  
+void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_CoefCell, bool cellPolar, bool subCellPolar, bool isInitPhase){  
 
 
 	if (eCMRemoved) {
@@ -428,7 +434,7 @@ if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
 	cudaEventElapsedTime(&elapsedTime2, start2, start3);
 #endif
 
-MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_Coef) ; 
+MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_CoefCell) ; 
 /* To reduce computational cost
 energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
@@ -452,7 +458,7 @@ energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnerg
 //CalSumForcesOnECM() ;
 //MoveNodesBySumForces(dt, Damp_Coef) ; 
 CalSumExplicitForcesOnECM() ;
-CalRHS(dt, Damp_Coef) ;
+CalRHS(dt) ;
 
 #ifdef debugModeECM
 	cudaEventRecord(start5, 0);
@@ -482,7 +488,8 @@ CalRHS(dt, Damp_Coef) ;
 	cudaEventElapsedTime(&elapsedTime5, start5, start6);
 #endif
 
-EquMotionCoef (dt,Damp_Coef); 
+	EquMotionCoef (dt); 
+
 
 #ifdef debugModeECM
 	cudaEventRecord(start7, 0);
@@ -724,13 +731,14 @@ AniResumeData  SceECM:: obtainResumeData() {
 	return aniResumeData ; 
 }
 
-void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
+void SceECM::EquMotionCoef (double dt) {
 
    vector <double> sponLenHost(numNodesECM) ;
    vector <double> sponLenWithNext ; 
    vector <double> sponLenWithPrev ; 
    vector <double> distWithNext ; 
    vector <double> distWithPrev ;
+   vector <double> dampCoefHost ; 
 
 
    sponLenWithNext.clear(); 
@@ -742,11 +750,14 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    hCoefD.clear()  ;
    indexNext.clear() ; 
    indexPrev.clear() ; 
+   dampCoefHost.clear() ; 
 
    indexNext.resize(numNodesECM) ; 
    indexPrev.resize(numNodesECM) ; 
+   dampCoefHost.resize(numNodesECM) ; 
 
    thrust::copy(sponLen.begin(),sponLen.begin()+numNodesECM, sponLenHost.begin()) ; 
+   thrust::copy(dampCoef.begin(),dampCoef.begin()+numNodesECM, dampCoefHost.begin()) ; 
 
 
    double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
@@ -770,10 +781,10 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    }
 
    for ( int i=0 ;  i< numNodesECM ; i++) {
-      hCoefD.push_back (1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
-	                                           - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
-	  hCoefLd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 ))) ; 
-	  hCoefUd.push_back(    k*dt/Damp_Coef*(-1 + sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
+      hCoefD.push_back (1 + k*dt/dampCoefHost.at(i)*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                                    - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
+	  hCoefLd.push_back(    k*dt/dampCoefHost.at(i)*(-1 + sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 ))) ; 
+	  hCoefUd.push_back(    k*dt/dampCoefHost.at(i)*(-1 + sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
    }
   
 #ifdef debugModeECM
@@ -786,8 +797,8 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    vector < double> hCoefDAbs;
    hCoefDAbs.clear() ; 
    for ( int i=0 ;  i< numNodesECM ; i++) {
-      hCoefDAbs.push_back (abs(1 + k*dt/Damp_Coef*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
-	                                                  - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 )))) ; 
+      hCoefDAbs.push_back (abs(1 + k*dt/dampCoefHost.at(i)*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                                           - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 )))) ; 
    }
    cout <<"max main  diag. elment is "  << *max_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl ;  
    cout <<"min main  diag. element is " << *min_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl  ;
@@ -796,15 +807,15 @@ void SceECM::EquMotionCoef (double dt,double Damp_Coef) {
    cout <<"min upper diag. element is " << *min_element ( hCoefUd.begin(), hCoefUd.begin()+numNodesECM) <<endl  ;
    cout <<"max lower diag. element is " << *max_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
    cout <<"min lower diag. element is " << *min_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
-
-   cout << k <<","<< dt<<"," << Damp_Coef << endl  ; 
+   cout <<"stiffness, time step and first element of damping vector is " << endl ; 
+   cout << k <<","<< dt<<"," << dampCoefHost.at(0) << endl  ; 
    cout << "constants for stiffness matrix calculated " << endl ; 
    cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
    cout << " number of ECM nodes is "<< numNodesECM << endl ; 
 # endif  
 }
 
-void SceECM::MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_Coef) 
+void SceECM::MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_CoefCell) 
 {
 double* nodeECMLocXAddr= thrust::raw_pointer_cast (
 			&nodeECMLocX[0]) ; 
@@ -862,7 +873,7 @@ thrust::counting_iterator<int> iBegin2(0) ;
 					adhPairECM_Cell.begin(),
 					morseEnergyCell.begin(),
 					adhEnergyCell.begin())),
-				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,peripORexcmAddr,currentActiveCellCount));
+				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_CoefCell,peripORexcmAddr,currentActiveCellCount));
 }
 
 
@@ -1057,9 +1068,9 @@ thrust:: transform (
 }
 
 
-void SceECM::CalRHS(double dt, double Damp_Coef)
+void SceECM::CalRHS(double dt)
 {
-
+double Damp_Coef ; 
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -1081,8 +1092,9 @@ thrust:: transform (
 	
 }
 
-void  SceECM::MoveNodesBySumForces(double dt, double Damp_Coef)
+void  SceECM::MoveNodesBySumForces(double dt)
 { 
+double Damp_Coef=36 ; 
 double Damp_CoefECM=Damp_Coef ; 
 double Damp_CoefPerip=Damp_Coef ; 
 // move the nodes of ECM 
@@ -1151,3 +1163,9 @@ thrust:: transform (
 	    cellNeighborId.begin(),
 		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
 }
+
+void SceECM::AssignDampCoef() {
+
+   thrust::transform ( peripORexcm.begin() ,peripORexcm.begin() +numNodesECM, dampCoef.begin(), AssignDamping(dampBasal,dampBC,dampApical) );  
+}
+

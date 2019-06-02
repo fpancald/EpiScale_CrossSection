@@ -33,6 +33,7 @@ struct MechPara_ECM {
 class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
+    double dampBasal,dampBC,dampApical ; 
 	vector<bool> nodeIsActive ; 
     vector<double> hCoefLd ; 
     vector<double> hCoefUd ;  
@@ -40,19 +41,21 @@ class SceECM {
 	vector<int> indexPrev ; 
 	vector<int> indexNext ;
 	vector <double> tmpHostNodeECMLocX; 
-	vector <double> tmpHostNodeECMLocY; 
+	vector <double> tmpHostNodeECMLocY;
+
 	bool   eCMRemoved ; 
 	bool   isECMNeighborSet ;
 	void   FindNeighborCandidateForCellsAndECMNodes(); 
-	void MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_Coef);  
+	void MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_CoefCell);  
 	void CalLinSpringForce() ; 
 	void CalBendSpringForce() ; 
 	void CalCellForcesOnECM() ; 
 	void CalSumForcesOnECM() ; 
-	void MoveNodesBySumForces(double dt, double Damp_Coef); 
+	void MoveNodesBySumForces(double dt); 
 	void CalSumExplicitForcesOnECM(); 
-	void EquMotionCoef( double dt , double Damp_Coef) ;
-	void CalRHS(double dt, double Damp_Coef); 
+	void EquMotionCoef( double dt) ;
+	void CalRHS(double dt);
+	void AssignDampCoef() ; 
 public:
 	SceECM() ;
 
@@ -75,7 +78,7 @@ public:
 		const { return eCMRemoved  ;}  
 	AniResumeData obtainResumeData(); 
 
-    void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
+    void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_CoefCell, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
 	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
 		EType ConvertStringToEType (string eNodeRead) ;
 	void PrintECM(double curTime);
@@ -161,6 +164,7 @@ thrust::device_vector<double> rHSX ;
 thrust::device_vector<double> rHSY ;
 thrust::device_vector<double> stiffLevel ;
 thrust::device_vector<double> sponLen ;
+thrust::device_vector<double> dampCoef ; 
 };
 
 /*
@@ -877,6 +881,41 @@ struct SumBendForce: public thrust::unary_function<IDD,DD> {
 				  fBendCenterY+_fBendLeftYAddr[index_right]+_fBendRightYAddr[index_left]); 
 	}
 }; 
+
+
+
+
+struct AssignDamping : public thrust::unary_function<EType,double> {
+
+
+   double _dampBasal ;
+   double _dampBC ; 
+   double _dampApical ; 
+
+  __host__ __device__  AssignDamping  (double dampBasal, double dampBC, double dampApical ):
+   _dampBasal (dampBasal) , _dampBC (dampBC), _dampApical (dampApical) {
+					 }
+
+	__host__ __device__  double operator()(const EType & eCMNodeType) const {
+
+		if ( eCMNodeType==excm ){
+
+			return (_dampBasal) ; 
+		}
+			else if (eCMNodeType==bc2 ) {
+
+				return (_dampBC) ; 
+			}
+				else if ( eCMNodeType==perip ){
+
+					return (_dampApical) ; 
+				}
+					else {
+				 		return (0.0) ; // this is an indication of error
+					}
+	}
+	
+} ; 
 
 
 #endif
