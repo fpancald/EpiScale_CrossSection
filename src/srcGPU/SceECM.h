@@ -20,7 +20,7 @@ typedef thrust ::tuple<double,double,double,double> DDDD ;
 typedef thrust ::tuple<double,double,bool> DDB ; 
 typedef thrust ::tuple<double,double,int,double,double> DDIDD ; 
 typedef thrust ::tuple<double,double,double,double,double,double> DDDDDD ;
-typedef thrust ::tuple<double,double,double,double,int,EType> DDDDIT ; 
+typedef thrust ::tuple<double,double,double,double,double> DDDDD ; 
 
 
 struct MechPara_ECM {
@@ -42,6 +42,7 @@ class SceECM {
 	vector<int> indexNext ;
 	vector <double> tmpHostNodeECMLocX; 
 	vector <double> tmpHostNodeECMLocY;
+	thrust::device_vector<double> dampCoef ; 
 
 	bool   eCMRemoved ; 
 	bool   isECMNeighborSet ;
@@ -51,8 +52,8 @@ class SceECM {
 	void CalBendSpringForce() ; 
 	void CalCellForcesOnECM() ; 
 	void CalSumForcesOnECM() ; 
-	void MoveNodesBySumForces(double dt); 
-	void CalSumExplicitForcesOnECM(); 
+	void MoveNodesBySumAllForces(double dt); 
+	void CalSumOnlyExplicitForcesOnECM(); 
 	void EquMotionCoef( double dt) ;
 	void CalRHS(double dt);
 	void AssignDampCoef() ; 
@@ -164,7 +165,6 @@ thrust::device_vector<double> rHSX ;
 thrust::device_vector<double> rHSY ;
 thrust::device_vector<double> stiffLevel ;
 thrust::device_vector<double> sponLen ;
-thrust::device_vector<double> dampCoef ; 
 };
 
 /*
@@ -676,27 +676,24 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 	}
 }; 
 
-struct RHSCompute: public thrust::unary_function<DDDD,DD> {
+struct RHSCompute: public thrust::unary_function<DDDDD,DD> {
 
 	double _dt ;
-	double _dampCoef ;
 
 	__host__ __device__ 
-	          RHSCompute(double dt, double dampCoef):
-	                      _dt(dt), _dampCoef(dampCoef)
-	
+	          RHSCompute(double dt): _dt(dt)
 	{
 	}
-
-	__host__ __device__ DD operator() (const DDDD & dDDD) const {
+	__host__ __device__ DD operator() (const DDDDD & dDDDD) const {
     
-		double fExplicitX=thrust:: get<0>(dDDD); 
-		double fExplicitY=thrust:: get<1>(dDDD); 
-		double locX= thrust:: get<2>(dDDD); 
-		double locY= thrust:: get<3>(dDDD);
+		double fExplicitX= thrust:: get<0>(dDDDD); 
+		double fExplicitY= thrust:: get<1>(dDDDD); 
+		double locX      = thrust:: get<2>(dDDDD); 
+		double locY      = thrust:: get<3>(dDDDD);
+		double dampCoef  = thrust:: get<4>(dDDDD);
 		
-		return thrust::make_tuple(fExplicitX*_dt/_dampCoef + locX , 
-		    	                      fExplicitY*_dt/_dampCoef + locY); 
+		return thrust::make_tuple(fExplicitX*_dt/dampCoef + locX , 
+		    	                  fExplicitY*_dt/dampCoef + locY); 
 
 	}
 	
@@ -744,41 +741,19 @@ struct MechProp: public thrust::unary_function<EType,DD> {
 
 
 
-struct MoveNodeECM: public thrust::unary_function<DDDDIT,DD> {
+struct MoveNodesECM: public thrust::unary_function<DDDDD,DD> {
 
 	double _dt ; 
-	double _dampECM ; 
-	double _dampPeri ; 
-	int _numNodes ;
-	__host__ __device__ MoveNodeECM (double dt, double dampECM, double dampPeri, int numNodes): _dt(dt), _dampECM(dampECM),_dampPeri(dampPeri), _numNodes(numNodes) {
+	__host__ __device__ MoveNodesECM (double dt): _dt(dt) {
 	}
-	__host__ __device__ DD operator() (const DDDDIT & dDDDIT) const  {
-	double 			  locXOld= thrust:: get <0> (dDDDIT) ;
-	double 			  locYOld= thrust:: get <1> (dDDDIT) ;
-	double 			  fx= 	   thrust:: get <2> (dDDDIT) ;
-	double 			  fy= 	   thrust:: get <3> (dDDDIT) ;
-	int    			  index=   thrust:: get <4> (dDDDIT) ; 
-	EType             nodeType=thrust:: get <5> (dDDDIT) ; 
-	//if (index == 0 || index==_numNodes-1 || index==( int (_numNodes/2)-1) || index == int (_numNodes/2) ) {
-	//if (( index == 0  || index==( int (_numNodes/2)-1) ) && (_curTime<=200 ) ) {
-		
-//	if (( index == 0  || index==560 ) && (_curTime<=200 ) ) {
-//		return thrust::make_tuple (locXOld+fx*_dt/_dampECM, locYOld) ;
-//	}
-//	else {
-		if (nodeType==excm) {		
-			return thrust::make_tuple (locXOld+fx*_dt/_dampECM, locYOld+fy*_dt/_dampECM) ;
-		}
-		else {
-//			if (_curTime<=200) {
-//				return thrust::make_tuple (locXOld, locYOld+0.36*_dt/_dampPeri) ;
-//			} 
-//			else {
-				return thrust::make_tuple (locXOld+fx*_dt/_dampPeri, locYOld+fy*_dt/_dampPeri) ;
-		//	}
-		}
-//	}
-}
+	__host__ __device__ DD operator() (const DDDDD & dDDDD) const  {
+		double 			  locXOld= thrust:: get <0> (dDDDD) ;
+		double 			  locYOld= thrust:: get <1> (dDDDD) ;
+		double 			  fx= 	   thrust:: get <2> (dDDDD) ;
+		double 			  fy= 	   thrust:: get <3> (dDDDD) ;
+		double            dampCoef=thrust:: get <4> (dDDDD) ; 
+		return thrust::make_tuple (locXOld+fx*_dt/dampCoef, locYOld+fy*_dt/dampCoef) ;
+	}
 }; 
 
 

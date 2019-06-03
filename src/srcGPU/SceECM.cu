@@ -17,6 +17,8 @@ __constant__ double lknotECMBasalGPU ;
 __constant__ double lknotECMBCGPU ;
 __constant__ double lknotECMPeripGPU ;
 
+const double smallNumber=.000001 ; 
+
 
 
 namespace patch{
@@ -456,8 +458,8 @@ energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEne
 energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
 */
 //CalSumForcesOnECM() ;
-//MoveNodesBySumForces(dt, Damp_Coef) ; 
-CalSumExplicitForcesOnECM() ;
+//MoveNodesBySumAllForces(dt) ; 
+CalSumOnlyExplicitForcesOnECM() ;
 CalRHS(dt) ;
 
 #ifdef debugModeECM
@@ -1046,7 +1048,7 @@ thrust:: transform (
 				TotalECMForceCompute(dummy));
 }
 
-void SceECM::CalSumExplicitForcesOnECM() {
+void SceECM::CalSumOnlyExplicitForcesOnECM() {
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
@@ -1070,33 +1072,31 @@ thrust:: transform (
 
 void SceECM::CalRHS(double dt)
 {
-double Damp_Coef ; 
 thrust:: transform (
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
 					totalExplicitForceECMX.begin(),
 					totalExplicitForceECMY.begin(),
 					nodeECMLocX.begin(),
-					nodeECMLocY.begin())),
+					nodeECMLocY.begin(),
+					dampCoef.begin())),
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
 					totalExplicitForceECMX.begin(),
 					totalExplicitForceECMY.begin(),
 					nodeECMLocX.begin(),
-					nodeECMLocY.begin()))+numNodesECM,
+					nodeECMLocY.begin(),
+					dampCoef.begin()))+numNodesECM,
 		thrust::make_zip_iterator (
 				thrust::make_tuple (
 					rHSX.begin(),
 					rHSY.begin())),
-				RHSCompute(dt,Damp_Coef));
+				RHSCompute(dt));
 	
 }
 
-void  SceECM::MoveNodesBySumForces(double dt)
+void  SceECM::MoveNodesBySumAllForces(double dt)
 { 
-double Damp_Coef=36 ; 
-double Damp_CoefECM=Damp_Coef ; 
-double Damp_CoefPerip=Damp_Coef ; 
 // move the nodes of ECM 
 
 thrust:: transform (
@@ -1106,21 +1106,19 @@ thrust:: transform (
 					nodeECMLocY.begin(),
 					totalForceECMX.begin(),
 					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin())),
+					dampCoef.begin())),
 		thrust::make_zip_iterator (
 				thrust:: make_tuple (
 					nodeECMLocX.begin(),
 					nodeECMLocY.begin(),
 					totalForceECMX.begin(),
 					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin()))+numNodesECM,
+					dampCoef.begin()))+numNodesECM,
 		thrust::make_zip_iterator (
 				thrust::make_tuple (
 					nodeECMLocX.begin(),
 					nodeECMLocY.begin())),
-				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM));
+				MoveNodesECM(dt));
 }
 void SceECM::FindNeighborCandidateForCellsAndECMNodes() 
 {
@@ -1166,6 +1164,13 @@ thrust:: transform (
 
 void SceECM::AssignDampCoef() {
 
-   thrust::transform ( peripORexcm.begin() ,peripORexcm.begin() +numNodesECM, dampCoef.begin(), AssignDamping(dampBasal,dampBC,dampApical) );  
+   thrust::transform ( peripORexcm.begin() ,peripORexcm.begin() +numNodesECM, dampCoef.begin(), AssignDamping(dampBasal,dampBC,dampApical) ); 
+   
+   for (int i=0 ;  i<numNodesECM ; i++) {
+      if (dampCoef[i] < smallNumber) {
+	     throw::invalid_argument ( "damping coefficients in ECM is not set correctly") ; 
+	  }
+   }
+
 }
 
