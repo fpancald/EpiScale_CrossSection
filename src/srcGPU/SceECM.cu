@@ -1,7 +1,6 @@
 #include "SceECM.h"
 #include "SceCells.h" // Because of forward declaration
 //# define debugModeECM 
-// task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
 //Right now it is assumed that ECM stiffness is the same everywhere.
@@ -253,14 +252,18 @@ else {
  secondInput_ECM>>dampApical ;
 
  cout <<" stiffness of ECM at the basal side is="<<stiffnessECMBasal <<endl ;   
-
  cout <<" stiffness of ECM at boundary is="<<stiffnessECMBC<<endl ; 
+ cout <<" stiffness of ECM peripodial side is="<<stiffnessECMPerip<<endl ; 
 
- cout <<" stiffness of ECM peripodial side is="<<stiffnessECMPerip<<endl ;  
  cout <<" rest len basal ECM is="<<lknotECMBasal<<endl ;
  cout <<" rest len boundary ECM is= "<<lknotECMBC<<endl ;
  cout << "rest len peripodial ECM is=" <<lknotECMPerip <<endl ; 
- cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
+
+ cout << "Damping for basal ECM is="<<dampBasal<<endl ;
+ cout << "Damping for boundary ECM is= "<<dampBC<<endl ;
+ cout << "Damping for peripodial ECM is=" <<dampApical <<endl ; 
+
+ cout << "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
 
 
 
@@ -352,7 +355,6 @@ rHSX.resize(numNodesECM,0.0);
 rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
-AssignDampCoef() ; 
 
 nodeIsActive.resize(numNodesECM,true) ; 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
@@ -360,7 +362,7 @@ thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
 thrust::copy(posXIni_ECM.begin(),posXIni_ECM.end(),nodeECMLocX.begin()) ; 
 thrust::copy(posYIni_ECM.begin(),posYIni_ECM.end(),nodeECMLocY.begin()) ; 
 thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
-
+AssignDampCoef() ; 
 cout << "GPU level initial coordinates and type of external nodes are: " << endl ; 
 for (int i=0;  i<nodeECMLocX.size() ;  i++) {
 	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
@@ -1166,11 +1168,13 @@ void SceECM::AssignDampCoef() {
 
    thrust::transform ( peripORexcm.begin() ,peripORexcm.begin() +numNodesECM, dampCoef.begin(), AssignDamping(dampBasal,dampBC,dampApical) ); 
    
+#ifdef debugModeECM 
    for (int i=0 ;  i<numNodesECM ; i++) {
       if (dampCoef[i] < smallNumber) {
-	     throw::invalid_argument ( "damping coefficients in ECM is not set correctly") ; 
+		 cout << "damping of element " << i << " is " << dampCoef[i] << " which is wrong" <<endl ; 
+	     throw::invalid_argument ( "damping coefficients in ECM is not set correctly") ;
 	  }
    }
-
+#endif
 }
 
