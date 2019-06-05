@@ -80,7 +80,7 @@ public:
 	AniResumeData obtainResumeData(); 
 
     void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_CoefCell, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
-	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
+	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbol); 
 		EType ConvertStringToEType (string eNodeRead) ;
 	void PrintECM(double curTime);
 	void PrintECMRemoved(double curTime);
@@ -108,7 +108,7 @@ uint maxAllNodePerCell ;
 uint maxMembrNodePerCell ;
 uint maxTotalNodes ; 
 
-string uniqueSymbolOutput ; 
+string uniqueSymbol ; 
 MechPara_ECM mechPara_ECM ; 
  
 thrust::device_vector<int> indexECM ;

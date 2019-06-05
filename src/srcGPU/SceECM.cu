@@ -152,13 +152,13 @@ SceECM::SceECM() {
 
 
 
-void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
+void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbol) {
 
 	maxAllNodePerCell=maxAllNodePerCellECM ; 
 	maxMembrNodePerCell= maxMembrNodePerCellECM ; 
     maxTotalNodes=maxTotalNodesECM ; //Ali 
     this->freqPlotData=freqPlotData ; 
-    this->uniqueSymbolOutput=uniqueSymbolOutput ; 
+    this->uniqueSymbol=uniqueSymbol ; 
 
 	std::fstream readCoord_ECM ;
 	std::fstream readInput_ECM ;
@@ -176,8 +176,9 @@ void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, 
 		readCoord_ECM.open("./resources/coordinate_ECM21.txt") ;
 	}
 	else if(resumeSimulation==1) { 
-		cout << " In the ECM module, I am in resume mode" << endl ; 
-		readCoord_ECM.open("ResumeDataFileECM.txt") ;
+		cout << " In the ECM module, I am in resume mode" << endl ;
+		std::string secondInputFileName = "./resources/ECM_" + uniqueSymbol + "Resume.cfg";
+		readCoord_ECM.open(secondInputFileName.c_str()) ;
 	}
 	else{
 
@@ -230,7 +231,7 @@ else {
 
 std::fstream secondInput_ECM ; 
 std:: string secondInputInfo ;  //dummy 
-std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
+std::string secondInputFileName = "./resources/ECM_" + uniqueSymbol + "input.cfg";
 secondInput_ECM.open(secondInputFileName.c_str()) ;
 //secondInput_ECM.open("./resources/ECM_N01G00_input.cfg" ) ;
 if (secondInput_ECM.is_open()) {
@@ -370,7 +371,7 @@ for (int i=0;  i<nodeECMLocX.size() ;  i++) {
 
 
 PrintECM(0.0) ;
-std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".CSV";
+std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbol + ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str());
 
@@ -556,7 +557,7 @@ void  SceECM:: PrintECM(double curTime) {
 			lastPrintECM=0 ;
 			cout << " I am in regular print function" << endl ; 
 			// First ECM output file for paraview //
-			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbol +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
 			ECMOut<< "# vtk DataFile Version 3.0" << endl;
@@ -599,7 +600,7 @@ void  SceECM:: PrintECM(double curTime) {
 
 
 			// second output file for curvature estimation //
-			std::string txtFileName = "./ECMFolder/ECMLocationExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			std::string txtFileName = "./ECMFolder/ECMLocationExport_" + uniqueSymbol+ patch::to_string(outputFrameECM-1) + ".txt";
 			ofstream ECMLocationExport ;
 			ECMLocationExport.open(txtFileName.c_str());
 			//ECMExport << "ECM pouch coordinates" << std::endl;
@@ -622,7 +623,7 @@ void  SceECM:: PrintECM(double curTime) {
 		
 
 			//Third write file for ECM
-			txtFileName = "./ECMFolder/ECMTensionExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			txtFileName = "./ECMFolder/ECMTensionExport_" + uniqueSymbol+ patch::to_string(outputFrameECM-1) + ".txt";
 			ofstream ECMTensionExport ;
 			ECMTensionExport.open(txtFileName.c_str());
 
@@ -639,7 +640,7 @@ void  SceECM:: PrintECM(double curTime) {
 								     +      energyECM.totalLinSpringEnergyECM ;
 									 
 
-			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput+ ".CSV";
+			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbol+ ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str(),ofstream::app);
 			
@@ -660,7 +661,7 @@ void  SceECM:: PrintECMRemoved(double curTime) {
 
 			cout << " I am in ECM removed print function" << endl ; 
 			// First ECM output file for paraview //
-			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbol +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
 			ECMOut<< "# vtk DataFile Version 3.0" << endl;

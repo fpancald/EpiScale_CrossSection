@@ -269,7 +269,7 @@ void SimulationDomainGPU::outputVtkColorByCell_polySide(
 	outputVtkGivenCellColor(scriptNameBase, rank, aniCri, polySideColorVec,cellsPerimeter);
         cellsPerimeter.clear(); 
 }
-void SimulationDomainGPU::outputResumeData(std::string resumeNameBase, int frame) {
+void SimulationDomainGPU::outputResumeData(uint frame) {
 	WriteResumeData writeResumeData ; 
     std::cout  <<"I am writing Resume Data file" <<std:: endl;
 
@@ -277,10 +277,18 @@ void SimulationDomainGPU::outputResumeData(std::string resumeNameBase, int frame
 	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ;
 	aniResumeDatas.push_back                    (eCM.obtainResumeData()); 
 	//Write the gathered information 
-	//0 is for membrane nodes and 1 is for internal node, 2 for cells, 	3 is for ECM nodes 
-	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), resumeNameBase) ;  
-	writeResumeData.writeForCells       (aniResumeDatas.at(2)                      ,resumeNameBase) ; 
-	writeResumeData.writeForECM         (aniResumeDatas.at(3)                      ,resumeNameBase) ; 
+	//0 is for membrane nodes and 1 is for internal node, 2 for cells, 	3 is for ECM nodes
+
+	string uniqueSymbol=globalConfigVars.getConfigValue("UniqueSymbol").toString() ; 
+	string membFileNameResume = globalConfigVars.getConfigValue(
+			"MembraneNodes_FileName_Resume").toString() ;
+	
+	std::string intnlFileNameResume = globalConfigVars.getConfigValue(
+			"IntnlNodes_FileName_Resume").toString() ;
+	
+	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), membFileNameResume, intnlFileNameResume, uniqueSymbol) ;  
+	writeResumeData.writeForCells       (aniResumeDatas.at(2), uniqueSymbol) ; 
+	writeResumeData.writeForECM         (aniResumeDatas.at(3), uniqueSymbol) ; 
 }
 
 std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<double> & cellsPerimeter) {

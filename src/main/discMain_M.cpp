@@ -132,7 +132,6 @@ int main(int argc, char* argv[]) {
 	uint aniFrame = 0;
 	// main simulation steps.
     std::string stressStrainFileNameBase="StressStrain" ;
-	mainPara.ResumeNameBase="ResumeDataFile" ; 
     std::string stressStrainFileName=stressStrainFileNameBase +uniqueSymbol+ ".CSV" ; 
     SingleCellData singleCellData(stressStrainFileName); 
 	for (uint i = 0; i <= (uint) (mainPara.totalTimeSteps); i++) {
@@ -170,7 +169,7 @@ int main(int argc, char* argv[]) {
 					aniFrame, mainPara.aniCri);
 			// std::cout << "in ani step " << aniFrame << std::endl;
 			std::cout << "substep 4 " << std::endl;
-			simuDomain.outputResumeData(mainPara.ResumeNameBase, aniFrame) ; 
+			simuDomain.outputResumeData(aniFrame) ; 
 			aniFrame++;
 		}
 		simuDomain.runAllLogic_M(mainPara.dt,mainPara.Damp_Coef,mainPara.InitTimeStage);  //Ali

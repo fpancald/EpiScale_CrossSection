@@ -368,9 +368,6 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 
 	}
 
-	for (uint i = 0; i < initCellCount; i++) {
-		cout << "third check cell type" << initData.eCellTypeV1.at(i)<< endl ;  // Ali
-	}
 	for (uint i = 0; i < maxNodeInDomain; i++) {
 		nodeRank = i % maxAllNodeCountPerCell;
 		if (nodeRank < maxMembrNodePerCell) {
@@ -1100,7 +1097,8 @@ vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int
    vector <CVector> intnlPosTmp ;
    vector<vector<CVector> > intnlPos ;
    ifstream inputc ; 
-
+   std::string uniqueSymbol=globalConfigVars.getConfigValue("UniqueSymbol").toString() ; 
+   intnlFileName = "./resources/" + intnlFileName  + uniqueSymbol + "Resume.cfg";
    inputc.open(intnlFileName.c_str());
    if (inputc.is_open()){
       cout << "File for reading internal nodes coordinates in resume mode is opened successfully " << endl ; 
@@ -1140,13 +1138,14 @@ vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int
 vector<vector<CVector> > CellInitHelper::readMembNodes(int numCells,int maxMembrNodeCountPerCell,
                                                            vector<vector<MembraneType1> >& mTypeV2,vector<vector<double> >& mDppV2, string membFileName) 
 {
-	vector<CVector> initMembrPosTmp;
-	vector<vector<CVector> > initMembrPos ; 
-	vector<double> mDppVTmp;  
-	vector<MembraneType1> mTypeVTmp;  
-	std::fstream inputc;
+    vector<CVector> initMembrPosTmp;
+    vector<vector<CVector> > initMembrPos ; 
+    vector<double> mDppVTmp;  
+    vector<MembraneType1> mTypeVTmp;  
+    std::fstream inputc;
 
-
+    std::string uniqueSymbol=globalConfigVars.getConfigValue("UniqueSymbol").toString() ; 
+    membFileName = "./resources/" + membFileName  + uniqueSymbol + "Resume.cfg";
     inputc.open(membFileName.c_str());
     if (inputc.is_open()){
        cout << "File for reading membrane nodes coordinates opened successfully " << endl ; 
