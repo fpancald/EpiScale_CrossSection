@@ -672,9 +672,9 @@ struct AniResumeData {
 };
 
 struct WriteResumeData {
-	void writeForMembAndIntnl(AniResumeData, AniResumeData, string, string, string); 
-	void writeForECM(AniResumeData, string) ;
-	void writeForCells(AniResumeData, string ) ;
+	void writeForMembAndIntnl(AniResumeData, AniResumeData, std::string, std::string, std::string); 
+	void writeForECM(AniResumeData, std::string) ;
+	void writeForCells(AniResumeData, std::string ) ;
 	std::string printNodeEnum(MembraneType1); 
 	std::string printECMEnum(EType); 
 	std::string printCellsEnum(ECellType); 

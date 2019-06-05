@@ -4851,8 +4851,8 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 		}
 	}
 	aniResumeDatas.push_back(membraneResumeData) ; 
-
-    //loop on internal nodes
+    
+	//loop on internal nodes
 	for (uint i=0; i<activeCellCount; i++){
 		for (uint j = maxMemNodePerCell; j < maxNodePerCell; j++) {
 			index1 = i * maxNodePerCell + j;
@@ -7221,7 +7221,7 @@ void SceCells::writeNucleusIniLocPercent() {
 	thrust::host_vector <double> nucleusLocPercentHost ; 
 	
 	string uniqueSymbolOutput = globalConfigVars.getConfigValue("UniqueSymbol").toString();
-	std::string resumeFileName = "./resources/InitLocNucleusPercent_" + uniqueSymbolOutput + "Resume.cfg";
+	std::string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbolOutput + "Resume.cfg";
 	output.open(resumeFileName.c_str() );
 	nucleusLocPercentHost=cellInfoVecs.nucleusLocPercent ; 
 
@@ -7240,7 +7240,7 @@ void SceCells::readNucleusIniLocPercent() {
 	int dummy ; 
 	double percent ;
 	string uniqueSymbol = globalConfigVars.getConfigValue("UniqueSymbol").toString();
-	string resumeFileName = "./resources/InitLocNucleusPercent_" + uniqueSymbol + "Resume.cfg";
+	string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbol + "Resume.cfg";
 	input.open(resumeFileName.c_str() );
 	
 	if (input.is_open()) {

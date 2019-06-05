@@ -276,16 +276,17 @@ void SimulationDomainGPU::outputResumeData(uint frame) {
 	//Gather information
 	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ;
 	aniResumeDatas.push_back                    (eCM.obtainResumeData()); 
+    
+	//Fetch the input parameters
+	std::string uniqueSymbol        = globalConfigVars.getConfigValue(
+	                                  "UniqueSymbol").toString() ; 
+	std::string membFileNameResume  = globalConfigVars.getConfigValue(
+	                        		  "MembraneNodes_FileName_Resume").toString() ;
+	std::string intnlFileNameResume = globalConfigVars.getConfigValue(
+			                          "IntnlNodes_FileName_Resume").toString() ;
+	
 	//Write the gathered information 
 	//0 is for membrane nodes and 1 is for internal node, 2 for cells, 	3 is for ECM nodes
-
-	string uniqueSymbol=globalConfigVars.getConfigValue("UniqueSymbol").toString() ; 
-	string membFileNameResume = globalConfigVars.getConfigValue(
-			"MembraneNodes_FileName_Resume").toString() ;
-	
-	std::string intnlFileNameResume = globalConfigVars.getConfigValue(
-			"IntnlNodes_FileName_Resume").toString() ;
-	
 	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), membFileNameResume, intnlFileNameResume, uniqueSymbol) ;  
 	writeResumeData.writeForCells       (aniResumeDatas.at(2), uniqueSymbol) ; 
 	writeResumeData.writeForECM         (aniResumeDatas.at(3), uniqueSymbol) ; 
