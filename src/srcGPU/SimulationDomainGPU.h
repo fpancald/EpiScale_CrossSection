@@ -167,7 +167,7 @@ public:
 	void outputVtkColorByCell_polySide(std::string scriptNameBase, int rank,
 			AnimationCriteria aniCri);
 
-	void outputResumeData(std::string scriptNameBase, int frame);
+	void outputResumeData(uint frame);
 
 	/**
 	 * Method that output the simulation domain as label matrix.

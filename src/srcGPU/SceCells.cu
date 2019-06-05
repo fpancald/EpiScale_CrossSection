@@ -4851,8 +4851,8 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 		}
 	}
 	aniResumeDatas.push_back(membraneResumeData) ; 
-
-    //loop on internal nodes
+    
+	//loop on internal nodes
 	for (uint i=0; i<activeCellCount; i++){
 		for (uint j = maxMemNodePerCell; j < maxNodePerCell; j++) {
 			index1 = i * maxNodePerCell + j;
@@ -7220,7 +7220,9 @@ void SceCells::writeNucleusIniLocPercent() {
 	ofstream output ; 
 	thrust::host_vector <double> nucleusLocPercentHost ; 
 	
-	output.open ("InitLocNucleusPercentResume.txt") ; 
+	string uniqueSymbolOutput = globalConfigVars.getConfigValue("UniqueSymbol").toString();
+	std::string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbolOutput + "Resume.cfg";
+	output.open(resumeFileName.c_str() );
 	nucleusLocPercentHost=cellInfoVecs.nucleusLocPercent ; 
 
 	for (int i=0 ; i<allocPara_m.currentActiveCellCount  ; i++){
@@ -7237,14 +7239,15 @@ void SceCells::readNucleusIniLocPercent() {
 	vector <double> nucleusLocPercentHost ; 
 	int dummy ; 
 	double percent ;
-
-	input.open ("InitLocNucleusPercentResume.txt") ;
+	string uniqueSymbol = globalConfigVars.getConfigValue("UniqueSymbol").toString();
+	string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbol + "Resume.cfg";
+	input.open(resumeFileName.c_str() );
 	
 	if (input.is_open()) {
-		cout << " I suceessfully openend InitLocNucleusPercentResume.txt" << endl ; 
+		cout << " Suceessfully openend resume input file for initial locations of nucleus" << endl ; 
 	}
 	else{
-		throw std::invalid_argument (" I failed openening InitLocNucleusPercentResume.txt")  ; 
+		throw std::invalid_argument ("Failed openening the resume input file for initial locations of nucleus")  ; 
 
 	}
 
