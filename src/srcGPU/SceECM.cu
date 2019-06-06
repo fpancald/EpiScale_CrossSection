@@ -177,7 +177,7 @@ void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, 
 	}
 	else if(resumeSimulation==1) { 
 		cout << " In the ECM module, I am in resume mode" << endl ;
-		std::string secondInputFileName = "./resources/ECM_" + uniqueSymbol + "Resume.cfg";
+		std::string secondInputFileName = "./resources/DataFileECM_" + uniqueSymbol + "Resume.cfg";
 		readCoord_ECM.open(secondInputFileName.c_str()) ;
 	}
 	else{

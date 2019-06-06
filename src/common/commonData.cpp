@@ -277,7 +277,6 @@ void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData
 	}
 	fsM.close() ; 
 
-	fsM << fixed << setprecision(4) << endl ; 
 	string resumeFileNameI ="./resources/" + intnlFileNameResume + uniqueSymbol +  "Resume.cfg";
 	std::cout << "start to create resume file for internal nodes " << resumeFileNameI << std::endl;
 	std::ofstream fsI;
