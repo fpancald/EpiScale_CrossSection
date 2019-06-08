@@ -368,9 +368,6 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 
 	}
 
-	for (uint i = 0; i < initCellCount; i++) {
-		cout << "third check cell type" << initData.eCellTypeV1.at(i)<< endl ;  // Ali
-	}
 	for (uint i = 0; i < maxNodeInDomain; i++) {
 		nodeRank = i % maxAllNodeCountPerCell;
 		if (nodeRank < maxMembrNodePerCell) {
@@ -730,6 +727,8 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 			"IntnlNodes_FileName_Resume").toString() ;
 	std::string membNodesFileNameResume = globalConfigVars.getConfigValue(
 			"MembraneNodes_FileName_Resume").toString() ;
+    std::string uniqueSymbol=globalConfigVars.getConfigValue(
+	        "UniqueSymbol").toString() ;
 
 	if (resumeSimulation==0) {
 		cout<< " The simulation is in start mode" << endl ; 
@@ -743,15 +742,20 @@ void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,  
 			//	initMembrPos.push_back(initMembrPosTmp);
 			initIntnlPos.push_back(initIntnlPosTmp);
 		}
+
 		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, MembraneNodesFileName ); 			
 	}
 	else if (resumeSimulation==1) {
-		cout<< " The simulation is in Resume mode" << endl ; 
-		initIntnlPos=readResumeIntnlNodes( initCenters.size(),maxIntnlNodeCountPerCell,intnlNodesFileNameResume) ;   
-		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, membNodesFileNameResume ); 			
+		cout<< " The simulation is in Resume mode" << endl ;
+
+        std::string intnlFileName = "./resources/" + intnlNodesFileNameResume + uniqueSymbol + "Resume.cfg";
+		initIntnlPos=readResumeIntnlNodes( initCenters.size(),maxIntnlNodeCountPerCell,intnlFileName) ;  
+
+        std:: string membFileName = "./resources/" + membNodesFileNameResume  + uniqueSymbol + "Resume.cfg";
+		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, membFileName); 			
 	}
 	else {
-		throw std::invalid_argument(" ResumeSimulation parameter in the input file must be either 1 or 0"); 
+		throw std::invalid_argument("ResumeSimulation parameter in the input file must be either 1 or 0"); 
 	}
 
 	
@@ -1100,7 +1104,6 @@ vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int
    vector <CVector> intnlPosTmp ;
    vector<vector<CVector> > intnlPos ;
    ifstream inputc ; 
-
    inputc.open(intnlFileName.c_str());
    if (inputc.is_open()){
       cout << "File for reading internal nodes coordinates in resume mode is opened successfully " << endl ; 
@@ -1140,12 +1143,11 @@ vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int
 vector<vector<CVector> > CellInitHelper::readMembNodes(int numCells,int maxMembrNodeCountPerCell,
                                                            vector<vector<MembraneType1> >& mTypeV2,vector<vector<double> >& mDppV2, string membFileName) 
 {
-	vector<CVector> initMembrPosTmp;
-	vector<vector<CVector> > initMembrPos ; 
-	vector<double> mDppVTmp;  
-	vector<MembraneType1> mTypeVTmp;  
-	std::fstream inputc;
-
+    vector<CVector> initMembrPosTmp;
+    vector<vector<CVector> > initMembrPos ; 
+    vector<double> mDppVTmp;  
+    vector<MembraneType1> mTypeVTmp;  
+    std::fstream inputc;
 
     inputc.open(membFileName.c_str());
     if (inputc.is_open()){

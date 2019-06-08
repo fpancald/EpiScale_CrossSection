@@ -6,7 +6,9 @@
 
 #include "SceNodes.h"
 #include "SceECM.h"
+#include "Solver.h"
 #include <time.h>
+#include <functional>
 #include <thrust/tabulate.h>
 #include <thrust/count.h>
 #define PI 3.14159265358979
@@ -372,35 +374,35 @@ struct ActinLevelCal: public thrust::unary_function<ActinData, double> {
 
 	//		if (_subMembPolar) { // if # 6 s
 				if ( (cellType==pouch && memType==lateralB) || (cellType==pouch && memType==lateralA)  ) { 
-					actinLevel=kStiff ;  //0.5
+					actinLevel=3.0*kStiff ;  //0.5
 				}
 		        if (cellType==pouch &&  memType==apical1) {
-					 actinLevel=kStiff ; 
+					 actinLevel=3.0*kStiff ; 
 				}
 				if (cellType==pouch &&  memType==basal1) {
-					 actinLevel=kStiff ; // 0.55
+					 actinLevel=3.0*kStiff ; // 0.55
 				}
 
 				
 				if ( (cellType==peri && memType==lateralB) || (cellType==peri && memType==lateralA)  ) { 
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				if   (cellType==peri && memType == apical1) {
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				if   (cellType==peri && memType == basal1) {
-					  actinLevel=kStiff ;
+					  actinLevel=3.0*kStiff ;
 				}
 				
 
 				if ( (cellType==bc && memType==lateralB) || (cellType==bc && memType==lateralA)  ) { 
-					actinLevel=kStiff ; //1.5
+					actinLevel=3.0*kStiff ; //1.5
 				}
 		        if (cellType==bc &&  memType==apical1) {
-					 actinLevel=kStiff ; // 1.5
+					 actinLevel=3.0*kStiff ; // 1.5
 				}
 				if (cellType==bc &&  memType==basal1) {
-					 actinLevel=kStiff ;
+					 actinLevel=3.0*kStiff ;
 				}
 
 
@@ -755,7 +757,7 @@ struct AddMembrForce: public thrust::unary_function<TensionData, CVec10> {
 				leftDiffY = leftPosY - locY;
 				lenLeft = sqrt(leftDiffX * leftDiffX + leftDiffY * leftDiffY);
 				//double forceVal = calMembrForce_Mitotic(lenLeft,progress, _mitoticCri,adhereIndex); //Ali & Abu June 30th
-				double forceVal = calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
+				double forceVal =calMembrForce_Actin(lenLeft,kAvgLeft); // Ali & June 30th
 			        //if (adhereIndex==-1 && _adhereIndexAddr[index_left]==-1) {
 				if (longEnough(lenLeft)) {
 					velX = velX + forceVal * leftDiffX / lenLeft;
@@ -1930,19 +1932,8 @@ struct SaxpyFunctorDim2_BC_Damp: public thrust::binary_function<CVec3, CVec2, CV
 		double xRes = thrust::get<1>(vec1) * _dt/thrust::get<0>(vec1) + thrust::get<0>(vec2);
 		double yRes = thrust::get<2>(vec1) * _dt/thrust::get<0>(vec1) + thrust::get<1>(vec2);
 
-		if (yRes>21.5) {
-			//return thrust::make_tuple(xRes, 21.5);
+		
 			return thrust::make_tuple(xRes, yRes);
-		}
-		else if (yRes<17.1178) {
-
-		//	return thrust::make_tuple(xRes, 17.1178);
-			return thrust::make_tuple(xRes, yRes);
-		}
-		else {
-
-			return thrust::make_tuple(xRes, yRes);
-		}
 
 	}
 };
@@ -3369,7 +3360,8 @@ struct MembrPara {
  */
 class SceCells {
 	SceNodes* nodes;
-	SceECM  *eCMPointerCells;  //Ali 
+	SceECM  *eCMPointerCells;  //Ali
+	Solver  *solverPointer; 
 	NodeAllocPara allocPara;
 	SceMiscPara miscPara;
 	SceBioPara bioPara;
@@ -3421,7 +3413,7 @@ class SceCells {
 	void initGrowthAuxData();
 	void initGrowthAuxData_M();
 	void initialize(SceNodes* nodesInput);
-	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput);
+	void initialize_M(SceNodes* nodesInput, SceECM* eCMInput, Solver *solver);
 
 	void distributeBdryIsActiveInfo();
 	void distributeProfileIsActiveInfo();
@@ -3601,8 +3593,14 @@ class SceCells {
 
 	void distributeCellGrowthProgress_M();
 
+	void StoreNodeOldPositions() ; 
 	void allComponentsMove_M();
 
+	void allComponentsMoveImplicitPart() ;
+	void CalRHS() ;
+    void EquMotionCoef(vector<int> & indexPrev, vector<int> & indexNext);
+    void UpdateLocations(const vector<int> & indexPrev, const vector<int> & indexNext); 
+	
 	void randomizeGrowth_M();
 
 	void updateGrowthProgress_M();
@@ -3714,7 +3712,7 @@ public:
 			std::vector<uint> &numOfInitActiveNodesOfCells,
 			std::vector<SceNodeType> &cellTypes);
 
-	SceCells(SceNodes* nodesInput, SceECM * eCMInput,
+	SceCells(SceNodes* nodesInput, SceECM * eCMInput,Solver *solver,
 			std::vector<uint> &numOfInitActiveMembrNodeCounts,
 			std::vector<uint> &numOfInitActiveIntnlNodeCounts,
 			std::vector<double> &initGrowProgVec, std::vector<ECellType> &eCellTypeV1 

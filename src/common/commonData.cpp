@@ -258,15 +258,18 @@ void VtkAnimationData::outputVtkAni(std::string scriptNameBase, int rank) {
 }
 
 
-void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData intnlData, std::string resumeNameBase) {
+void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData intnlData, std::string membFileNameResume, std::string intnlFileNameResume, std::string uniqueSymbol) {
 
-	std::string resumeFileNameM = resumeNameBase + "Membrane.txt";
+	
+
+	std::string resumeFileNameM ="./resources/" + membFileNameResume + uniqueSymbol +  "Resume.cfg";
 	std::cout << "start to create resume file for membrane nodes " << resumeFileNameM << std::endl;
 	std::ofstream fsM;
 	fsM.open(resumeFileNameM.c_str());
-	fsM << fixed << setprecision(4) << endl ; 
+	
+	fsM << fixed << setprecision(4) << endl ;
 	for (int i=0 ; i< membData.nodePosArr.size() ; i++) {
-		 fsM<<membData.cellRank.at(i)     <<"	"<< 
+		 fsM<<membData.cellRank.at(i)     	   <<"	"<< 
 			  membData.nodePosArr.at(i).GetX() <<"	"<<
 			  membData.nodePosArr.at(i).GetY() <<"	"<<
 			  membData.signalLevel.at(i)	   <<"	"<<
@@ -274,7 +277,7 @@ void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData
 	}
 	fsM.close() ; 
 
-	std::string resumeFileNameI = resumeNameBase + "Internal.txt";
+	string resumeFileNameI ="./resources/" + intnlFileNameResume + uniqueSymbol +  "Resume.cfg";
 	std::cout << "start to create resume file for internal nodes " << resumeFileNameI << std::endl;
 	std::ofstream fsI;
 	fsI.open(resumeFileNameI.c_str());
@@ -288,8 +291,9 @@ void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData
 	fsI.close() ; 
 }
 
-void WriteResumeData::writeForECM(AniResumeData eCMData, std::string resumeNameBase) {
-	std::string resumeFileName = resumeNameBase + "ECM.txt";
+void WriteResumeData::writeForECM(AniResumeData eCMData, string uniqueSymbol) {
+	
+	string resumeFileName ="./resources/DataFileECM_" + uniqueSymbol +  "Resume.cfg";
 	std::cout << "start to create resume file for ECM nodes " << resumeFileName << std::endl;
 	std::ofstream fs;
 	fs.open(resumeFileName.c_str());
@@ -303,8 +307,10 @@ void WriteResumeData::writeForECM(AniResumeData eCMData, std::string resumeNameB
 	fs.close() ; 
 }
 
-void WriteResumeData::writeForCells(AniResumeData cellsData, std::string resumeNameBase) {
-	std::string resumeFileName = resumeNameBase + "Cell.txt";
+// This file it is being written but it is not used now. Becasue the number and type of the cells are fixed now.
+void WriteResumeData::writeForCells(AniResumeData cellsData, string uniqueSymbol) {
+	
+	string resumeFileName ="./resources/DataFileCell_" + uniqueSymbol +  "Resume.cfg";
 	std::cout << "start to create resume file for cells" << resumeFileName << std::endl;
 	std::ofstream fs;
 	fs.open(resumeFileName.c_str());

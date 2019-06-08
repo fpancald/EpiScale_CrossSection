@@ -1,9 +1,9 @@
 #include "SceECM.h"
-#include "SceCells.h"
+#include "SceCells.h" // Because of forward declaration
 //# define debugModeECM 
-// task: frequency of plotting the ECM should be imported. Right now is given explicitly
 // bending stiffness is given inside the code. It should be given as in input from a txt file.
 //isInitPhase bool variable is not active anymore.
+//Right now it is assumed that ECM stiffness is the same everywhere.
 __constant__ double sceInterCell_ECM[5]; 
 //__constant__ double wLCPara_ECM[4]; 
 __constant__ double restLenECMAdhSpringGPU  ;  
@@ -15,6 +15,9 @@ __constant__ double stiffnessECMPeripGPU ;
 __constant__ double lknotECMBasalGPU ;
 __constant__ double lknotECMBCGPU ;
 __constant__ double lknotECMPeripGPU ;
+
+const double smallNumber=.000001 ; 
+
 
 
 namespace patch{
@@ -32,17 +35,17 @@ __device__
 void DefineECMStiffnessAndLknot ( EType nodeType, double & stiffness, double & sponLen) {
 
 	if (nodeType==excm) {
-		stiffness=stiffnessECMBasalGPU ;  //* stiffness ; 
+		stiffness=stiffnessECMBasalGPU ;   
 		sponLen=lknotECMBasalGPU  ; 
 	}
 	if (nodeType==perip) {
-		stiffness=stiffnessECMPeripGPU ; //*stiffness ; 
-		sponLen=lknotECMPeripGPU ; // 0.1 ; 
+		stiffness=stiffnessECMPeripGPU ; 
+		sponLen=lknotECMPeripGPU ;
 	}
 
 	if (nodeType==bc2) {
-		stiffness=stiffnessECMBCGPU;  // *stiffness ; 
-		sponLen=lknotECMBCGPU ;// _sponLen ; 
+		stiffness=stiffnessECMBCGPU;  
+		sponLen=lknotECMBCGPU ; 
 	}
 
 }
@@ -147,13 +150,15 @@ SceECM::SceECM() {
 
 }
 
-void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput) {
+
+
+void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbol) {
 
 	maxAllNodePerCell=maxAllNodePerCellECM ; 
 	maxMembrNodePerCell= maxMembrNodePerCellECM ; 
     maxTotalNodes=maxTotalNodesECM ; //Ali 
     this->freqPlotData=freqPlotData ; 
-    this->uniqueSymbolOutput=uniqueSymbolOutput ; 
+    this->uniqueSymbol=uniqueSymbol ; 
 
 	std::fstream readCoord_ECM ;
 	std::fstream readInput_ECM ;
@@ -171,8 +176,9 @@ void SceECM::Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, 
 		readCoord_ECM.open("./resources/coordinate_ECM21.txt") ;
 	}
 	else if(resumeSimulation==1) { 
-		cout << " In the ECM module, I am in resume mode" << endl ; 
-		readCoord_ECM.open("ResumeDataFileECM.txt") ;
+		cout << " In the ECM module, I am in resume mode" << endl ;
+		std::string secondInputFileName = "./resources/DataFileECM_" + uniqueSymbol + "Resume.cfg";
+		readCoord_ECM.open(secondInputFileName.c_str()) ;
 	}
 	else{
 
@@ -225,9 +231,9 @@ else {
 
 std::fstream secondInput_ECM ; 
 std:: string secondInputInfo ;  //dummy 
-std::string secondInputFileName = "./resources/ECM_" + uniqueSymbolOutput + "input.cfg";
-
+std::string secondInputFileName = "./resources/ECM_" + uniqueSymbol + "input.cfg";
 secondInput_ECM.open(secondInputFileName.c_str()) ;
+//secondInput_ECM.open("./resources/ECM_N01G00_input.cfg" ) ;
 if (secondInput_ECM.is_open()) {
 	cout << "Second ECM Mech input opened successfully" <<endl ; 
 }
@@ -242,24 +248,23 @@ else {
  secondInput_ECM>>lknotECMBasal ;
  secondInput_ECM>>lknotECMBC ;
  secondInput_ECM>>lknotECMPerip ;
+ secondInput_ECM>>dampBasal ;
+ secondInput_ECM>>dampBC ;
+ secondInput_ECM>>dampApical ;
 
  cout <<" stiffness of ECM at the basal side is="<<stiffnessECMBasal <<endl ;   
-
  cout <<" stiffness of ECM at boundary is="<<stiffnessECMBC<<endl ; 
+ cout <<" stiffness of ECM peripodial side is="<<stiffnessECMPerip<<endl ; 
 
- cout <<" stiffness of ECM peripodial side is="<<stiffnessECMPerip<<endl ;  
  cout <<" rest len basal ECM is="<<lknotECMBasal<<endl ;
  cout <<" rest len boundary ECM is= "<<lknotECMBC<<endl ;
  cout << "rest len peripodial ECM is=" <<lknotECMPerip <<endl ; 
 
+ cout << "Damping for basal ECM is="<<dampBasal<<endl ;
+ cout << "Damping for boundary ECM is= "<<dampBC<<endl ;
+ cout << "Damping for peripodial ECM is=" <<dampApical <<endl ; 
 
-
-
-cout<< "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
-//for (int i=0 ; i<posXIni_ECM.size() ; i++){
-//	cout << "ECM nodes read in cpu"<<endl; 
-//	cout << posXIni_ECM[i] <<", "<<posYIni_ECM[i]<<", " << eNodeVec[i] <<endl;  ; 
-//}
+ cout << "number of ECM nodes is"<< numberNodes_ECM <<endl ; 
 
 
 
@@ -310,7 +315,7 @@ numNodesECM= numberNodes_ECM ; //(eCMMaxX-eCMMinX)/eCMMinDist ;
 
 indexECM.resize(numNodesECM,0) ;
 peripORexcm.resize(numNodesECM,perip) ;
-
+dampCoef.resize(numNodesECM) ; 
 nodeECMLocX.resize(numNodesECM,0.0) ;
 nodeECMLocY.resize(numNodesECM,0.0) ;
 
@@ -329,8 +334,7 @@ adhEnergy.resize(numNodesECM,0.0);
 
 
 bendSpringForceECMX.resize(numNodesECM,0.0); 
-bendSpringForceECMY.resize(numNodesECM,0.0); 
- 
+bendSpringForceECMY.resize(numNodesECM,0.0);  
 memMorseForceECMX.resize(numNodesECM,0.0); 
 memMorseForceECMY.resize(numNodesECM,0.0);
  
@@ -344,29 +348,35 @@ fBendRightY.resize(numNodesECM,0.0);
 totalForceECMX.resize(numNodesECM,0.0); 
 totalForceECMY.resize(numNodesECM,0.0);
 
+totalExplicitForceECMX.resize(numNodesECM,0.0); 
+totalExplicitForceECMY.resize(numNodesECM,0.0);
+
+
+rHSX.resize(numNodesECM,0.0); 
+rHSY.resize(numNodesECM,0.0);
 //memNodeType.resize(maxTotalNodes,notAssigned1) ; 
 
+
+nodeIsActive.resize(numNodesECM,true) ; 
 thrust::sequence (indexECM.begin(),indexECM.begin()+numNodesECM);
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+604,excm );
-//thrust::fill (peripORexcm.begin()+1166,peripORexcm.end(),excm );
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+int(numNodesECM/2),excm );
-//thrust::fill (peripORexcm.begin(),peripORexcm.begin()+int(numNodesECM/2),excm );
  
 thrust::copy(posXIni_ECM.begin(),posXIni_ECM.end(),nodeECMLocX.begin()) ; 
 thrust::copy(posYIni_ECM.begin(),posYIni_ECM.end(),nodeECMLocY.begin()) ; 
 thrust::copy(eNodeVec.begin(),eNodeVec.end(),peripORexcm.begin()) ;
+AssignDampCoef() ; 
+cout << "GPU level initial coordinates and type of external nodes are: " << endl ; 
+for (int i=0;  i<nodeECMLocX.size() ;  i++) {
+	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
+}
 
-//cout << "GPU level initial coordinates and type of external nodes are: " << endl ; 
-//for (int i=0;  i<nodeECMLocX.size() ;  i++) {
-//	cout<< nodeECMLocX[i]<<", "<<nodeECMLocY[i]<<", "<<peripORexcm[i] << endl; 
-//}
 
 PrintECM(0.0) ;
-std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".CSV";
+std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbol + ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str());
 
 			EnergyExport <<"Time,"<<"TotalMorseEnergyECM," << "TotalAdhEnergyECM,"<<"TotalLinSpringEnergy,"<<"TotalEnergy, " <<"TotalEnergyDerivative"<< std::endl;
+
 
 } //initilaization function finished
 
@@ -375,7 +385,7 @@ std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput + ".C
 
 
 
-void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase){  
+void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_CoefCell, bool cellPolar, bool subCellPolar, bool isInitPhase){  
 
 
 	if (eCMRemoved) {
@@ -399,285 +409,93 @@ void SceECM:: ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountFo
 	
 	cudaEventRecord(start1, 0);
 #endif
-thrust::counting_iterator<int> iBegin(0) ; 
-nodeDeviceTmpLocX.resize(totalNodeCountForActiveCellsECM,0.0) ;
-nodeDeviceTmpLocY.resize(totalNodeCountForActiveCellsECM,0.0) ;
-//isBasalMemNode.resize(totalNodeCountForActiveCellsECM,false) ;
+nodeCellLocXOld.resize(totalNodeCountForActiveCellsECM) ;
+nodeCellLocYOld.resize(totalNodeCountForActiveCellsECM) ;
 adhPairECM_Cell.resize(totalNodeCountForActiveCellsECM,-1) ;
 morseEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
 adhEnergyCell.resize(totalNodeCountForActiveCellsECM,0.0); 
-thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocX.begin()) ; 
-thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeDeviceTmpLocY.begin()) ; 
-//cout << " max all node per cell in ECM module is " << maxAllNodePerCell << endl ; 
-//cout<< "max membrane node per cell in ECM module is " << maxMembrNodePerCell<< endl ; 
-//cout<< "I am in ECM module and dt is: " << dt << endl ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocX.begin(),nodesPointerECM->getInfoVecs().nodeLocX.begin()+totalNodeCountForActiveCellsECM,nodeCellLocXOld.begin()) ; 
+thrust::copy(nodesPointerECM->getInfoVecs().nodeLocY.begin(),nodesPointerECM->getInfoVecs().nodeLocY.begin()+totalNodeCountForActiveCellsECM,nodeCellLocYOld.begin()) ; 
 #ifdef debugModeECM
 	cudaEventRecord(start2, 0);
 	cudaEventSynchronize(start2);
 	cudaEventElapsedTime(&elapsedTime1, start1, start2);
 #endif
 
-double eCMBendStiff=6.0 ; // need to be an input
 
-//if (cellPolar) {eCMLinSpringStiff=100 ; }
-//if (subCellPolar) {eCMLinSpringStiff=100 ; }
-
-//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocX[0] << endl ; 
-//cout << "test to make sure ECM class reads cells class variables "<< cellsPointerECM->getCellInfoVecs().basalLocY[0] << endl ; 
-
-
-
-
-double* nodeECMLocXAddr= thrust::raw_pointer_cast (
-			&nodeECMLocX[0]) ; 
-double* nodeECMLocYAddr= thrust::raw_pointer_cast (
-			&nodeECMLocY[0]) ; 
-
-EType* peripORexcmAddr= thrust::raw_pointer_cast (
-			&peripORexcm[0]) ; 
-
-// move the nodes of epithelial cells 
-//// find the closest ECM node to each each cell //
-
- int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
+         thrust::make_zip_iterator (thrust::make_tuple (stiffLevel.begin(),sponLen.begin())),MechProp());
+cout << " Mechanical properties after assignment is " << stiffLevel[0] << endl ; 
 
 counter ++ ; 
-if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
+//if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
+if (curTime<(100*dt) || isECMNeighborSet==false) {
 	isECMNeighborSet=true ; 
-	counter=0 ; 
-	thrust:: transform (
-		thrust::make_zip_iterator (
-					thrust:: make_tuple (
-						cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
-						cellsPointerECM->getCellInfoVecs().basalLocY.begin())),
-		thrust::make_zip_iterator (
-					thrust:: make_tuple (
-					 	cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
-                     	cellsPointerECM->getCellInfoVecs().basalLocY.begin()))+numCells, 
-	    cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-		FindECMNeighborPerCell(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM ));
-
- 	double * basalCellLocXAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
- 	double * basalCellLocYAddr= thrust::raw_pointer_cast ( & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
-	// int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
- 	//cout << " Number of cells in ECM class is equal to " << numCells << endl; 
-	thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 nodeECMLocX.begin(),
-                     nodeECMLocY.begin()))+numNodesECM,
-	    cellNeighborId.begin(),
-		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
+	counter=0 ;
+	FindNeighborCandidateForCellsAndECMNodes(); 
 }
-
-
-
-
-thrust::counting_iterator<int> iBegin2(0) ; 
-//////////////////////////////////////////
- thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					make_permutation_iterator(
-						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-									make_transform_iterator(iBegin2,
-											DivideFunctor2(
-												maxAllNodePerCell))),
-					make_transform_iterator (iBegin,
-							DivideFunctor2(maxAllNodePerCell)),
-					make_transform_iterator (iBegin,
-							ModuloFunctor2(maxAllNodePerCell)),
-					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-					nodesPointerECM->getInfoVecs().nodeLocY.begin(), 
-					nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
-					nodesPointerECM->getInfoVecs().memNodeType1.begin()
-					)), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					make_permutation_iterator(
-						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
-									make_transform_iterator(iBegin2,
-											DivideFunctor2(
-												maxAllNodePerCell))),
-					make_transform_iterator (iBegin,
-							DivideFunctor2(maxAllNodePerCell)),
-					 make_transform_iterator (iBegin,
-							ModuloFunctor2(maxAllNodePerCell)),
-					 nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-                     nodesPointerECM->getInfoVecs().nodeLocY.begin(),
-					 nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
-					 nodesPointerECM->getInfoVecs().memNodeType1.begin()
-					 ))+totalNodeCountForActiveCellsECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
-					nodesPointerECM->getInfoVecs().nodeLocY.begin(),
-					adhPairECM_Cell.begin(),
-					morseEnergyCell.begin(),
-					adhEnergyCell.begin())),
-				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_Coef,isInitPhase,peripORexcmAddr,curTime,currentActiveCellCount));
-
 #ifdef debugModeECM
 	cudaEventRecord(start3, 0);
 	cudaEventSynchronize(start3);
 	cudaEventElapsedTime(&elapsedTime2, start2, start3);
 #endif
+
+MoveCellNodesByECMForces(totalNodeCountForActiveCellsECM,currentActiveCellCount,dt, Damp_CoefCell) ; 
 /* To reduce computational cost
 energyECM.totalMorseEnergyCellECM = thrust::reduce( morseEnergyCell.begin(),morseEnergyCell.begin()+totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() ); 
 energyECM.totalAdhEnergyCellECM   = thrust::reduce( adhEnergyCell.begin()  ,adhEnergyCell.begin()  +totalNodeCountForActiveCellsECM,(double) 0.0, thrust::plus<double>() );
 */
-bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
-			& (nodesPointerECM->getInfoVecs().nodeIsActive[0])) ; 
 
-int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
-			&adhPairECM_Cell[0]) ; 
-
-
-thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
-                    thrust::make_zip_iterator (thrust::make_tuple (
-											                        stiffLevel.begin(),
-																	sponLen.begin()    ))
-					                           ,MechProp(isInitPhase));
-
-
-double* stiffLevelAddr=thrust::raw_pointer_cast (
-			&stiffLevel[0]) ; 
-
-double*  sponLenAddr =thrust::raw_pointer_cast (
-			&sponLen[0]) ; 
-
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                                         nodeECMLocY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					linSpringAvgTension.begin(),
-					linSpringEnergy.begin())),
-				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
-
-//////////////////////////////////// find the closest Cell to each ECM node ///////////
-
-
-
-///////////////////////////////////
-
-//cout << " I am after FindCellNeighbor functor" << endl ; 
-
-
-
-
-
-
+CalLinSpringForce(); 
+CalBendSpringForce();
 
 #ifdef debugModeECM
 	cudaEventRecord(start4, 0);
 	cudaEventSynchronize(start4);
 	cudaEventElapsedTime(&elapsedTime3, start3, start4);
 #endif
-
+CalCellForcesOnECM() ;
 //energyECM.totalLinSpringEnergyECM = 0.5 * ( thrust::reduce( linSpringEnergy.begin(),linSpringEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() )); 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                                         nodeECMLocY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					fBendCenterX.begin(),
-					fBendCenterY.begin(),
-					fBendLeftX.begin(),
-					fBendLeftY.begin(),
-					fBendRightX.begin(),
-					fBendRightY.begin())),
-				CalBendECM(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM,eCMBendStiff));
+//to make sure it is based on the distance used for action force calculation.
+/* To reduce computational cost 
+energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
+energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
+*/
+//CalSumForcesOnECM() ;
+//MoveNodesBySumAllForces(dt) ; 
+CalSumOnlyExplicitForcesOnECM() ;
+CalRHS(dt) ;
 
 #ifdef debugModeECM
 	cudaEventRecord(start5, 0);
 	cudaEventSynchronize(start5);
 	cudaEventElapsedTime(&elapsedTime4, start4, start5);
 #endif
-double* fBendLeftXAddr= thrust::raw_pointer_cast (
-			&fBendLeftX[0]) ; 
-double* fBendLeftYAddr= thrust::raw_pointer_cast (
-			&fBendLeftY[0]) ; 
-double* fBendRightXAddr= thrust::raw_pointer_cast (
-			&fBendRightX[0]) ; 
-double* fBendRightYAddr= thrust::raw_pointer_cast (
-			&fBendRightY[0]) ; 
 
+	vector <double> tmpRHSX(numNodesECM); 
+	vector <double> tmpRHSY(numNodesECM); 
+	tmpHostNodeECMLocX.resize(numNodesECM); 
+	tmpHostNodeECMLocY.resize(numNodesECM); 
+	
+	thrust::copy (rHSX.begin(), rHSX.begin()+numNodesECM, tmpRHSX.begin()); 
+	thrust::copy (rHSY.begin(), rHSY.begin()+numNodesECM, tmpRHSY.begin()); 
+	thrust::copy (nodeECMLocX.begin(), nodeECMLocX.begin()+numNodesECM, tmpHostNodeECMLocX.begin()); 
+	thrust::copy (nodeECMLocY.begin(), nodeECMLocY.begin()+numNodesECM, tmpHostNodeECMLocY.begin());
 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					fBendCenterX.begin(),
-					fBendCenterY.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 fBendCenterX.begin(),
-                                         fBendCenterY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin())),
-				SumBendForce(fBendLeftXAddr,fBendLeftYAddr,fBendRightXAddr,fBendRightYAddr,numNodesECM));
 
 #ifdef debugModeECM
+
+	cout << "max RHSX is " << *max_element(tmpRHSX.begin(), tmpRHSX.begin()+numNodesECM) << endl ;  
+	cout << "min RHSX is " << *min_element(tmpRHSX.begin(), tmpRHSX.begin()+numNodesECM) << endl ;
+	cout << "max RHSY is " << *max_element(tmpRHSY.begin(), tmpRHSY.begin()+numNodesECM) << endl ;  
+	cout << "min RHSY is " << *min_element(tmpRHSY.begin(), tmpRHSY.begin()+numNodesECM) << endl ; 
 	cudaEventRecord(start6, 0);
 	cudaEventSynchronize(start6);
 	cudaEventElapsedTime(&elapsedTime5, start5, start6);
 #endif
-//to make sure it is based on the distance used for action force calculation.
-double* nodeCellLocXAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocX[0]) ; 
-double* nodeCellLocYAddr= thrust::raw_pointer_cast (
-			&nodeDeviceTmpLocY[0]) ;
- 
 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					indexECM.begin(),
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					cellNeighborId.begin())), 
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					 indexECM.begin(),
-					 nodeECMLocX.begin(),
-                     nodeECMLocY.begin(),
-					 cellNeighborId.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin(),
-					morseEnergy.begin(),
-					adhEnergy.begin())),
-				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
+	EquMotionCoef (dt); 
 
-//cout << " I am after MorseAndAdhForceECM functor" << endl ; 
 
 #ifdef debugModeECM
 	cudaEventRecord(start7, 0);
@@ -685,69 +503,18 @@ thrust:: transform (
 	cudaEventElapsedTime(&elapsedTime6, start6, start7);
 #endif
 
-/* To reduce computational cost 
-energyECM.totalMorseEnergyECMCell = thrust::reduce( morseEnergy.begin(),morseEnergy.begin()+numNodesECM,(double) 0.0, thrust::plus<double>() ); 
-energyECM.totalAdhEnergyECMCell   = thrust::reduce( adhEnergy.begin()  ,adhEnergy.begin()  +numNodesECM,(double) 0.0, thrust::plus<double>() );
-*/
 
-double dummy=0.0 ;
-
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					linSpringForceECMX.begin(),
-					linSpringForceECMY.begin(),
-					bendSpringForceECMX.begin(),
-					bendSpringForceECMY.begin(),
-					memMorseForceECMX.begin(),
-					memMorseForceECMY.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					totalForceECMX.begin(),
-					totalForceECMY.begin())),
-				TotalECMForceCompute(dummy));
+tmpHostNodeECMLocX =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSX,indexPrev, indexNext, tmpHostNodeECMLocX); 
+tmpHostNodeECMLocY =solverPointer->SOR3DiagPeriodic(nodeIsActive,hCoefLd, hCoefD, hCoefUd,tmpRHSY,indexPrev,indexNext, tmpHostNodeECMLocY);
+    
+thrust::copy (tmpHostNodeECMLocX.begin(), tmpHostNodeECMLocX.begin()+numNodesECM, nodeECMLocX.begin()); 
+thrust::copy (tmpHostNodeECMLocY.begin(), tmpHostNodeECMLocY.begin()+numNodesECM, nodeECMLocY.begin());
 
 #ifdef debugModeECM
 	cudaEventRecord(start8, 0);
 	cudaEventSynchronize(start8);
 	cudaEventElapsedTime(&elapsedTime7, start7, start8);
 #endif
-
-
-
-double Damp_CoefECM=Damp_Coef ; 
-double Damp_CoefPerip=Damp_Coef ; 
-// move the nodes of ECM 
-thrust:: transform (
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					totalForceECMX.begin(),
-					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin())),
-		thrust::make_zip_iterator (
-				thrust:: make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin(),
-					totalForceECMX.begin(),
-					totalForceECMY.begin(),
-					indexECM.begin(),
-					peripORexcm.begin()))+numNodesECM,
-		thrust::make_zip_iterator (
-				thrust::make_tuple (
-					nodeECMLocX.begin(),
-					nodeECMLocY.begin())),
-				MoveNodeECM(dt,Damp_CoefECM,Damp_CoefPerip,numNodesECM,curTime));
 
 /* To reduce computational cost
 cout << "total Morse energy for cell-ECM is= "<< energyECM.totalMorseEnergyCellECM << endl ; 
@@ -780,8 +547,8 @@ if (  (abs (energyECM.totalMorseEnergyCellECM-energyECM.totalMorseEnergyECMCell)
 	std::cout << "time 8 spent in ECM module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
 #endif
 
+//throw std::invalid_argument(" Solver called properly and I want to stop the code"); 
 PrintECM(curTime); 
-
 }
 
 void  SceECM:: PrintECM(double curTime) {
@@ -791,7 +558,7 @@ void  SceECM:: PrintECM(double curTime) {
 			lastPrintECM=0 ;
 			cout << " I am in regular print function" << endl ; 
 			// First ECM output file for paraview //
-			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbol +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
 			ECMOut<< "# vtk DataFile Version 3.0" << endl;
@@ -834,7 +601,7 @@ void  SceECM:: PrintECM(double curTime) {
 
 
 			// second output file for curvature estimation //
-			std::string txtFileName = "./ECMFolder/ECMLocationExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			std::string txtFileName = "./ECMFolder/ECMLocationExport_" + uniqueSymbol+ patch::to_string(outputFrameECM-1) + ".txt";
 			ofstream ECMLocationExport ;
 			ECMLocationExport.open(txtFileName.c_str());
 			//ECMExport << "ECM pouch coordinates" << std::endl;
@@ -857,7 +624,7 @@ void  SceECM:: PrintECM(double curTime) {
 		
 
 			//Third write file for ECM
-			txtFileName = "./ECMFolder/ECMTensionExport_" + uniqueSymbolOutput+ patch::to_string(outputFrameECM-1) + ".txt";
+			txtFileName = "./ECMFolder/ECMTensionExport_" + uniqueSymbol+ patch::to_string(outputFrameECM-1) + ".txt";
 			ofstream ECMTensionExport ;
 			ECMTensionExport.open(txtFileName.c_str());
 
@@ -874,7 +641,7 @@ void  SceECM:: PrintECM(double curTime) {
 								     +      energyECM.totalLinSpringEnergyECM ;
 									 
 
-			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbolOutput+ ".CSV";
+			std::string cSVFileName = "./ECMFolder/EnergyExport_" + uniqueSymbol+ ".CSV";
 			ofstream EnergyExport ;
 			EnergyExport.open(cSVFileName.c_str(),ofstream::app);
 			
@@ -895,7 +662,7 @@ void  SceECM:: PrintECMRemoved(double curTime) {
 
 			cout << " I am in ECM removed print function" << endl ; 
 			// First ECM output file for paraview //
-			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbolOutput +patch::to_string(outputFrameECM-1) + ".vtk";
+			std::string vtkFileName = "./ECMFolder/ECM_" + uniqueSymbol +patch::to_string(outputFrameECM-1) + ".vtk";
 			ofstream ECMOut;
 			ECMOut.open(vtkFileName.c_str());
 			ECMOut<< "# vtk DataFile Version 3.0" << endl;
@@ -969,3 +736,447 @@ AniResumeData  SceECM:: obtainResumeData() {
 	}
 	return aniResumeData ; 
 }
+
+void SceECM::EquMotionCoef (double dt) {
+
+   vector <double> sponLenHost(numNodesECM) ;
+   vector <double> sponLenWithNext ; 
+   vector <double> sponLenWithPrev ; 
+   vector <double> distWithNext ; 
+   vector <double> distWithPrev ;
+   vector <double> dampCoefHost ; 
+
+
+   sponLenWithNext.clear(); 
+   sponLenWithPrev.clear(); 
+   distWithNext.clear() ; 
+   distWithPrev.clear() ; 
+   hCoefLd.clear() ; 
+   hCoefUd.clear() ;  
+   hCoefD.clear()  ;
+   indexNext.clear() ; 
+   indexPrev.clear() ; 
+   dampCoefHost.clear() ; 
+
+   indexNext.resize(numNodesECM) ; 
+   indexPrev.resize(numNodesECM) ; 
+   dampCoefHost.resize(numNodesECM) ; 
+
+   thrust::copy(sponLen.begin(),sponLen.begin()+numNodesECM, sponLenHost.begin()) ; 
+   thrust::copy(dampCoef.begin(),dampCoef.begin()+numNodesECM, dampCoefHost.begin()) ; 
+
+
+   double k=stiffLevel[0] ; //Assumming ECM is homogenous in mechanical properties
+
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+	   indexNext.at(i)=i+1 ;
+	   indexPrev.at(i)=i-1 ;
+	   if (i==numNodesECM-1){
+	      indexNext.at(i)=0 ; 
+	   }
+	   if (i==0){
+	      indexPrev.at(i)=numNodesECM-1 ; 
+	   }
+	   sponLenWithNext.push_back( 0.5*(sponLenHost[indexNext.at(i)]+sponLenHost[i]) ); 
+	   sponLenWithPrev.push_back( 0.5*(sponLenHost[indexPrev.at(i)]+sponLenHost[i]) );
+
+	   distWithNext.push_back(sqrt( pow(tmpHostNodeECMLocX[indexNext.at(i)]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexNext.at(i)]-tmpHostNodeECMLocY[i],2))) ;
+	   distWithPrev.push_back(sqrt( pow(tmpHostNodeECMLocX[indexPrev.at(i)]-tmpHostNodeECMLocX[i],2) + 
+	                                pow(tmpHostNodeECMLocY[indexPrev.at(i)]-tmpHostNodeECMLocY[i],2)));  
+   }
+
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+      hCoefD.push_back (1 + k*dt/dampCoefHost.at(i)*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                                    - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
+	  hCoefLd.push_back(    k*dt/dampCoefHost.at(i)*(-1 + sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 ))) ; 
+	  hCoefUd.push_back(    k*dt/dampCoefHost.at(i)*(-1 + sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 ))) ; 
+   }
+  
+#ifdef debugModeECM
+   cout <<"max distance with next node is" <<*max_element ( distWithNext.begin(), distWithNext.begin()+numNodesECM) <<endl ;  
+   cout <<"min distance with next node is" << *min_element ( distWithNext.begin(), distWithNext.begin()+numNodesECM) <<endl  ;
+
+   cout <<"max distance with previous node is" <<*max_element ( distWithPrev.begin(), distWithPrev.begin()+numNodesECM) <<endl ;  
+   cout <<"min distance with previous node is" << *min_element ( distWithPrev.begin(), distWithPrev.begin()+numNodesECM) <<endl  ; 
+
+   vector < double> hCoefDAbs;
+   hCoefDAbs.clear() ; 
+   for ( int i=0 ;  i< numNodesECM ; i++) {
+      hCoefDAbs.push_back (abs(1 + k*dt/dampCoefHost.at(i)*( 2 - sponLenWithPrev.at(i)/(distWithPrev.at(i) + 0.0001 )   
+	                                                           - sponLenWithNext.at(i)/(distWithNext.at(i) + 0.0001 )))) ; 
+   }
+   cout <<"max main  diag. elment is "  << *max_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl ;  
+   cout <<"min main  diag. element is " << *min_element ( hCoefD.begin(),  hCoefD.begin() +numNodesECM) <<endl  ;
+   cout <<"min main  Abs(diag.) element is " << *min_element ( hCoefDAbs.begin(),  hCoefDAbs.begin() +numNodesECM) <<endl  ;
+   cout <<"max upper diag. element is " << *max_element ( hCoefUd.begin(), hCoefUd.begin()+numNodesECM) <<endl  ;
+   cout <<"min upper diag. element is " << *min_element ( hCoefUd.begin(), hCoefUd.begin()+numNodesECM) <<endl  ;
+   cout <<"max lower diag. element is " << *max_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
+   cout <<"min lower diag. element is " << *min_element ( hCoefLd.begin(), hCoefLd.begin()+numNodesECM) <<endl  ;
+   cout <<"stiffness, time step and first element of damping vector is " << endl ; 
+   cout << k <<","<< dt<<"," << dampCoefHost.at(0) << endl  ; 
+   cout << "constants for stiffness matrix calculated " << endl ; 
+   cout << "last diagonal element is " << hCoefD.at(numNodesECM-1) << endl ;
+   cout << " number of ECM nodes is "<< numNodesECM << endl ; 
+# endif  
+}
+
+void SceECM::MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_CoefCell) 
+{
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+
+EType* peripORexcmAddr= thrust::raw_pointer_cast (
+			&peripORexcm[0]) ; 
+
+// move the nodes of epithelial cells 
+//// find the closest ECM node to each each cell //
+
+ int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+thrust::counting_iterator<int> iBegin(0) ; 
+thrust::counting_iterator<int> iBegin2(0) ; 
+//////////////////////////////////////////
+ thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
+					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
+					make_transform_iterator (iBegin,
+							ModuloFunctor2(maxAllNodePerCell)),
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(), 
+					nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					nodesPointerECM->getInfoVecs().memNodeType1.begin()
+					)), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					make_permutation_iterator(
+						cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+									make_transform_iterator(iBegin2,
+											DivideFunctor2(
+												maxAllNodePerCell))),
+					make_transform_iterator (iBegin,
+							DivideFunctor2(maxAllNodePerCell)),
+					 make_transform_iterator (iBegin,
+							ModuloFunctor2(maxAllNodePerCell)),
+					 nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+                     nodesPointerECM->getInfoVecs().nodeLocY.begin(),
+					 nodesPointerECM->getInfoVecs().nodeIsActive.begin(),
+					 nodesPointerECM->getInfoVecs().memNodeType1.begin()
+					 ))+totalNodeCountForActiveCellsECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					nodesPointerECM->getInfoVecs().nodeLocX.begin(),
+					nodesPointerECM->getInfoVecs().nodeLocY.begin(),
+					adhPairECM_Cell.begin(),
+					morseEnergyCell.begin(),
+					adhEnergyCell.begin())),
+				MoveNodes2_Cell(nodeECMLocXAddr,nodeECMLocYAddr,maxMembrNodePerCell,numNodesECM,dt,Damp_CoefCell,peripORexcmAddr,currentActiveCellCount));
+}
+
+
+void SceECM::CalLinSpringForce()
+{
+
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+double* stiffLevelAddr=thrust::raw_pointer_cast (
+			&stiffLevel[0]) ; 
+double*  sponLenAddr =thrust::raw_pointer_cast (
+			&sponLen[0]) ; 
+
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                                         nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					linSpringAvgTension.begin(),
+					linSpringEnergy.begin())),
+				LinSpringForceECM(numNodesECM,nodeECMLocXAddr,nodeECMLocYAddr,stiffLevelAddr,sponLenAddr));
+
+//////////////////////////////////// find the closest Cell to each ECM node ///////////
+
+
+
+///////////////////////////////////
+
+//cout << " I am after FindCellNeighbor functor" << endl ; 
+
+}
+
+void SceECM::CalBendSpringForce()
+{
+
+const double eCMBendStiff=6.0 ; // need to be an input
+
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                                         nodeECMLocY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					fBendCenterX.begin(),
+					fBendCenterY.begin(),
+					fBendLeftX.begin(),
+					fBendLeftY.begin(),
+					fBendRightX.begin(),
+					fBendRightY.begin())),
+				CalBendECM(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM,eCMBendStiff));
+
+double* fBendLeftXAddr= thrust::raw_pointer_cast (
+			&fBendLeftX[0]) ; 
+double* fBendLeftYAddr= thrust::raw_pointer_cast (
+			&fBendLeftY[0]) ; 
+double* fBendRightXAddr= thrust::raw_pointer_cast (
+			&fBendRightX[0]) ; 
+double* fBendRightYAddr= thrust::raw_pointer_cast (
+			&fBendRightY[0]) ; 
+
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					fBendCenterX.begin(),
+					fBendCenterY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 fBendCenterX.begin(),
+                                         fBendCenterY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin())),
+				SumBendForce(fBendLeftXAddr,fBendLeftYAddr,fBendRightXAddr,fBendRightYAddr,numNodesECM));
+
+
+}
+void SceECM::CalCellForcesOnECM() 
+{
+bool* nodeIsActiveAddr= thrust::raw_pointer_cast (
+			& (nodesPointerECM->getInfoVecs().nodeIsActive[0])) ; 
+
+int * adhPairECM_CellAddr= thrust::raw_pointer_cast (
+			&adhPairECM_Cell[0]) ; 
+
+//Old locations are chosen to make sure action-reaction balance of forces between ECM and cell nodes are fully satisfied. 
+double* nodeCellLocXAddr= thrust::raw_pointer_cast (
+			&nodeCellLocXOld[0]) ; 
+double* nodeCellLocYAddr= thrust::raw_pointer_cast (
+			&nodeCellLocYOld[0]) ;
+ 
+
+int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					indexECM.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					cellNeighborId.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 indexECM.begin(),
+					 nodeECMLocX.begin(),
+                     nodeECMLocY.begin(),
+					 cellNeighborId.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin(),
+					morseEnergy.begin(),
+					adhEnergy.begin())),
+				MorseAndAdhForceECM(numCells,maxAllNodePerCell,maxMembrNodePerCell,nodeCellLocXAddr,nodeCellLocYAddr,nodeIsActiveAddr,adhPairECM_CellAddr));
+}
+
+void SceECM::CalSumForcesOnECM()
+{
+double dummy=0.0 ;
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					linSpringForceECMX.begin(),
+					linSpringForceECMY.begin(),
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					totalForceECMX.begin(),
+					totalForceECMY.begin())),
+				TotalECMForceCompute(dummy));
+}
+
+void SceECM::CalSumOnlyExplicitForcesOnECM() {
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					bendSpringForceECMX.begin(),
+					bendSpringForceECMY.begin(),
+					memMorseForceECMX.begin(),
+					memMorseForceECMY.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin())),
+				TotalExplicitECMForceCompute());
+}
+
+
+void SceECM::CalRHS(double dt)
+{
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					dampCoef.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					totalExplicitForceECMX.begin(),
+					totalExplicitForceECMY.begin(),
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					dampCoef.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					rHSX.begin(),
+					rHSY.begin())),
+				RHSCompute(dt));
+	
+}
+
+void  SceECM::MoveNodesBySumAllForces(double dt)
+{ 
+// move the nodes of ECM 
+
+thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					totalForceECMX.begin(),
+					totalForceECMY.begin(),
+					dampCoef.begin())),
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin(),
+					totalForceECMX.begin(),
+					totalForceECMY.begin(),
+					dampCoef.begin()))+numNodesECM,
+		thrust::make_zip_iterator (
+				thrust::make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())),
+				MoveNodesECM(dt));
+}
+void SceECM::FindNeighborCandidateForCellsAndECMNodes() 
+{
+double* nodeECMLocXAddr= thrust::raw_pointer_cast (
+			&nodeECMLocX[0]) ; 
+double* nodeECMLocYAddr= thrust::raw_pointer_cast (
+			&nodeECMLocY[0]) ; 
+double * basalCellLocXAddr= thrust::raw_pointer_cast (
+                            & ( cellsPointerECM->getCellInfoVecs().basalLocX[0]) ) ; 
+double * basalCellLocYAddr= thrust::raw_pointer_cast ( 
+                            & ( cellsPointerECM->getCellInfoVecs().basalLocY[0]) ) ;
+EType* peripORexcmAddr= thrust::raw_pointer_cast (
+			&peripORexcm[0]) ; 
+
+int numCells = cellsPointerECM->getCellInfoVecs().basalLocX.size() ;
+
+
+//// find the closest ECM node to each each cell //
+thrust:: transform (
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+						cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+						cellsPointerECM->getCellInfoVecs().basalLocY.begin())),
+		thrust::make_zip_iterator (
+					thrust:: make_tuple (
+					 	cellsPointerECM->getCellInfoVecs().basalLocX.begin(),
+                     	cellsPointerECM->getCellInfoVecs().basalLocY.begin()))+numCells, 
+	    cellsPointerECM->getCellInfoVecs().eCMNeighborId.begin(),
+		FindECMNeighborPerCell(nodeECMLocXAddr,nodeECMLocYAddr,numNodesECM ));
+
+	thrust:: transform (
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					nodeECMLocX.begin(),
+					nodeECMLocY.begin())), 
+		thrust::make_zip_iterator (
+				thrust:: make_tuple (
+					 nodeECMLocX.begin(),
+                     nodeECMLocY.begin()))+numNodesECM,
+	    cellNeighborId.begin(),
+		FindCellNeighborPerECMNode(basalCellLocXAddr,basalCellLocYAddr, numCells));
+}
+
+void SceECM::AssignDampCoef() {
+
+   thrust::transform ( peripORexcm.begin() ,peripORexcm.begin() +numNodesECM, dampCoef.begin(), AssignDamping(dampBasal,dampBC,dampApical) ); 
+   
+#ifdef debugModeECM 
+   for (int i=0 ;  i<numNodesECM ; i++) {
+      if (dampCoef[i] < smallNumber) {
+		 cout << "damping of element " << i << " is " << dampCoef[i] << " which is wrong" <<endl ; 
+	     throw::invalid_argument ( "damping coefficients in ECM is not set correctly") ;
+	  }
+   }
+#endif
+}
+

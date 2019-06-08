@@ -28,6 +28,7 @@
 #include <cuda_runtime.h>
 #include "ConfigParser.h"
 #include <assert.h>
+#include <stdexcept>
 #include "commonData.h"
 #include "ResAnalysisHelper.h"
 
@@ -35,7 +36,7 @@
 
 // include google test files in order to test private functions.
 #include "gtest/gtest_prod.h"
-#include "SceNodes.h"
+//#include "SceNodes.h"
 //#include "SceCells.h"
 
 // I wish I could include some c++ 11 data structure here but it seems
@@ -789,7 +790,7 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	double* _nodeGrowProAddr;
 	int* _nodeAdhAddr ;
 	double * _nodeDppAddr ;
-	bool _isApicalAdhPresent ; 
+	bool _isApicalAdhPresent ;
 // comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
 	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr , double * nodeDppAddr, bool isApicalAdhPresent) :
@@ -813,9 +814,9 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	   	if (nodeType==apical1 && _isApicalAdhPresent) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
-			beta=0.1;   
+			beta=0.1;  
 		}
-		if (nodeType==apical1 && _isApicalAdhPresent==false) {
+	   	if (nodeType==apical1 && _isApicalAdhPresent==false) {
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
 			beta=0.0;   
@@ -1093,6 +1094,13 @@ public:
 	thrust::device_vector<int>  nodeCellRankBehindOld;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankFrontHost;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankBehindHost;//Ali it is cell size
+	vector<bool> nodeIsActiveH ; //for solver
+	vector<double> locXOldHost  ; //for solver
+	vector<double> locYOldHost ; //for solver
+	vector<double> rHSXHost ; //for solver
+	vector<double> rHSYHost ; //for solver
+	vector<double> hCoefD,hCoefUd, hCoefLd ; // for solver
+
 };
 
 /**
@@ -1227,7 +1235,7 @@ class SceNodes {
 	void processMembrAdh_M();
 	void removeInvalidPairs_M();
 	void applyMembrAdh_M();
-
+	
 	void copyInterCellForces_M();//AAMIRI-Ali
 
 	uint endIndx_M;

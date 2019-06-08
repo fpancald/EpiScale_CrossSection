@@ -84,11 +84,9 @@ OutputIterator expand(InputIterator1 first1, InputIterator1 last1,
 	return output;
 }
 
+// Ali. This constructor will be called in Disc_M simulation, but it will be overwritten by another constructor
 SceNodes::SceNodes() {
 	readDomainPara();
-	isMemNodeTypeAssigned=false ; 
-	isApicalAdhPresent=true ;
-	cout<< " I am inside SceNodes constructor with zero elements" << endl ; 
 }
 
 int SceNodes::NumAdhBefore(int cellRank,ECellType eCellType) {
@@ -239,6 +237,8 @@ void SceNodes::readMechPara() {
 SceNodes::SceNodes(uint totalBdryNodeCount, uint maxProfileNodeCount,
 		uint maxCartNodeCount, uint maxTotalECMCount, uint maxNodeInECM,
 		uint maxTotalCellCount, uint maxNodeInCell, bool isStab) {
+
+	cout<< " I am inside SceNodes constructor which I beleive is not active" << endl ; 
 	initControlPara(isStab);
 	readDomainPara();
 	uint maxTotalNodeCount;
@@ -317,6 +317,12 @@ SceNodes::SceNodes(uint totalBdryNodeCount, uint maxProfileNodeCount,
 
 SceNodes::SceNodes(uint maxTotalCellCount, uint maxAllNodePerCell, uint currentActiveCellCount) {
 	//initControlPara (isStab);
+
+
+	cout<< " I am inside SceNodes constructor which I beleive is active" << endl ;
+
+	isMemNodeTypeAssigned=false ; 
+	isApicalAdhPresent=true ;
 	int simuTypeConfigValue =
 			globalConfigVars.getConfigValue("SimulationType").toInt();
 	controlPara.simuType = parseTypeFromConfig(simuTypeConfigValue);
@@ -2810,8 +2816,19 @@ void SceNodes::allocSpaceForNodes(uint maxTotalNodeCount,uint maxNumCells, uint 
 		infoVecs.dppLevel.resize(maxTotalNodeCount, 0.0); //Ali 
 		infoVecs.memNodeType1.resize(maxTotalNodeCount, notAssigned1); //Ali 
 		infoVecs.memNodeType1Host.resize(maxTotalNodeCount, notAssigned1); //Ali 
-		infoVecs.isSubApicalJunction.resize(maxTotalNodeCount, false); //Ali 
-		infoVecs.isSubApicalJunctionHost.resize(maxTotalNodeCount, false); //Ali 
+		infoVecs.isSubApicalJunction.resize(maxTotalNodeCount, false); //Ali
+
+		//host vectors
+	    infoVecs.nodeIsActiveH.resize(maxTotalNodeCount, 0.0);  ; //for solver
+	    infoVecs.locXOldHost.resize(maxTotalNodeCount, 0.0);   ; //for solver
+	    infoVecs.locYOldHost.resize(maxTotalNodeCount, 0.0);  ; //for solver
+	    infoVecs.rHSXHost.resize(maxTotalNodeCount, 0.0);  ; //for solver
+	    infoVecs.rHSYHost.resize(maxTotalNodeCount, 0.0);  ; //for solver
+	    infoVecs.hCoefD.resize(maxTotalNodeCount, 0.0); 
+		infoVecs.hCoefUd.resize(maxTotalNodeCount, 0.0); 
+		infoVecs.hCoefLd.resize(maxTotalNodeCount, 0.0);  ; // for solver
+
+	    infoVecs.isSubApicalJunctionHost.resize(maxTotalNodeCount, false); //Ali 
 
 		auxVecs.bucketKeys.resize(maxTotalNodeCount);
 		auxVecs.bucketValues.resize(maxTotalNodeCount);
@@ -2940,6 +2957,7 @@ void SceNodes::removeNodes(int cellRank, vector<uint> &removeSeq) {
 
 void SceNodes::processMembrAdh_M() {
 	keepAdhIndxCopyInHost_M();
+	cout << " I am before applyMembrAdh_M" << endl ; 
 	applyMembrAdh_M();
 	//removeInvalidPairs_M();  //Ali changed position 
 }
@@ -2976,11 +2994,12 @@ void SceNodes::applyMembrAdh_M() {
 			* allocPara_M.maxAllNodePerCell;
 	double* nodeLocXAddress = thrust::raw_pointer_cast(&infoVecs.nodeLocX[0]);
 	double* nodeLocYAddress = thrust::raw_pointer_cast(&infoVecs.nodeLocY[0]);
+
 	double* nodeGrowProAddr = thrust::raw_pointer_cast(&infoVecs.nodeGrowPro[0]);
 	int* nodeAdhAddr = thrust::raw_pointer_cast(&infoVecs.nodeAdhereIndex[0]);
 	double* nodedppLevelAddr = thrust::raw_pointer_cast(&infoVecs.dppLevel[0]);
 	//thrust::counting_iterator<uint> iBegin_node(0); 
-
+    cout << " Apical adhesion is " << isApicalAdhPresent << endl ;
 	thrust::transform(
 			thrust::make_zip_iterator(
 					thrust::make_tuple(infoVecs.nodeIsActive.begin(),
@@ -2998,6 +3017,7 @@ void SceNodes::applyMembrAdh_M() {
 					thrust::make_tuple(infoVecs.nodeVelX.begin(),
 							infoVecs.nodeVelY.begin())),
 			ApplyAdh(nodeLocXAddress, nodeLocYAddress, nodeGrowProAddr,nodeAdhAddr,nodedppLevelAddr,isApicalAdhPresent));
+		
 		//for (int i=0 ; i<140 ; i++){
 		//	cout <<"adhesion index for "<<i << " is "<<infoVecs.nodeAdhereIndex[i]<< endl ; 
 //		}

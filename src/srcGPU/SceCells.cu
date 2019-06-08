@@ -14,6 +14,7 @@
 #include "SceCells.h"
 #include <cmath>
 #include <numeric>
+//# define debugModeECM 
 double epsilon = 1.0e-12;
 
 __constant__ double membrEquLen;
@@ -701,7 +702,7 @@ SceCells::SceCells(SceNodes* nodesInput,
 }
 
 
-SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
+SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput, Solver * solver,
 		std::vector<uint>& initActiveMembrNodeCounts,
 		std::vector<uint>& initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
@@ -738,7 +739,7 @@ SceCells::SceCells(SceNodes* nodesInput,SceECM* eCMInput,
 
 	memNewSpacing = globalConfigVars.getConfigValue("MembrLenDiv").toDouble();
 	cout << "relax count is initialized as" << relaxCount << endl ; 
-	initialize_M(nodesInput, eCMInput);
+	initialize_M(nodesInput, eCMInput, solver);
 	copyToGPUConstMem();
 	copyInitActiveNodeCount_M(initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1);
@@ -935,11 +936,12 @@ void SceCells::initialize(SceNodes* nodesInput) {
 	distributeIsCellRank();
 }
 
-void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput) {
+void SceCells::initialize_M(SceNodes* nodesInput, SceECM *eCMInput, Solver *solver) {
 	std::cout << "Initializing cells ...... " << std::endl;
 	//std::cout.flush();
 	nodes = nodesInput; //pointer assigned
-	eCMPointerCells=eCMInput ; //pointer assigned  
+	eCMPointerCells=eCMInput ; //pointer assigned 
+	solverPointer=solver ; 
 	allocPara_m = nodesInput->getAllocParaM();
 	// max internal node count must be even number.
 	assert(allocPara_m.maxIntnlNodePerCell % 2 == 0);
@@ -1510,6 +1512,29 @@ void SceCells::runAllCellLevelLogicsDisc(double dt) {
 //Ali void SceCells::runAllCellLogicsDisc_M(double dt) {
 void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double InitTimeStage) {   //Ali
 
+
+#ifdef debugModeECM 
+	cudaEvent_t start1, start2, start3, start4, start5, start6, start7, start8, start9, start10, start11, start12, start13, stop;
+	float elapsedTime1, elapsedTime2, elapsedTime3, elapsedTime4, elapsedTime5, elapsedTime6,  elapsedTime7 , elapsedTime8 ; 
+	float elapsedTime9, elapsedTime10, elapsedTime11, elapsedTime12, elapsedTime13  ; 
+	cudaEventCreate(&start1);
+	cudaEventCreate(&start2);
+	cudaEventCreate(&start3);
+	cudaEventCreate(&start4);
+	cudaEventCreate(&start5);
+	cudaEventCreate(&start6);
+	cudaEventCreate(&start7);
+	cudaEventCreate(&start8);
+	cudaEventCreate(&start9);
+	cudaEventCreate(&start10);
+	cudaEventCreate(&start11);
+	cudaEventCreate(&start12);
+	cudaEventCreate(&start13);
+	cudaEventCreate(&stop);
+	
+	cudaEventRecord(start1, 0);
+#endif
+
 	std::cout << "     *** 1 ***" << endl;
 	this->dt = dt;
     this->Damp_Coef=Damp_Coef ; //Ali 
@@ -1524,7 +1549,7 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	bool cellPolar=true ; 
 	bool subCellPolar= true  ; 
 	
-	if (curTime>50000) {
+	if (curTime>500000) {
 		eCMPointerCells->SetIfECMIsRemoved(false) ; 
 		isBasalActinPresent=false ; 
 		nodes->SetApicalAdhPresence(true) ; 
@@ -1553,12 +1578,41 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 		cout << " I assigned boolen values for membrane node types " << endl; 
 		nodes->isMemNodeTypeAssigned=true ; 
 	}
+#ifdef debugModeECM
+	cudaEventRecord(start2, 0);
+	cudaEventSynchronize(start2);
+	cudaEventElapsedTime(&elapsedTime1, start1, start2);
+#endif
+
+
+
     computeApicalLoc();  //Ali
     computeBasalLoc();  //Ali
-	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase); 
+
+#ifdef debugModeECM
+	cudaEventRecord(start3, 0);
+	cudaEventSynchronize(start3);
+	cudaEventElapsedTime(&elapsedTime2, start2, start3);
+#endif
+
+	eCMCellInteraction(cellPolar,subCellPolar,tmpIsInitPhase);
+
+#ifdef debugModeECM
+	cudaEventRecord(start4, 0);
+	cudaEventSynchronize(start4);
+	cudaEventElapsedTime(&elapsedTime3, start3, start4);
+#endif
+
+
 	computeCenterPos_M2(); //Ali 
 	computeInternalAvgPos_M(); //Ali // right now internal points represent nucleus
 	//computeNucleusLoc() ;
+
+#ifdef debugModeECM
+	cudaEventRecord(start5, 0);
+	cudaEventSynchronize(start5);
+	cudaEventElapsedTime(&elapsedTime4, start4, start5);
+#endif
 
  	if (isInitNucPercentCalculated==false && controlPara.resumeSimulation==0) {
 		computeNucleusIniLocPercent(); //Ali 
@@ -1573,23 +1627,63 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	}
 
 	computeNucleusDesireLoc() ; // Ali
+
+#ifdef debugModeECM
+	cudaEventRecord(start6, 0);
+	cudaEventSynchronize(start6);
+	cudaEventElapsedTime(&elapsedTime5, start5, start6);
+#endif
+
+
 //	if (tmpIsInitPhase==false) {
 //		updateInternalAvgPosByNucleusLoc_M ();
 //	}
 	//PlotNucleus (lastPrintNucleus, outputFrameNucleus) ;  
-    //BC_Imp_M() ;  //Ali 
+    //BC_Imp_M() ;  //Ali
+
+
 	std::cout << "     *** 2 ***" << endl;
 	applySceCellDisc_M();
+
+#ifdef debugModeECM
+	cudaEventRecord(start7, 0);
+	cudaEventSynchronize(start7);
+	cudaEventElapsedTime(&elapsedTime6, start6, start7);
+#endif
 	if (isBasalActinPresent) {
 		cout << " I am applying basal contraction" << endl ; 
 		applyMembContraction() ;  // Ali
 	}
+#ifdef debugModeECM
+	cudaEventRecord(start8, 0);
+	cudaEventSynchronize(start8);
+	cudaEventElapsedTime(&elapsedTime7, start7, start8);
+#endif
+
 
 	//	applyNucleusEffect() ;
 	//	applyForceInteractionNucleusAsPoint() ; 
 	std::cout << "     *** 3 ***" << endl;
 	applyMemForce_M(cellPolar,subCellPolar);
+
+#ifdef debugModeECM
+	cudaEventRecord(start9, 0);
+	cudaEventSynchronize(start9);
+	cudaEventElapsedTime(&elapsedTime8, start8, start9);
+#endif
+
+
+
 	applyVolumeConstraint();  //Ali 
+
+#ifdef debugModeECM
+	cudaEventRecord(start10, 0);
+	cudaEventSynchronize(start10);
+	cudaEventElapsedTime(&elapsedTime9, start9, start10);
+#endif
+
+
+
 	//ApplyExtForces() ; // now for single cell stretching
 	//computeContractileRingForces() ; 
 	std::cout << "     *** 4 ***" << endl;
@@ -1615,8 +1709,29 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 	std::cout << "     *** 8 ***" << endl;
 
     findTangentAndNormal_M();//AAMIRI ADDED May29
+
+	StoreNodeOldPositions() ; 
+
+#ifdef debugModeECM
+	cudaEventRecord(start11, 0);
+	cudaEventSynchronize(start11);
+	cudaEventElapsedTime(&elapsedTime10, start10, start11);
+#endif
+
+
+
 	allComponentsMove_M();
+
+#ifdef debugModeECM
+	cudaEventRecord(start12, 0);
+	cudaEventSynchronize(start12);
+	cudaEventElapsedTime(&elapsedTime11, start11, start12);
+#endif
+
+
+
     std::cout << "     *** 9 ***" << endl;
+	//allComponentsMoveImplicitPart() ; 
 //	updateMembrGrowthProgress_M();  
 //	if (relaxCount==10) { 
 //		handleMembrGrowth_M();
@@ -1625,6 +1740,26 @@ void SceCells::runAllCellLogicsDisc_M(double & dt, double Damp_Coef, double Init
 //		relaxCount=0 ; // Ali
 		//nodes->adhUpdate=true; // Ali 
 //	}
+
+# ifdef debugModeECM 
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedTime12, start12, stop);
+	std::cout << "time 1 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime1 << endl ; 
+	std::cout << "time 2 spent in cell for moving the membrane node of cells and ECM nodes are: " << elapsedTime2 << endl ; 
+	std::cout << "time 3 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime3 << endl ; 
+	std::cout << "time 4 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime4 << endl ; 
+	std::cout << "time 5 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime5 << endl ; 
+	std::cout << "time 6 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime6 << endl ; 
+	std::cout << "time 7 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime7 << endl ; 
+	std::cout << "time 8 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime8 << endl ; 
+	std::cout << "time 9 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime9 << endl ; 
+	std::cout << "time 10 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime10 << endl ; 
+	std::cout << "time 11 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime11 << endl ; 
+	std::cout << "time 12 spent in cell module for moving the membrane node of cells and ECM nodes are: " << elapsedTime12 << endl ; 
+#endif
+
+
 }
 
 void SceCells::runStretchTest(double dt) {
@@ -2277,9 +2412,6 @@ void SceCells::moveNodes_BC_M() {
 							nodes->getInfoVecs().nodeLocY.begin())),
 			SaxpyFunctorDim2_BC_Damp(dt)); 
 
-//cout << "I am in move_nodes and total nodes for active cells is" <<  totalNodeCountForActiveCells << endl ; 
-//cout << "I am in move_nodes and dt is equal to:" << dt  << endl ; 
-//cout << "I am in move_nodes and bdry node count is" << allocPara_m.bdryNodeCount << endl ; 
 
 }
 
@@ -4719,8 +4851,8 @@ vector<AniResumeData> SceCells::obtainResumeData() {   //AliE
 		}
 	}
 	aniResumeDatas.push_back(membraneResumeData) ; 
-
-    //loop on internal nodes
+    
+	//loop on internal nodes
 	for (uint i=0; i<activeCellCount; i++){
 		for (uint j = maxMemNodePerCell; j < maxNodePerCell; j++) {
 			index1 = i * maxNodePerCell + j;
@@ -7088,7 +7220,9 @@ void SceCells::writeNucleusIniLocPercent() {
 	ofstream output ; 
 	thrust::host_vector <double> nucleusLocPercentHost ; 
 	
-	output.open ("InitLocNucleusPercentResume.txt") ; 
+	string uniqueSymbolOutput = globalConfigVars.getConfigValue("UniqueSymbol").toString();
+	std::string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbolOutput + "Resume.cfg";
+	output.open(resumeFileName.c_str() );
 	nucleusLocPercentHost=cellInfoVecs.nucleusLocPercent ; 
 
 	for (int i=0 ; i<allocPara_m.currentActiveCellCount  ; i++){
@@ -7105,14 +7239,15 @@ void SceCells::readNucleusIniLocPercent() {
 	vector <double> nucleusLocPercentHost ; 
 	int dummy ; 
 	double percent ;
-
-	input.open ("InitLocNucleusPercentResume.txt") ;
+	string uniqueSymbol = globalConfigVars.getConfigValue("UniqueSymbol").toString();
+	string resumeFileName = "./resources/DataFileInitLocNucleusPercent_" + uniqueSymbol + "Resume.cfg";
+	input.open(resumeFileName.c_str() );
 	
 	if (input.is_open()) {
-		cout << " I suceessfully openend InitLocNucleusPercentResume.txt" << endl ; 
+		cout << " Suceessfully openend resume input file for initial locations of nucleus" << endl ; 
 	}
 	else{
-		throw std::invalid_argument (" I failed openening InitLocNucleusPercentResume.txt")  ; 
+		throw std::invalid_argument ("Failed openening the resume input file for initial locations of nucleus")  ; 
 
 	}
 
@@ -7129,4 +7264,194 @@ void SceCells::readNucleusIniLocPercent() {
 
 
 
+
+void SceCells::allComponentsMoveImplicitPart() 
+{
+  vector <int> indexPrev, indexNext ;
+#ifdef debugModeECM 
+	cudaEvent_t start1, start2, start3,  stop;
+	float elapsedTime1, elapsedTime2, elapsedTime3  ; 
+	cudaEventCreate(&start1);
+	cudaEventCreate(&start2);
+	cudaEventCreate(&start3);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start1, 0);
+#endif
+
+
+  CalRHS();
+#ifdef debugModeECM
+	cudaEventRecord(start2, 0);
+	cudaEventSynchronize(start2);
+	cudaEventElapsedTime(&elapsedTime1, start1, start2);
+#endif
+
+  EquMotionCoef(indexPrev, indexNext);
+
+#ifdef debugModeECM
+	cudaEventRecord(start3, 0);
+	cudaEventSynchronize(start3);
+	cudaEventElapsedTime(&elapsedTime2, start2, start3);
+#endif
+
+
+  UpdateLocations(indexPrev,indexNext); 
+#ifdef debugModeECM
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&elapsedTime3, start3, stop);
+	std::cout << "time 1 spent in cell-solver module for moving the membrane node of cells and ECM nodes are: " << elapsedTime1 << endl ; 
+	std::cout << "time 2 spent in cell-solver module for moving the membrane node of cells and ECM nodes are: " << elapsedTime2 << endl ; 
+	std::cout << "time 3 spent in cell-solver module for moving the membrane node of cells and ECM nodes are: " << elapsedTime3 << endl ; 
+#endif
+
+
+}
+
+void SceCells::StoreNodeOldPositions() {
+	//nodes->getInfoVecs().locXOldHost.clear();
+	//nodes->getInfoVecs().locYOldHost.clear(); 
+	//nodes->getInfoVecs().locXOldHost.resize(totalNodeCountForActiveCells) ; 
+	//nodes->getInfoVecs().locYOldHost.resize(totalNodeCountForActiveCells) ;
+
+	thrust::copy (nodes->getInfoVecs().nodeLocX.begin(), nodes->getInfoVecs().nodeLocX.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locXOldHost.begin()); 
+	thrust::copy (nodes->getInfoVecs().nodeLocY.begin() , nodes->getInfoVecs().nodeLocY.begin() +
+				totalNodeCountForActiveCells, nodes->getInfoVecs().locYOldHost.begin()); 
+
+}
+void SceCells::CalRHS () {
+ //   cout << "total node count for active cells in CalRHS function is="<<totalNodeCountForActiveCells << endl ; 
+
+	//nodes->getInfoVecs().rHSXHost.clear() ; 
+	//nodes->getInfoVecs().rHSYHost.clear() ; 
+	//nodes->getInfoVecs().rHSXHost.resize(totalNodeCountForActiveCells) ; 
+	//nodes->getInfoVecs().rHSYHost.resize(totalNodeCountForActiveCells) ; 
+
+	thrust::copy( 
+	      thrust::make_zip_iterator(
+		       thrust::make_tuple(nodes->getInfoVecs().nodeLocX.begin(), 
+	                              nodes->getInfoVecs().nodeLocY.begin())),
+		  thrust::make_zip_iterator(
+		       thrust::make_tuple(nodes->getInfoVecs().nodeLocX.begin(), 
+	                              nodes->getInfoVecs().nodeLocY.begin()))+totalNodeCountForActiveCells,
+		  thrust::make_zip_iterator(
+		   	   thrust::make_tuple(nodes->getInfoVecs().rHSXHost.begin(),
+			                      nodes->getInfoVecs().rHSYHost.begin()))); 
+}
+
+void SceCells::EquMotionCoef(vector<int> & indexPrev, vector<int> & indexNext)
+{
+   vector <uint> activeMemCount(allocPara_m.currentActiveCellCount) ;
+   double distWithNext[totalNodeCountForActiveCells]  ; 
+   double distWithPrev[totalNodeCountForActiveCells]  ;
+   int cellRank ; 
+   int nodeRank ;
+
+   indexPrev.clear() ; 
+   indexNext.clear() ;
+   //nodes->getInfoVecs().hCoefD.clear() ; 
+   //nodes->getInfoVecs().hCoefLd.clear() ; 
+   //nodes->getInfoVecs().hCoefUd.clear() ;
+   //nodes->getInfoVecs().nodeIsActiveH.clear(); 
+   
+   indexPrev.resize(totalNodeCountForActiveCells) ; 
+   indexNext.resize(totalNodeCountForActiveCells) ; 
+   //nodes->getInfoVecs().hCoefD.resize(totalNodeCountForActiveCells,0.0) ; 
+   //nodes->getInfoVecs().hCoefLd.resize(totalNodeCountForActiveCells,0.0) ; 
+   //nodes->getInfoVecs().hCoefUd.resize(totalNodeCountForActiveCells,0.0) ;
+   //nodes->getInfoVecs().nodeIsActiveH.resize(totalNodeCountForActiveCells) ; 
+   
+   thrust::copy (nodes->getInfoVecs().nodeIsActive.begin(),
+        	     nodes->getInfoVecs().nodeIsActive.begin()+ totalNodeCountForActiveCells,
+		         nodes->getInfoVecs().nodeIsActiveH.begin()); 
+	
+   thrust::copy(cellInfoVecs.activeMembrNodeCounts.begin() , cellInfoVecs.activeMembrNodeCounts.begin()+ 
+         allocPara_m.currentActiveCellCount, activeMemCount.begin()); 
+
+   
+	//cout << "Maximum all node per cells is " << allocPara_m.maxAllNodePerCell << endl ;  
+   for ( int i=0 ;  i< totalNodeCountForActiveCells ; i++) {
+	   cellRank=i/allocPara_m.maxAllNodePerCell ; 
+	   nodeRank=i%allocPara_m.maxAllNodePerCell ;
+	   if ( nodeRank<activeMemCount [cellRank]) {
+	      indexNext.at(i)=i+1 ;
+	   	  indexPrev.at(i)=i-1 ;
+	   	  if ( nodeRank==activeMemCount [cellRank]-1){
+	         indexNext.at(i)=cellRank*allocPara_m.maxAllNodePerCell ;
+		  //	cout << "index next for cell rank " << cellRank << " is " << indexNext.at(i) << endl ; 
+	      }
+	      if (nodeRank==0){
+	         indexPrev.at(i)=cellRank*allocPara_m.maxAllNodePerCell  +activeMemCount [cellRank]-1  ; 
+          //   cout << "Active membrane nodes for cell rank " << cellRank << " is " <<activeMemCount [cellRank]<<endl ;  
+		  //   cout << "index previous for cell rank " << cellRank << " is " << indexPrev.at(i) << endl ; 
+	      }
+	      distWithNext[i]=sqrt( pow(nodes->getInfoVecs().locXOldHost[indexNext.at(i)] - 
+		                            nodes->getInfoVecs().locXOldHost[i],2) + 
+	                            pow(nodes->getInfoVecs().locYOldHost[indexNext.at(i)] - 
+								    nodes->getInfoVecs().locYOldHost[i],2)) ;
+	      distWithPrev[i]=sqrt( pow(nodes->getInfoVecs().locXOldHost[indexPrev.at(i)] - 
+		                            nodes->getInfoVecs().locXOldHost[i],2) + 
+	                            pow(nodes->getInfoVecs().locYOldHost[indexPrev.at(i)] - 
+								    nodes->getInfoVecs().locYOldHost[i],2)); 
+
+   	   }
+   }
+
+   double sponLen= globalConfigVars.getConfigValue("MembrEquLen").toDouble();
+   double k= globalConfigVars.getConfigValue("MembrStiff").toDouble();
+   for ( int i=0 ;  i< totalNodeCountForActiveCells ; i++) {
+
+      if (nodes->getInfoVecs().nodeIsActiveH.at(i)==false) {
+		  continue ; 
+	  }
+	  cellRank=i / allocPara_m.maxAllNodePerCell; 
+	  nodeRank=i % allocPara_m.maxAllNodePerCell;
+
+	  if (nodeRank<activeMemCount [cellRank]) {
+      	nodes->getInfoVecs().hCoefD[i]= 1 + k*dt/Damp_Coef*( 2 - sponLen/(distWithPrev[i]+0.2*sponLen) - sponLen/(distWithNext[i]+0.2*sponLen)) ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=    k*dt/Damp_Coef*(-1 + sponLen/(distWithPrev[i]+0.2*sponLen)) ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=    k*dt/Damp_Coef*(-1 + sponLen/(distWithNext[i]+0.2*sponLen)) ; 
+   	  }
+	  else { // no spring between neighboring points exist 
+      	nodes->getInfoVecs().hCoefD[i]=1.0 ; 
+	  	nodes->getInfoVecs().hCoefLd[i]=0.0 ; 
+	  	nodes->getInfoVecs().hCoefUd[i]=0.0 ; 
+	  }
+
+  }
+
+}
+
+
+void SceCells::UpdateLocations(const vector <int> & indexPrev,const vector <int> & indexNext ) {
+   vector <double> locXTmpHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+   												     		     nodes->getInfoVecs().hCoefLd, 
+													             nodes->getInfoVecs().hCoefD, 
+													             nodes->getInfoVecs().hCoefUd,
+													             nodes->getInfoVecs().rHSXHost,
+																 indexPrev,indexNext,
+													             nodes->getInfoVecs().locXOldHost); 
+    
+   vector <double> locYTmpHost=solverPointer->SOR3DiagPeriodic(nodes->getInfoVecs().nodeIsActiveH,
+												     		     nodes->getInfoVecs().hCoefLd, 
+													             nodes->getInfoVecs().hCoefD, 
+													             nodes->getInfoVecs().hCoefUd,
+													             nodes->getInfoVecs().rHSYHost,
+																 indexPrev,indexNext,
+													             nodes->getInfoVecs().locYOldHost); 
+   
+   thrust::copy(
+            thrust::make_zip_iterator(
+                thrust::make_tuple (locXTmpHost.begin(), 
+                                    locYTmpHost.begin())),
+			thrust::make_zip_iterator(
+				thrust::make_tuple (locXTmpHost.begin(), 
+                                    locYTmpHost.begin()))+totalNodeCountForActiveCells,
+		   thrust::make_zip_iterator(
+			    thrust::make_tuple (nodes->getInfoVecs().nodeLocX.begin(),
+							        nodes->getInfoVecs().nodeLocY.begin()))); 
+
+
+}
 
