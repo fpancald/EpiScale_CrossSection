@@ -428,7 +428,8 @@ thrust:: transform (peripORexcm.begin(), peripORexcm.begin()+numNodesECM,
 cout << " Mechanical properties after assignment is " << stiffLevel[0] << endl ; 
 
 counter ++ ; 
-if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
+//if (counter>=100 || curTime<(100*dt) || isECMNeighborSet==false) {
+if (curTime<(100*dt) || isECMNeighborSet==false) {
 	isECMNeighborSet=true ; 
 	counter=0 ;
 	FindNeighborCandidateForCellsAndECMNodes(); 
