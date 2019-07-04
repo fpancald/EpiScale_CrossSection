@@ -2,12 +2,13 @@
  /* CellInitHelper.cpp
  *
  *  Created on: Sep 22, 2013
- *      Author: wsun2
+ *      Authors: wsun2, Ali Nematbakhsh
  */
 // To Do List: 
 //1- The ID of cells to which asymmetric nuclear position is assigned, is given manually in generateInitIntnlNodes_M function. It should be updated if the number of cells are changed. It is better to be automatically detected.
-//2-The location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
+//2-In the function generateInitIntnlNodes_M, the location of internal nodes is given randomly within certain radius from the cell center. This is modified manually in here. It should become an input paramter.
 #include <fstream>
+#include <stdexcept>
 #include "CellInitHelper.h"
 //Ali 
 ForReadingData_M2 ReadFile_M2(std::string CellCentersFileName) {
@@ -17,9 +18,6 @@ ForReadingData_M2 ReadFile_M2(std::string CellCentersFileName) {
           ForReadingData_M2  ForReadingData1; 
           double TempPos_X,TempPos_Y,TempPos_Z ; 
 		  string eCellTypeString ; 
-          //inputc.open("./resources/CellCenters_General.txt");
-          //inputc.open("./resources/CellCenters_General.txt");
-//          inputc.open("./resources/CellCenters2.txt");
           inputc.open(CellCentersFileName.c_str());
 
           if (inputc.is_open())
@@ -80,101 +78,6 @@ CVector CellInitHelper::getPointGivenAngle(double currentAngle, double r,
 	double yPos = centerPos.y + r * sin(currentAngle);
 	return CVector(xPos, yPos, 0);
 }
-/*Beak simulation is not active and I want to remove the dependency of the code on CGAL
-
-RawDataInput CellInitHelper::generateRawInputWithProfile(
-		std::vector<CVector> &cellCenterPoss, bool isInnerBdryIncluded) {
-
-	RawDataInput rawData;
-	vector<CVector> outsideBdryNodePos;
-	vector<CVector> outsideProfileNodePos;
-	std::string bdryInputFileName = globalConfigVars.getConfigValue(
-			"Bdry_InputFileName").toString();
-
-	GEOMETRY::MeshGen meshGen;
-
-	double genBdryRatio =
-			globalConfigVars.getConfigValue("GenBdrySpacingRatio").toDouble();
-
-	GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DWithProfile(
-			bdryInputFileName, genBdryRatio, isInnerBdryIncluded);
-
-	std::vector<GEOMETRY::Point2D> bdryPoints = mesh.getFinalBdryPts();
-
-	std::vector<GEOMETRY::Point2D> profilePoints = mesh.getFinalProfilePts();
-
-	for (uint i = 0; i < bdryPoints.size(); i++) {
-		outsideBdryNodePos.push_back(
-				CVector(bdryPoints[i].getX(), bdryPoints[i].getY(), 0));
-	}
-
-	rawData.bdryNodes = outsideBdryNodePos;
-
-	for (uint i = 0; i < profilePoints.size(); i++) {
-		outsideProfileNodePos.push_back(
-				CVector(profilePoints[i].getX(), profilePoints[i].getY(), 0));
-	}
-
-	rawData.profileNodes = outsideProfileNodePos;
-
-	// calculate average length of profile links
-	double sumLength = 0;
-	for (uint i = 0; i < profilePoints.size() - 1; i++) {
-		CVector tmpVec = outsideProfileNodePos[i]
-				- outsideProfileNodePos[i + 1];
-		sumLength += tmpVec.getModul();
-	}
-
-	for (unsigned int i = 0; i < cellCenterPoss.size(); i++) {
-		CVector centerPos = cellCenterPoss[i];
-		centerPos.Print();
-		if (isMXType(centerPos)) {
-			rawData.MXCellCenters.push_back(centerPos);
-		} else {
-			rawData.FNMCellCenters.push_back(centerPos);
-		}
-
-	}
-
-	generateCellInitNodeInfo_v2(rawData.initCellNodePoss);
-
-	return rawData;
-}
-*/
-/* DiskMain and laser ablation projects are not active and I want to remove the dependency of the code on CGAL
-
-RawDataInput CellInitHelper::generateRawInput_simu(
-		std::vector<CVector>& cellCenterPoss) {
-	if (simuType == Beak) {
-		RawDataInput baseRawInput = generateRawInputWithProfile(cellCenterPoss,
-				false);
-
-		GEOMETRY::MeshGen meshGen;
-		double genBdryRatio = globalConfigVars.getConfigValue(
-				"GenBdrySpacingRatio").toDouble();
-		std::string bdryInputFileName = globalConfigVars.getConfigValue(
-				"Bdry_InputFileName").toString();
-		GEOMETRY::UnstructMesh2D mesh = meshGen.generateMesh2DWithProfile(
-				bdryInputFileName, genBdryRatio);
-		GEOMETRY::MeshInput input = meshGen.obtainMeshInput();
-		baseRawInput.cartilageData = meshGen.obtainCartilageData(mesh, input);
-
-		baseRawInput.isStab = false;
-		baseRawInput.simuType = simuType;
-		return baseRawInput;
-	} else if (simuType == Disc) {
-		RawDataInput rawInput;
-		initializeRawInput(rawInput, cellCenterPoss);
-		rawInput.isStab = false;
-		rawInput.simuType = simuType;
-		return rawInput;
-	} else {
-		throw SceException(
-				"Simulation Type is not defined when trying to generate raw input",
-				InvalidInput);
-	}
-}
-*/
 void CellInitHelper::transformRawCartData(CartilageRawData& cartRawData,
 		CartPara& cartPara, std::vector<CVector>& initNodePos) {
 	// step 1, switch tip node1 to pos 0
@@ -447,6 +350,7 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 	initData.simuType = rawData_m.simuType;
 
 	initData.nodeTypes.resize(maxNodeInDomain);
+	initData.mDppV.resize(maxNodeInDomain); // Ali 
 	initData.mTypeV.resize(maxNodeInDomain); // Ali 
 	initData.initNodeVec.resize(initMaxNodeCount);
 	initData.initIsActive.resize(initMaxNodeCount, false);
@@ -464,9 +368,6 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 
 	}
 
-	for (uint i = 0; i < initCellCount; i++) {
-		cout << "third check cell type" << initData.eCellTypeV1.at(i)<< endl ;  // Ali
-	}
 	for (uint i = 0; i < maxNodeInDomain; i++) {
 		nodeRank = i % maxAllNodeCountPerCell;
 		if (nodeRank < maxMembrNodePerCell) {
@@ -488,9 +389,11 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 				initData.initNodeVec[i] =
 						rawData_m.initMembrNodePoss[cellRank][nodeRank];
 				initData.initIsActive[i] = true;
+				initData.mDppV[i]=rawData_m.mDppV2[cellRank][nodeRank] ;  //Ali
 				initData.mTypeV[i]=rawData_m.mTypeV2[cellRank][nodeRank] ;  //Ali
 			} else {
 				initData.initIsActive[i] = false;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			}
 		} else {
@@ -499,9 +402,11 @@ SimulationInitData_V2_M CellInitHelper::initInputsV3_M(
 				initData.initNodeVec[i] =
 				rawData_m.initIntnlNodePoss[cellRank][intnlIndex];
 				initData.initIsActive[i] = true;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			} else {
 				initData.initIsActive[i] = false;
+				initData.mDppV[i]=0.0 ; //Ali
 				initData.mTypeV[i]=notAssigned1 ; //Ali
 			}
 		}
@@ -648,9 +553,6 @@ RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function
 		ECellType eCellTypeTmp=ForReadingData2.eCellTypeV.at(i);  
 		rawData.cellsTypeCPU.push_back(eCellTypeTmp);
 	}
-	for (uint i = 0; i < initCellCt; i++) {
-    	cout << "second check for cell type" <<rawData.cellsTypeCPU.at(i) << endl ; 
-	}
 
 	std::cout << "Printing initial cell center positions ......" << std::endl;
 	for (unsigned int i = 0; i < insideCellCenters.size(); i++) {
@@ -659,10 +561,10 @@ RawDataInput_M CellInitHelper::generateRawInput_M() {   // an Important function
 		std::cout << "    ";
 		centerPos.Print();
 	}
-	// This functions reads membrane nodes coordinates and types, and generates internal nodes coordinates
+	// This functions reads membrane nodes coordinates, dpp levels and types, and generates internal nodes coordinates
 	generateCellInitNodeInfo_v3(rawData.initCellCenters,
 			rawData.cellGrowProgVec, rawData.initMembrNodePoss,
-			rawData.initIntnlNodePoss, rawData.mTypeV2); 
+			rawData.initIntnlNodePoss, rawData.mDppV2,rawData.mTypeV2); 
 
 	//std::cout << "finished generate raw data" << std::endl;
 	//std::cout.flush();
@@ -802,71 +704,61 @@ void CellInitHelper::generateCellInitNodeInfo_v2(vector<CVector>& initPos) {
 
 void CellInitHelper::generateCellInitNodeInfo_v3(vector<CVector>& initCenters,   //This function is called Ali 
 		vector<double>& initGrowProg, vector<vector<CVector> >& initMembrPos,
-		vector<vector<CVector> >& initIntnlPos,vector<vector<MembraneType1> >& mTypeV2 ) {
-	assert(initCenters.size() == initGrowProg.size());
-	vector<CVector> initMembrPosTmp;
+		vector<vector<CVector> >& initIntnlPos, 
+		vector<vector<double> >& mDppV2, 
+		vector<vector<MembraneType1> >& mTypeV2 )
+{
+	
 	vector<CVector> initIntnlPosTmp;
-	vector<MembraneType1> mTypeVTmp;  
-	for (uint i = 0; i < initCenters.size(); i++) {
-	//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
-	//			initGrowProg[i]);
-	//	initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
-	//			initGrowProg[i]);
-		initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
-				initGrowProg[i],int(i)); //Ali
-	//	initMembrPos.push_back(initMembrPosTmp);
-		initIntnlPos.push_back(initIntnlPosTmp);
-	}
 
+	assert(initCenters.size() == initGrowProg.size());
+	
+	uint resumeSimulation = globalConfigVars.getConfigValue(
+			"ResumeSimulation").toInt();
 	uint initMembrNodeCount = globalConfigVars.getConfigValue(
 			"InitMembrNodeCount").toInt();
-
 	uint maxMembrNodeCountPerCell = globalConfigVars.getConfigValue(
 			"MaxMembrNodeCountPerCell").toInt();
-	std::fstream inputc;
-	inputc.open("./resources/coordinate_Membrane4.txt");
-    //inputc.open(CellCentersFileName.c_str());
-    if (inputc.is_open()){
-       cout << "File for reading membrane nodes coordinates opened successfully ";
-    }
-	else{
-       cout << "failed opening membrane nodes coordinates ";
-    }
+	uint maxIntnlNodeCountPerCell = globalConfigVars.getConfigValue(
+			"MaxIntnlNodeCountPerCell").toInt();
+	std::string MembraneNodesFileName = globalConfigVars.getConfigValue(
+			"MembraneNodes_FileName").toString() ;
+	std::string intnlNodesFileNameResume = globalConfigVars.getConfigValue(
+			"IntnlNodes_FileName_Resume").toString() ;
+	std::string membNodesFileNameResume = globalConfigVars.getConfigValue(
+			"MembraneNodes_FileName_Resume").toString() ;
+    std::string uniqueSymbol=globalConfigVars.getConfigValue(
+	        "UniqueSymbol").toString() ;
 
-	int cellIDOld=-1;
-	int cellID ;
-	string mTypeString ; 
-    CVector mCoordinate ;
-
-	MembraneType1 mType ; 
-	for (int j=0 ; j<initCenters.size() ; j++) {
-		initMembrPosTmp.clear() ;
-		mTypeVTmp.clear() ; 
-		cellIDOld++  ;
-		if (j!=0) {
-	    	initMembrPosTmp.push_back(mCoordinate);
-	    	mTypeVTmp.push_back(mType);
+	if (resumeSimulation==0) {
+		cout<< " The simulation is in start mode" << endl ; 
+		for (uint i = 0; i < initCenters.size(); i++) {
+			//	initMembrPosTmp = generateInitMembrNodes(initCenters[i],   // to generate  membrane node positions
+			//			initGrowProg[i]);
+			//	initIntnlPosTmp = generateInitIntnlNodes(initCenters[i],   // to generate internal node positions
+			//			initGrowProg[i]);
+			initIntnlPosTmp = generateInitIntnlNodes_M(initCenters[i],   // to generate internal node positions
+				initGrowProg[i],int(i)); //Ali
+			//	initMembrPos.push_back(initMembrPosTmp);
+			initIntnlPos.push_back(initIntnlPosTmp);
 		}
-        for (int i = 0; i <maxMembrNodeCountPerCell; i++) {
-	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mTypeString ;
-			mType =StringToMembraneType1Convertor (mTypeString) ; 
-			if (cellID != cellIDOld) {
-				break ;// for reading the next cell's membrane coordinates
-			}
-			
-			if (inputc.eof()) {  
-				break ; // to not push backing data when the read file is finished.
-			}
-	    	initMembrPosTmp.push_back(mCoordinate);
-	    	mTypeVTmp.push_back(mType);
-			cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" type membrane="<<mType << endl ;  
-      	}
-		initMembrPos.push_back(initMembrPosTmp);
-		mTypeV2.push_back(mTypeVTmp);
-	}
-	cout << " I read membrane nodes successfully" << endl ; 	
-	
 
+		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, MembraneNodesFileName ); 			
+	}
+	else if (resumeSimulation==1) {
+		cout<< " The simulation is in Resume mode" << endl ;
+
+        std::string intnlFileName = "./resources/" + intnlNodesFileNameResume + uniqueSymbol + "Resume.cfg";
+		initIntnlPos=readResumeIntnlNodes( initCenters.size(),maxIntnlNodeCountPerCell,intnlFileName) ;  
+
+        std:: string membFileName = "./resources/" + membNodesFileNameResume  + uniqueSymbol + "Resume.cfg";
+		initMembrPos=readMembNodes(initCenters.size(),maxMembrNodeCountPerCell,mTypeV2, mDppV2, membFileName); 			
+	}
+	else {
+		throw std::invalid_argument("ResumeSimulation parameter in the input file must be either 1 or 0"); 
+	}
+
+	
 }
 
 double CellInitHelper::getRandomNum(double min, double max) {
@@ -896,7 +788,7 @@ vector<CVector> CellInitHelper::generateInitCellNodes() {
 	return attemptedPoss;
 }
 
-//Active function
+//Not Active function
 vector<CVector> CellInitHelper::generateInitIntnlNodes(CVector& center,
 		double initProg) {
 	bool isSuccess = false;
@@ -975,11 +867,22 @@ vector<CVector> CellInitHelper::generateInitIntnlNodes_M(CVector& center,
 			globalConfigVars.getConfigValue("InitMembrRadius").toDouble();
 	
 	double	noiseNucleusY ; 
-	if ( cellRank>1 && cellRank<63)
-		noiseNucleusY=getRandomNum(-0.75*initRadius,7.25*initRadius); 
+	if ( cellRank>1 && cellRank<63) {
+		double std=0.16 ; 
+		double mean=0.6 ;
+		double pouchCellH=25 ; 
+		double upperLimit=mean+std ; 
+		double lowerLimit=mean-std  ;
+		// generate random number in y direction respect to cell center (0.5*pouhCellH)
+		noiseNucleusY=getRandomNum( (upperLimit-0.5)*pouchCellH
+		                           , (0.5-lowerLimit)*pouchCellH ); 
+		//noiseNucleusY=getRandomNum(-0.75*initRadius,7.25*initRadius); 
+	}
 	else {
+
 		noiseNucleusY=getRandomNum(-0.25*initRadius,0.25*initRadius);  
 	}
+
 	center.y=center.y+ noiseNucleusY ; 
 
 
@@ -1192,6 +1095,115 @@ void SimulationGlobalParameter::initFromConfig() {
 	}
 
 }
+
+
+
+vector<vector<CVector> >  CellInitHelper::readResumeIntnlNodes(int numCells, int maxIntnlNodeCountPerCell, string intnlFileName) {
+
+   CVector iCoordinate ;
+   vector <CVector> intnlPosTmp ;
+   vector<vector<CVector> > intnlPos ;
+   ifstream inputc ; 
+   inputc.open(intnlFileName.c_str());
+   if (inputc.is_open()){
+      cout << "File for reading internal nodes coordinates in resume mode is opened successfully " << endl ; 
+   }
+   else{
+      cout << "Failed opening internal nodes coordinates in resme mode " << endl ; 
+   }
+
+   int cellIDOld=-1;
+   int cellID ;
+   for (int j=0 ; j<numCells  ; j++) {
+		intnlPosTmp.clear() ;
+		cellIDOld++  ;
+		if (j!=0) {
+	    	intnlPosTmp.push_back(iCoordinate);
+		}
+        for (int i = 0; i <maxIntnlNodeCountPerCell; i++) {
+	    	inputc >> cellID >> iCoordinate.x >> iCoordinate.y >> iCoordinate.z  ;
+			if (cellID != cellIDOld) {
+				break ;// for reading the next cell's internal coordinates
+			}
+			if (inputc.eof()) {  
+				break ; // to not push backing data when the read file is finished.
+			}
+	    	intnlPosTmp.push_back(iCoordinate);
+		//	cout <<"cell ID= "<<cellID<<"x internal= "<<iCoordinate.x << " y internal= "<<iCoordinate.y <<" z internal="<<iCoordinate.z << endl ;  
+      	}
+		intnlPos.push_back(intnlPosTmp);
+	}
+	cout << " I read internal nodes successfully in resume mode" << endl ; 	
+	
+	return intnlPos ; 
+}
+
+  
+
+vector<vector<CVector> > CellInitHelper::readMembNodes(int numCells,int maxMembrNodeCountPerCell,
+                                                           vector<vector<MembraneType1> >& mTypeV2,vector<vector<double> >& mDppV2, string membFileName) 
+{
+    vector<CVector> initMembrPosTmp;
+    vector<vector<CVector> > initMembrPos ; 
+    vector<double> mDppVTmp;  
+    vector<MembraneType1> mTypeVTmp;  
+    std::fstream inputc;
+
+    inputc.open(membFileName.c_str());
+    if (inputc.is_open()){
+       cout << "File for reading membrane nodes coordinates opened successfully " << endl ; 
+    }
+	else{
+       cout << "failed opening membrane nodes coordinates " << endl ; 
+    }
+
+	int cellIDOld=-1;
+	int cellID ;
+    CVector mCoordinate ;
+	double mDpp ; 
+	string mTypeString ; 
+	MembraneType1 mType ; 
+	for (int j=0 ; j<numCells ; j++) {
+		initMembrPosTmp.clear() ;
+		mDppVTmp.clear() ; 
+		mTypeVTmp.clear() ; 
+		cellIDOld++  ;
+		if (j!=0) {
+	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
+	    	mTypeVTmp.push_back(mType);
+		}
+        for (int i = 0; i <maxMembrNodeCountPerCell; i++) {
+	    	inputc >> cellID >> mCoordinate.x >> mCoordinate.y >> mDpp >> mTypeString ;
+			mType =StringToMembraneType1Convertor (mTypeString) ; 
+			if (cellID != cellIDOld) {
+				break ;// for reading the next cell's membrane coordinates
+			}
+			
+			if (inputc.eof()) {  
+				break ; // to not push backing data when the read file is finished.
+			}
+	    	initMembrPosTmp.push_back(mCoordinate);
+	    	mDppVTmp.push_back(mDpp);
+	    	mTypeVTmp.push_back(mType);
+	//		cout <<"cell ID= "<<cellID<<"x membrane= "<<mCoordinate.x << " y membrane= "<<mCoordinate.y <<" dpp level=" << mDpp <<" type membrane="<<mType << endl ;  
+      	}
+		initMembrPos.push_back(initMembrPosTmp);
+		mDppV2.push_back(mDppVTmp);
+		mTypeV2.push_back(mTypeVTmp);
+	}
+	cout << " I read membrane nodes successfully" << endl ; 	
+	return initMembrPos ;  
+}
+
+
+
+
+
+
+
+
+
 /* CGAL DEACTIVATION
 RawDataInput CellInitHelper::generateRawInput_singleCell() {
 	RawDataInput rawData;

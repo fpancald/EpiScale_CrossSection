@@ -41,10 +41,11 @@ MembraneType1 StringToMembraneType1Convertor (const string & mTypeString) ;// Al
 struct SimulationGlobalParameter {
 public:
 	std::string animationNameBase;
-        double InitTimeStage ; 
+	std::string ResumeNameBase;
+    double InitTimeStage ; 
 	double totalSimuTime;
 	double dt;
-        double Damp_Coef ; 
+    double Damp_Coef ; 
 	int totalTimeSteps;
 	int totalFrameCount;
 	int aniAuxVar;
@@ -61,17 +62,22 @@ public:
  */
 class CellInitHelper {
 	SimulationType simuType;
+    vector<vector<CVector> > readResumeIntnlNodes (int numCells, int maxIntnlNodeCountPerCell, string intnlFileName); 
+	vector<vector<CVector> > readMembNodes        (int numCells, int maxMembrNodeCountPerCell,
+                                                           vector<vector<MembraneType1> >& mTypeV2,vector<vector<double> >& mDppV2, string membFilename);  
+
 	vector<CVector> internalBdryPts;
 
 	CVector getPointGivenAngle(double currentAngle, double r,
 			CVector centerPos);
 	void generateRandomAngles(vector<double> &randomAngles,
 			int initProfileNodeSize);
-
 	void generateCellInitNodeInfo_v2(vector<CVector> &initPos);
 	void generateCellInitNodeInfo_v3(vector<CVector>& initCenters,
 			vector<double>& initGrowProg, vector<vector<CVector> >& initBdryPos,
-			vector<vector<CVector> >& initInternalPos, vector<vector<MembraneType1> >& mTypeV2);
+			vector<vector<CVector> >& initInternalPos, 
+			vector<vector<double> >& mDppV2, 
+			vector<vector<MembraneType1> >& mTypeV2);
 	void generateECMInitNodeInfo(vector<CVector> &initECMNodePoss,
 			int initNodeCountPerECM);
 	void generateECMCenters(vector<CVector> &ECMCenters,

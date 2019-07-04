@@ -1,7 +1,7 @@
 /**
  * @file SimulationDomainGPU.cu
  * @brief this file contains domain level logic.
- * @author Wenzhao Sun wsun2@nd.edu
+ * @author Wenzhao Sun wsun2@nd.edu Ali Nematbakhsh nematba@ucr.edu
  * @bug no know bugs
  */
 
@@ -25,6 +25,7 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 		std::vector<uint> &initActiveIntnlNodeCounts,
 		std::vector<double> &initGrowProgVec, 
 		std::vector<ECellType> & eCellTypeV1 ,
+		std::vector<double> & mDppV,
 		std::vector<MembraneType1> & mTypeV,double InitTimeStage) {  //Ali
 	/*
 	 * Initialize SceNodes by constructor. first two parameters come from input parameters
@@ -58,8 +59,9 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 					== initMembrNodeCountSize);
 	nodes.setAllocParaM(para);
 
-
-	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
+	cout << " I am above initValues_M " << endl ; 
+	nodes.initValues_M(nodeIsActive, initNodesVec, nodeTypes, mDppV,mTypeV);  // it copies the infomration of nodes such as locations from CPU to GPU
+	cout << " I paased initValues_M " << endl ; 
 
 	double simulationTotalTime =
 			globalConfigVars.getConfigValue("SimulationTotalTime").toDouble();
@@ -75,11 +77,11 @@ void SimulationDomainGPU::initializeNodes_M(std::vector<SceNodeType> &nodeTypes,
 
 	eCM.Initialize(memPara.maxAllNodePerCell, memPara.maxMembrNodePerCell,memPara.maxAllNodePerCell*memPara.maxCellInDomain, freqPlotData, uniqueSymbolOutput);
 
-	cells = SceCells(&nodes, & eCM, initActiveMembrNodeCounts,
+	cells = SceCells(&nodes, & eCM, & solver, initActiveMembrNodeCounts,
 			initActiveIntnlNodeCounts, initGrowProgVec, eCellTypeV1, InitTimeStage);  //Ali
 
 	nodes.Initialize_SceNodes  ( &cells) ;
-	eCM.Initialize_SceECM(& nodes, & cells) ; 
+	eCM.Initialize_SceECM(& nodes, & cells, & solver) ; 
 }
 
 
@@ -90,7 +92,7 @@ void SimulationDomainGPU::initialize_v2_M(SimulationInitData_V2_M& initData, dou
 	initializeNodes_M(initData.nodeTypes, initData.initIsActive,
 			initData.initNodeVec, initData.initActiveMembrNodeCounts,
 			initData.initActiveIntnlNodeCounts, initData.initGrowProgVec, 
-			initData.eCellTypeV1,               initData.mTypeV, InitTimeStage);  // Ali
+			initData.eCellTypeV1,initData.mDppV,initData.mTypeV, InitTimeStage);  // Ali
 	std::cout << "Finished initializing nodes positions" << std::endl;
 	nodes.initDimension(domainPara.minX, domainPara.maxX, domainPara.minY,
 			domainPara.maxY, domainPara.gridSpacing);
@@ -150,8 +152,8 @@ void SimulationDomainGPU::runAllLogic_M(double & dt, double Damp_Coef, double In
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&elapsedTime2, start2, stop);
-	std::cout << "time spent in Simu Domain logic: " << elapsedTime1 << " "
-	<< elapsedTime2 << std::endl;
+	//std::cout << "time spent in Simu Domain logic: " << elapsedTime1 << " "
+	//<< elapsedTime2 << std::endl;
 #endif
 }
 
@@ -267,12 +269,35 @@ void SimulationDomainGPU::outputVtkColorByCell_polySide(
 	outputVtkGivenCellColor(scriptNameBase, rank, aniCri, polySideColorVec,cellsPerimeter);
         cellsPerimeter.clear(); 
 }
+void SimulationDomainGPU::outputResumeData(uint frame) {
+	WriteResumeData writeResumeData ; 
+    std::cout  <<"I am writing Resume Data file" <<std:: endl;
+
+	//Gather information
+	std::vector<AniResumeData> aniResumeDatas= cells.obtainResumeData() ;
+	aniResumeDatas.push_back                    (eCM.obtainResumeData()); 
+    
+	//Fetch the input parameters
+	std::string uniqueSymbol        = globalConfigVars.getConfigValue(
+	                                  "UniqueSymbol").toString() ; 
+	std::string membFileNameResume  = globalConfigVars.getConfigValue(
+	                        		  "MembraneNodes_FileName_Resume").toString() ;
+	std::string intnlFileNameResume = globalConfigVars.getConfigValue(
+			                          "IntnlNodes_FileName_Resume").toString() ;
+	
+	//Write the gathered information 
+	//0 is for membrane nodes and 1 is for internal node, 2 for cells, 	3 is for ECM nodes
+	writeResumeData.writeForMembAndIntnl(aniResumeDatas.at(0),aniResumeDatas.at(1), membFileNameResume, intnlFileNameResume, uniqueSymbol) ;  
+	writeResumeData.writeForCells       (aniResumeDatas.at(2), uniqueSymbol) ; 
+	writeResumeData.writeForECM         (aniResumeDatas.at(3), uniqueSymbol) ; 
+}
+
 std::vector<double> SimulationDomainGPU::processPolySideColor(std:: vector<double> & cellsPerimeter) {
 	CellsStatsData cellStatsVec = cells.outputPolyCountData();
+	
         for (int i=0; i< int (cellStatsVec.cellsStats.size());  i++) {
-
-        std::cout << cellStatsVec.cellsStats.size() <<"cellsStatsvec vector size is" <<std:: endl; 
-        cellsPerimeter.push_back(cellStatsVec.cellsStats[i].cellPerim) ;
+        //std::cout << cellStatsVec.cellsStats.size() <<"cellsStatsvec vector size is" <<std:: endl; 
+       	   cellsPerimeter.push_back(cellStatsVec.cellsStats[i].cellPerim) ;
         }
 
          //AliE        
@@ -385,6 +410,12 @@ CellsStatsData SimulationDomainGPU::outputPolyCountData() {
 	//nodes.sceForcesDisc_M(); // Ali commented this. it will intefere with logics of the code.
 	return cells.outputPolyCountData();
 }
+SingleCellData  SimulationDomainGPU::OutputStressStrain() {
+	// this step is necessary for obtaining correct neighbors because new cells might have been created in previous step.
+	//nodes.sceForcesDisc_M(); // Ali commented this. it will intefere with logics of the code.
+	return cells.OutputStressStrain();
+}
+
 
 NetworkInfo SimulationDomainGPU::buildNetInfo(CellsStatsData &polyData) {
 	std::vector<NetworkNode> netNodes;
@@ -446,3 +477,58 @@ void SimulationDomainGPU::processT1Info(int maxStepTraceBack,
 	std::vector<PreT1State> preT1States = netInfo.scanForPreT1States();
 	preT1Vec.push_back(preT1States);
 }
+/*
+vector<double>  Solver::solve3Diag(const vector <double> & lDiag, const vector <double> & Diag, const vector <double> & uDiag,
+	                               const vector <double> & rHS) {
+
+   // --- Initialize cuSPARSE
+    cusparseHandle_t handle;    cusparseCreate(&handle);
+
+    const int N     = 5;        // --- Size of the linear system
+
+    // --- Lower diagonal, diagonal and upper diagonal of the system matrix
+    double *h_ld = (double*)malloc(N * sizeof(double));
+    double *h_d  = (double*)malloc(N * sizeof(double));
+    double *h_ud = (double*)malloc(N * sizeof(double));
+
+    h_ld[0]     = 0.;
+    h_ud[N-1]   = 0.;
+    for (int k = 0; k < N - 1; k++) {
+        h_ld[k + 1] = -1.;
+        h_ud[k]     = -1.;
+    }
+    for (int k = 0; k < N; k++) h_d[k] = 2.;
+
+    double *d_ld;   cudaMalloc(&d_ld, N * sizeof(double));
+    double *d_d;    cudaMalloc(&d_d,  N * sizeof(double));
+    double *d_ud;   cudaMalloc(&d_ud, N * sizeof(double));
+
+    cudaMemcpy(d_ld, h_ld, N * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_d,  h_d,  N * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ud, h_ud, N * sizeof(double), cudaMemcpyHostToDevice);
+
+    // --- Allocating and defining dense host and device data vectors
+    double *h_x = (double *)malloc(N * sizeof(double)); 
+    h_x[0] = 100.0;  h_x[1] = 200.0; h_x[2] = 400.0; h_x[3] = 500.0; h_x[4] = 300.0;
+
+    double *d_x;       cudaMalloc(&d_x, N * sizeof(double));   
+    cudaMemcpy(d_x, h_x, N * sizeof(double), cudaMemcpyHostToDevice);
+
+    // --- Allocating the host and device side result vector
+    double *h_y = (double *)malloc(N * sizeof(double)); 
+    double *d_y;        cudaMalloc(&d_y, N * sizeof(double)); 
+
+    cusparseDgtsv(handle, N, 1, d_ld, d_d, d_ud, d_x, N);
+
+    cudaMemcpy(h_x, d_x, N * sizeof(double), cudaMemcpyDeviceToHost);
+    for (int k=0; k<N; k++) printf("%f\n", h_x[k]);
+	vector < double> ans ; 
+	for (int k=0; k<N; k++) {
+	   ans.push_back(h_x[k]); 
+
+	}
+	return ans ; 
+
+}
+*/
+

@@ -28,6 +28,7 @@
 #include <cuda_runtime.h>
 #include "ConfigParser.h"
 #include <assert.h>
+#include <stdexcept>
 #include "commonData.h"
 #include "ResAnalysisHelper.h"
 
@@ -35,7 +36,7 @@
 
 // include google test files in order to test private functions.
 #include "gtest/gtest_prod.h"
-#include "SceNodes.h"
+//#include "SceNodes.h"
 //#include "SceCells.h"
 
 // I wish I could include some c++ 11 data structure here but it seems
@@ -75,7 +76,7 @@ typedef thrust::tuple<double, double, double, uint> DDDUi;//AAMIRI
 typedef thrust::tuple<bool, int> BoolInt;
 typedef thrust::tuple<uint, bool> UiB;
 typedef thrust::tuple<bool, uint, double> BoolUID;
-typedef thrust::tuple<bool, int, uint, double, double> BoolIUiDD;
+typedef thrust::tuple<bool, int, uint, double, double,MembraneType1 > BoolIUiDDT;
 typedef thrust::tuple<bool, uint, double, double> BoolUiDD; //Ali
 typedef thrust::tuple<bool, uint, double, double, uint, double> BoolUIDDUID;
 typedef thrust::tuple<bool, uint, double, double, uint, uint, bool, double> BoolUIDDUIUIBoolD;//AAMIRI
@@ -151,6 +152,33 @@ struct isTrue {
 		}
 	}
 };
+
+struct isGreaterZero {
+	__host__ __device__
+	bool operator()(const double & b) {
+		if (b > 0.00001 ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+};
+
+struct  SumGreaterZero { 
+	__host__ __device__
+	double operator()(double x, double y) {return (x+max(y,0.0)) ;}
+}; 
+
+struct isOdd
+{
+//	__host__ __device__
+	bool operator()(int &x)
+	{
+		return x & 1 ; 
+		}
+};
+
+
 
 struct NanCount: public thrust::binary_function<double, double, CVec3> {
 	__device__
@@ -580,7 +608,7 @@ void handleSceForceNodesDisc_M(uint& nodeRank1, uint& nodeRank2, double& xPos,
 __device__
 void handleAdhesionForce_M(int& adhereIndex, double& xPos, double& yPos,
 		double& curAdherePosX, double& curAdherePosY, double& xRes,
-		double& yRes, double& alpha);
+		double& yRes, double& alpha, double  & beta);
 
 //Ali for adhesion reaction force
 __device__
@@ -664,16 +692,15 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 	int* _nodeAdhereIndex;
 	int* _membrIntnlIndex;
 	double* _nodeGroProAddr;
-	bool _adhNotSet ; 
 	// comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
 	AddForceDisc_M(uint* valueAddress, double* nodeLocXAddress,
 			double* nodeLocYAddress, int* nodeAdhereIndex, int* membrIntnlIndex,
-			double* nodeGrowProAddr,bool adhNotSet) :
+			double* nodeGrowProAddr) :
 			_extendedValuesAddress(valueAddress), _nodeLocXAddress(
 					nodeLocXAddress), _nodeLocYAddress(nodeLocYAddress), _nodeAdhereIndex(
 					nodeAdhereIndex), _membrIntnlIndex(membrIntnlIndex), _nodeGroProAddr(
-					nodeGrowProAddr),_adhNotSet(adhNotSet) {
+					nodeGrowProAddr) {
 	}
 	__device__
 	CVec2 operator()(const Tuuudd &u3d2) const {
@@ -690,9 +717,6 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 		uint index;
 		double dist;
                 bool  Lennard_Jones = false ;// Is_Lennard_Jones() ;
-//		if (_adhNotSet){
-	//	_nodeAdhereIndex[myValue] = -1 ;  Ali commented to deactive this part of the code
-//		}
 		for (uint i = begin; i < end; i++) {
 			uint nodeRankOther = _extendedValuesAddress[i];
 			if (nodeRankOther == myValue) {
@@ -707,23 +731,8 @@ struct AddForceDisc_M: public thrust::unary_function<Tuuudd, CVec2> {
 				calAndAddInter_M(xPos, yPos, _nodeLocXAddress[nodeRankOther],
 						_nodeLocYAddress[nodeRankOther], xRes, yRes);
                                                }
-		//	if(_adhNotSet){
-				//if (_nodeAdhereIndex[myValue] == -1) {
-	//				attemptToAdhere(isSuccess, index, dist, nodeRankOther, xPos,
-	//						yPos, _nodeLocXAddress[nodeRankOther],
-	//						_nodeLocYAddress[nodeRankOther]);
-			//	}
-//Ali
-
-		//	}
-			}
+					}
 		}
-	//	if (_adhNotSet) {
-	//		if (isSuccess) {
-		//			_nodeAdhereIndex[myValue] = index;  //Ali commented to deactive this part of the code
-		//		_nodeAdhereIndex[index] = myValue; Ali added and then commentted out
-	//		}
-	//	}
 		return thrust::make_tuple(xRes, yRes);
 	}
 };
@@ -775,27 +784,44 @@ struct AddSceForceBasic: public thrust::unary_function<Tuuuddd, CVec3> {
 	}
 };
 
-struct ApplyAdh: public thrust::unary_function<BoolIUiDD, CVec2> {
+struct ApplyAdh: public thrust::unary_function<BoolIUiDDT, CVec2> {
 	double* _nodeLocXArrAddr;
 	double* _nodeLocYArrAddr;
 	double* _nodeGrowProAddr;
-	int* _nodeAdhAddr ; 
+	int* _nodeAdhAddr ;
+	double * _nodeDppAddr ;
+	bool _isApicalAdhPresent ;
 // comment prevents bad formatting issues of __host__ and __device__ in Nsight
 	__host__ __device__
-	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr  ) :
-			_nodeLocXArrAddr(nodeLocXArrAddr), _nodeLocYArrAddr(nodeLocYArrAddr), _nodeGrowProAddr(nodeGrowProAddr), _nodeAdhAddr(nodeAdhAddr) {
+	ApplyAdh(double* nodeLocXArrAddr, double* nodeLocYArrAddr, double* nodeGrowProAddr, int* nodeAdhAddr , double * nodeDppAddr, bool isApicalAdhPresent) :
+			_nodeLocXArrAddr(nodeLocXArrAddr), _nodeLocYArrAddr(nodeLocYArrAddr), _nodeGrowProAddr(nodeGrowProAddr), _nodeAdhAddr(nodeAdhAddr),
+		    _nodeDppAddr(nodeDppAddr), _isApicalAdhPresent(isApicalAdhPresent) 	{
 	}
 	__device__
-	CVec2 operator()(const BoolIUiDD& adhInput) const {
+	CVec2 operator()(const BoolIUiDDT& adhInput) const {
 		bool isActive = thrust::get<0>(adhInput);
 		int adhIndx = thrust::get<1>(adhInput);
 		uint nodeIndx = thrust::get<2>(adhInput);
 		double oriVelX = thrust::get<3>(adhInput);
 		double oriVelY = thrust::get<4>(adhInput);
+		MembraneType1 nodeType = thrust::get<5>(adhInput);
+
 		double growProg = _nodeGrowProAddr[nodeIndx];
 		double growProgNeigh = _nodeGrowProAddr[adhIndx];
 		//bool adhSkipped = false;	
 		double alpha = getMitoticAdhCoef(growProg, growProgNeigh);//to adjust the mitotic values of stiffness
+		double beta=1 ; // every other pair is one for apical is different. 
+	   	if (nodeType==apical1 && _isApicalAdhPresent) {
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			beta=0.1;  
+		}
+	   	if (nodeType==apical1 && _isApicalAdhPresent==false) {
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			//beta=0.1* 0.5*( _nodeDppAddr[nodeIndx]+ _nodeDppAddr [adhIndx] ) ; 
+			beta=0.0;   
+		}
+
 		/*int maxNodePerCell=680  ; 
 		int cellRank=nodeIndx/maxNodePerCell ;
 		int nodeRank=nodeIndx%maxNodePerCell ;
@@ -821,7 +847,7 @@ struct ApplyAdh: public thrust::unary_function<BoolIUiDD, CVec2> {
 				double adhLocX = _nodeLocXArrAddr[adhIndx];
 				double adhLocY = _nodeLocYArrAddr[adhIndx];
 				handleAdhesionForce_M(adhIndx, locX, locY, adhLocX, adhLocY,
-					oriVelX, oriVelY, alpha);
+					oriVelX, oriVelY, alpha, beta);
 				return thrust::make_tuple(oriVelX, oriVelY);
 		}
 	//	else { 
@@ -952,6 +978,7 @@ public:
 // E.g, max number of nodes of a cell is 100 maybe the first 75 nodes are active.
 // The value of this vector will be changed by external process.
 	thrust::device_vector<bool> nodeIsActive;
+	thrust::device_vector<int> basalContractPair; //Ali
 	thrust::host_vector<bool> nodeIsActiveHost; //Ali
 // X locations of nodes
 	thrust::device_vector<double> nodeLocX;
@@ -988,18 +1015,21 @@ public:
 	thrust::device_vector<double> nodeActinLevel;//Ali 
 // Curvature at the node
 	thrust::device_vector<double> nodeCurvature;//AAMIRI
-
 //External forces on nodes in x dir
-	thrust::device_vector<double> nodeExtForceX;//AAMIRI
-
+	thrust::device_vector<double> nodeExtForceX;//AAMIRI-Ali
 //External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceY;//AAMIRI
+	thrust::device_vector<double> nodeExtForceY;//AAMIRI-Ali
+//Intercellular forces on nodes in x dir. It is summnation of Adhesion and MMD in x direction
+	thrust::device_vector<double> nodeInterCellForceX;//AAMIRI-Ali
 
-//External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceTangent;//AAMIRI
+//intercellular forces on nodes in y dir.It is summnation of Adhesion and MMD in y direction
+	thrust::device_vector<double> nodeInterCellForceY;//AAMIRI-Ali
 
-//External forces on nodes in y dir
-	thrust::device_vector<double> nodeExtForceNormal;//AAMIRI
+//Intercellular forces on nodes in tangent  dir
+	thrust::device_vector<double> nodeInterCellForceTangent;//AAMIRI-Ali
+
+//Intercellular forces on nodes in normal dir
+	thrust::device_vector<double> nodeInterCellForceNormal;//AAMIRI-Ali
 // is subApical node , for adhesion purpose
 	thrust::device_vector<bool> isSubApicalJunction;//Ali 
 	thrust::host_vector<bool> isSubApicalJunctionHost;//Ali 
@@ -1018,6 +1048,7 @@ public:
 
 	thrust::host_vector<double> nodeAdhMinDist; // Ali
 
+	thrust::device_vector<double> dppLevel; // Ali
 	thrust::device_vector<MembraneType1> memNodeType1; // Ali
 	thrust::host_vector<MembraneType1> memNodeType1Host; // Ali
 
@@ -1063,6 +1094,13 @@ public:
 	thrust::device_vector<int>  nodeCellRankBehindOld;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankFrontHost;//Ali it is cell size
 	thrust::host_vector<int>  nodeCellRankBehindHost;//Ali it is cell size
+	vector<bool> nodeIsActiveH ; //for solver
+	vector<double> locXOldHost  ; //for solver
+	vector<double> locYOldHost ; //for solver
+	vector<double> rHSXHost ; //for solver
+	vector<double> rHSYHost ; //for solver
+	vector<double> hCoefD,hCoefUd, hCoefLd ; // for solver
+
 };
 
 /**
@@ -1101,7 +1139,7 @@ class SceCells ;   // forward declaration to be used in the class SceNodes
 class SceNodes {
 //	SceCells* cells ;
 	SceCells * cellsSceNodes ; 
-	bool adhNotSet ; 
+	bool isApicalAdhPresent ; 
 	SceDomainPara domainPara;
 	SceMechPara mechPara;
 	NodeAllocPara allocPara;
@@ -1197,8 +1235,8 @@ class SceNodes {
 	void processMembrAdh_M();
 	void removeInvalidPairs_M();
 	void applyMembrAdh_M();
-
-	void copyExtForces_M();//AAMIRI
+	
+	void copyInterCellForces_M();//AAMIRI-Ali
 
 	uint endIndx_M;
 	uint endIndxExt_M;
@@ -1212,6 +1250,7 @@ public:
     
 	bool adhUpdate ; //Ali 
 	bool isInitPhase ; //Ali 
+	bool isMemNodeTypeAssigned ; 
 
 	NodeInfoVecs infoVecs; //Ali 
 	/**
@@ -1257,6 +1296,7 @@ public:
 	void initValues_M(std::vector<bool>& initIsActive,
 			std::vector<CVector> &initCellNodePos,
 			std::vector<SceNodeType>& nodeTypes,
+			std::vector<double>& mDppV,
 			std::vector<MembraneType1>& mTypeV);
 
 	/**
@@ -1367,6 +1407,9 @@ public:
 
 	void setActiveCellCount(uint activeCellCount) {
 		allocPara_M.currentActiveCellCount = activeCellCount;
+	}
+	void SetApicalAdhPresence( bool isApicalAdhPresent) {  //Ali
+		this->isApicalAdhPresent=isApicalAdhPresent ; 
 	}
 };
 

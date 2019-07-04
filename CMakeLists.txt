@@ -95,7 +95,7 @@ endif()
 # This manual CXX FLAGS setting is required, because the some version of CMAKE would use an unsupported CMAKE_CXX_FLAGS and result in compliation failure.
 # more specifically, -fstack-protector-strong option is not supported by g++ until g++-4.9, but it is enabled by default in CMake 2.8.12
 # however g++-4.9 is not supported by nvcc 5.5
-set(CMAKE_CXX_FLAGS "-g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security  -frounding-math")
+set(CMAKE_CXX_FLAGS "-g -O2 -lcusparse -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security  -frounding-math")
 MESSAGE("manually resetting g++ flags to : " ${CMAKE_CXX_FLAGS})
 
 #add_subdirectory(${EXT_PROJECTS_DIR}/gtest)

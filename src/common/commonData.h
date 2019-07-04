@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <fstream>
 #include <algorithm>
+#include <string>
+#include <iostream> 
 
 #ifndef COMMONDATA_H_
 #define COMMONDATA_H_
@@ -114,6 +116,7 @@ struct ControlSwitchs {
 struct ControlPara {
 	SimulationType simuType;
 	ControlSwitchs controlSwitchs;
+	uint resumeSimulation ; 
 };
 
 /**
@@ -463,6 +466,7 @@ struct RawDataInput_M {
 	std::vector<CVector> initCellCenters;
 	std::vector<double> cellGrowProgVec;
 	std::vector<ECellType> cellsTypeCPU; //Ali 
+	std::vector<std::vector<double> > mDppV2; //Ali 
 	std::vector<std::vector<MembraneType1> > mTypeV2; //Ali 
 	std::vector<std::vector<CVector> > initIntnlNodePoss;
 	std::vector<std::vector<CVector> > initMembrNodePoss;
@@ -521,6 +525,7 @@ struct SimulationInitData_V2_M {
 	std::vector<CVector> initNodeVec;
 	std::vector<bool> initIsActive;
 	std::vector<ECellType> eCellTypeV1;  //Ali 
+	std::vector<double> mDppV;  //Ali 
 	std::vector<MembraneType1> mTypeV;  //Ali 
 };
 
@@ -582,7 +587,7 @@ struct PointAniData {
 	CVector dir;
 	CVector F_MI_M; //AliE
 	double F_MI_M_MagN_Int; //AliE
-	CVector extForce;//AAMIRI
+	CVector intercellForce;//AAMIRI-Ali
 	double colorScale;
 	double colorScale2;//AAMIRI //curvature
 	double colorScale3;//Ali  //membrane tension
@@ -645,7 +650,7 @@ struct AniRawData {
 	std::vector<CVector> aniNodePosArr;
 	std::vector<CVector> aniNodeF_MI_M;//AAMIRI // AliE
 	std::vector<double> aniNodeF_MI_M_MagN_Int; //AliE
-	std::vector<CVector> aniNodeExtForceArr;//AAMIRI
+	std::vector<CVector> aniNodeInterCellForceArr;//AAMIRI
 	std::vector<double> aniNodeVal;
 	std::vector<double> aniNodeCurvature;//AAMIRI
 	std::vector<double> aniNodeMembTension ;//Ali 
@@ -655,6 +660,26 @@ struct AniRawData {
 	std::vector<LinkAniData> internalLinks;
 	std::vector<BondInfo> bondsArr;
 };
+
+struct AniResumeData {
+	std::vector<CVector> nodePosArr; //general resume data. It can be node, cell, or ECM
+	std::vector<int>     cellRank; 		 //It is cell rank with the size of number of cells, internal nodes, or membrane nodes
+	std::vector<double>  signalLevel; //general resume data. It can be node, cell, or ECM
+
+	std::vector<MembraneType1> nodeType;// for membrane and internal nodes resume data
+	std::vector<EType>  nodeECMType; 	// for ECM resume data
+	std::vector<ECellType>  cellType;   // for cell resume data
+};
+
+struct WriteResumeData {
+	void writeForMembAndIntnl(AniResumeData, AniResumeData, std::string, std::string, std::string); 
+	void writeForECM(AniResumeData, std::string) ;
+	void writeForCells(AniResumeData, std::string ) ;
+	std::string printNodeEnum(MembraneType1); 
+	std::string printECMEnum(EType); 
+	std::string printCellsEnum(ECellType); 
+} ; 
+
 
 struct VecVal {
 	CVector vec;
@@ -710,21 +735,26 @@ struct CountEntry {
 
 class CellsStatsData {
 
+	public: 
 
-public:
-        //Ali
-        double Cells_Extrem_Loc[4] ;
-        double F_Ext_Out ; //Ali  
-        //Ali 
-        double MaxDistanceX ; //Ali 
 	std::vector<CellStats> cellsStats;
 
 	void printPolyCountToFile(std::string fileName, double divThreshold);
 	void printDetailStatsToFile(std::string fileNameBase, int timestep);
 	vector<double> outputPolySides();
-        void printStressStrain(std::string FileName1,double curTime,double Init_Displace );   //Ali
-        void printStressStrain_Ini(std::string FileName1); // Ali
-};
+   };
+class SingleCellData {
+	
+public:	
+		double Cells_Extrem_Loc[4] ;
+        double F_Ext_Out ;   
+        double MaxDistanceX ;
+
+	    void printStressStrainToFile(std::string fileName, double curTime);   //Ali
+		SingleCellData() ; 
+        SingleCellData(std::string fileName); // Ali
+
+} ; 
 //Ali
 class EnergyCellInfo {
 

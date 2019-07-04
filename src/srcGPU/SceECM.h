@@ -3,11 +3,13 @@
 
 #include "commonData.h"
 #include "SceNodes.h" 
-//#include "SceCells.h" 
+#include "ConfigParser.h"
+#include "Solver.h"
+#include <stdexcept>
 #include <string>
 #include <sstream>
-#include <fstream>  
-//#include "SimulationDomainGPU.h"
+#include <fstream> 
+#include <algorithm>
 
 
 typedef thrust ::tuple<int,double,double> IDD ; 
@@ -18,7 +20,7 @@ typedef thrust ::tuple<double,double,double,double> DDDD ;
 typedef thrust ::tuple<double,double,bool> DDB ; 
 typedef thrust ::tuple<double,double,int,double,double> DDIDD ; 
 typedef thrust ::tuple<double,double,double,double,double,double> DDDDDD ;
-typedef thrust ::tuple<double,double,double,double,int,EType> DDDDIT ; 
+typedef thrust ::tuple<double,double,double,double,double> DDDDD ; 
 
 
 struct MechPara_ECM {
@@ -31,22 +33,58 @@ struct MechPara_ECM {
 class SceCells ; // forward declaration
 class SceECM {
 //	SceNodes* nodes;
+    double dampBasal,dampBC,dampApical ; 
+	vector<bool> nodeIsActive ; 
+    vector<double> hCoefLd ; 
+    vector<double> hCoefUd ;  
+    vector<double> hCoefD  ;
+	vector<int> indexPrev ; 
+	vector<int> indexNext ;
+	vector <double> tmpHostNodeECMLocX; 
+	vector <double> tmpHostNodeECMLocY;
+	thrust::device_vector<double> dampCoef ; 
 
+	bool   eCMRemoved ; 
+	bool   isECMNeighborSet ;
+	void   FindNeighborCandidateForCellsAndECMNodes(); 
+	void MoveCellNodesByECMForces(int totalNodeCountForActiveCellsECM,int currentActiveCellCount, double dt, double Damp_CoefCell);  
+	void CalLinSpringForce() ; 
+	void CalBendSpringForce() ; 
+	void CalCellForcesOnECM() ; 
+	void CalSumForcesOnECM() ; 
+	void MoveNodesBySumAllForces(double dt); 
+	void CalSumOnlyExplicitForcesOnECM(); 
+	void EquMotionCoef( double dt) ;
+	void CalRHS(double dt);
+	void AssignDampCoef() ; 
 public:
+	SceECM() ;
 
-void Initialize_SceECM(SceNodes * nodes, SceCells * cells) {
+	SceNodes * nodesPointerECM ; 
+	SceCells * cellsPointerECM ;
+	Solver   * solverPointer ; 
+	//void Initialize_SceECM(SceNodes * nodes, SceCells * cells) ; 
+	void Initialize_SceECM(SceNodes * nodes, SceCells * cells, Solver *solver) {
 		nodesPointerECM =nodes ; 
-		cellsPointerECM= cells ;  
+		cellsPointerECM= cells ; 
+    	solverPointer=solver ; 
 	}
 
 
+	void SetIfECMIsRemoved(bool eCMRemoved) {
+		this->eCMRemoved=eCMRemoved ; 
+	}
 
-        void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_Coef, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
-		void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbolOutput); 
+	bool GetIfECMIsRemoved() 
+		const { return eCMRemoved  ;}  
+	AniResumeData obtainResumeData(); 
+
+    void ApplyECMConstrain(int currentActiveCellCount, int totalNodeCountForActiveCellsECM, double curTime, double dt, double Damp_CoefCell, bool cellPolar, bool subCellPolar, bool isInitPhase) ; 
+	void Initialize(uint maxAllNodePerCellECM, uint maxMembrNodePerCellECM, uint maxTotalNodesECM, int freqPlotData, string uniqueSymbol); 
 		EType ConvertStringToEType (string eNodeRead) ;
-		void PrintECM(double curTime);
-SceNodes * nodesPointerECM ; 
-SceCells * cellsPointerECM ; 
+	void PrintECM(double curTime);
+	void PrintECMRemoved(double curTime);
+	//Solver   * solverPointer ; 
 double restLenECMSpring ;
 double eCMLinSpringStiff ; 
 double restLenECMAdhSpring ; 
@@ -70,7 +108,7 @@ uint maxAllNodePerCell ;
 uint maxMembrNodePerCell ;
 uint maxTotalNodes ; 
 
-string uniqueSymbolOutput ; 
+string uniqueSymbol ; 
 MechPara_ECM mechPara_ECM ; 
  
 thrust::device_vector<int> indexECM ;
@@ -85,8 +123,8 @@ thrust::device_vector<double> nodeECMTmpLocY ;
 
 //thrust::device_vector<double> nodeDeviceLocX ; 
 //thrust::device_vector<double> nodeDeviceLocY ; 
-thrust::device_vector<double> nodeDeviceTmpLocX ; 
-thrust::device_vector<double> nodeDeviceTmpLocY ;
+thrust::device_vector<double> nodeCellLocXOld ; 
+thrust::device_vector<double> nodeCellLocYOld ;
 //thrust::device_vector<MembraneType1> memNodeType ;
 thrust::device_vector<int>   adhPairECM_Cell ;
  
@@ -119,12 +157,26 @@ thrust::device_vector<double> fBendRightY ;
 
 thrust::device_vector<double> totalForceECMX ; 
 thrust::device_vector<double> totalForceECMY ;
+thrust::device_vector<double> totalExplicitForceECMX ; 
+thrust::device_vector<double> totalExplicitForceECMY ;
 thrust::device_vector<EType>  peripORexcm ;
 
+thrust::device_vector<double> rHSX ; 
+thrust::device_vector<double> rHSY ;
 thrust::device_vector<double> stiffLevel ;
 thrust::device_vector<double> sponLen ;
 };
- 
+
+/*
+class Solver{
+
+	public:
+
+		vector < double> Solver3Diag( const & vector <double> h_ld, const & vector< double> h_d, 
+									  const & vector <double> h_ud, const & vector < double> rhs ) ;  
+}; 
+*/
+
 __device__
 double calMorse_ECM (const double & linkLength); 
 
@@ -296,13 +348,11 @@ struct MoveNodes2_Cell: public thrust::unary_function<IIIDDBT,DDIDD> {
 	 int _numNodes_ECM ;
 	 double _dt ; 
 	 double _Damp_Coef ;
-	 bool _isInitPhase ;
 	 EType*  _peripORexcmAddr ;
-	 double _curTime ; 
 	 int _activeCellCount ; 
-	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef, bool isInitPhase, EType * peripORexcmAddr, double curTime, int activeCellCount) :
+	__host__ __device__ MoveNodes2_Cell (double * locXAddr_ECM, double * locYAddr_ECM, uint maxMembrNodePerCell, int numNodes_ECM, double dt, double Damp_Coef,EType * peripORexcmAddr, int activeCellCount) :
 				_locXAddr_ECM(locXAddr_ECM),_locYAddr_ECM(locYAddr_ECM),_maxMembrNodePerCell(maxMembrNodePerCell),_numNodes_ECM(numNodes_ECM),_dt(dt),
-			    _Damp_Coef(Damp_Coef), _isInitPhase (isInitPhase), _peripORexcmAddr(peripORexcmAddr),_curTime (curTime), _activeCellCount (activeCellCount)	{
+			    _Damp_Coef(Damp_Coef), _peripORexcmAddr(peripORexcmAddr), _activeCellCount (activeCellCount)	{
 	}
 	__device__ DDIDD  operator()(const IIIDDBT & iIIDDBT) const {
 	int eCMNeighborId=				thrust::get<0>(iIIDDBT) ; 
@@ -626,64 +676,84 @@ struct TotalECMForceCompute: public thrust::unary_function<DDDDDD,DD> {
 	}
 }; 
 
-struct MechProp: public thrust::unary_function<EType,DD> {
+struct RHSCompute: public thrust::unary_function<DDDDD,DD> {
 
-	bool _isInitPhase ;
+	double _dt ;
 
-	__host__ __device__ MechProp(bool isInitPhase): _isInitPhase(isInitPhase) {
+	__host__ __device__ 
+	          RHSCompute(double dt): _dt(dt)
+	{
+	}
+	__host__ __device__ DD operator() (const DDDDD & dDDDD) const {
+    
+		double fExplicitX= thrust:: get<0>(dDDDD); 
+		double fExplicitY= thrust:: get<1>(dDDDD); 
+		double locX      = thrust:: get<2>(dDDDD); 
+		double locY      = thrust:: get<3>(dDDDD);
+		double dampCoef  = thrust:: get<4>(dDDDD);
+		
+		return thrust::make_tuple(fExplicitX*_dt/dampCoef + locX , 
+		    	                  fExplicitY*_dt/dampCoef + locY); 
+
+	}
+	
+
+}; 
+
+
+struct TotalExplicitECMForceCompute: public thrust::unary_function<DDDD,DD> {
+
+
+	__host__ __device__ TotalExplicitECMForceCompute(){
 	}
 
-	__device__ DD operator() (const EType  & nodeType) const {
+	__host__ __device__ DD operator() (const DDDD & dDDD) const {
 
-	double stiffness ;
-	double sponLen   ;    
-	//if (_isInitPhase == false ) {
+	double fBendSpringX= thrust:: get<0>(dDDD); 
+	double fBendSpringY= thrust:: get<1>(dDDD); 
+	double fMembX       = thrust:: get<2>(dDDD); 
+	double fMembY       = thrust:: get<3>(dDDD); 
 
-		DefineECMStiffnessAndLknot (nodeType, stiffness, sponLen) ;  
-//	}
 
-	return thrust::make_tuple(stiffness,sponLen); 
+	return thrust::make_tuple(fBendSpringX+fMembX,fBendSpringY+fMembY); 
 	}
 }; 
 
 
 
-struct MoveNodeECM: public thrust::unary_function<DDDDIT,DD> {
+
+struct MechProp: public thrust::unary_function<EType,DD> {
+
+
+	__host__ __device__ MechProp() {
+	}
+
+	__device__ DD operator() (const EType  & nodeType) const {
+
+		double stiffness ;
+		double sponLen   ;    
+
+		DefineECMStiffnessAndLknot (nodeType, stiffness, sponLen) ;  
+
+		return thrust::make_tuple(stiffness,sponLen); 
+	}
+}; 
+
+
+
+struct MoveNodesECM: public thrust::unary_function<DDDDD,DD> {
 
 	double _dt ; 
-	double _dampECM ; 
-	double _dampPeri ; 
-	int _numNodes ;
-	double _curTime ; 
-	__host__ __device__ MoveNodeECM (double dt, double dampECM, double dampPeri, int numNodes, double curTime): _dt(dt), _dampECM(dampECM),_dampPeri(dampPeri), _numNodes(numNodes),_curTime(curTime) {
+	__host__ __device__ MoveNodesECM (double dt): _dt(dt) {
 	}
-	__host__ __device__ DD operator() (const DDDDIT & dDDDIT) const  {
-	double 			  locXOld= thrust:: get <0> (dDDDIT) ;
-	double 			  locYOld= thrust:: get <1> (dDDDIT) ;
-	double 			  fx= 	   thrust:: get <2> (dDDDIT) ;
-	double 			  fy= 	   thrust:: get <3> (dDDDIT) ;
-	int    			  index=   thrust:: get <4> (dDDDIT) ; 
-	EType             nodeType=thrust:: get <5> (dDDDIT) ; 
-	//if (index == 0 || index==_numNodes-1 || index==( int (_numNodes/2)-1) || index == int (_numNodes/2) ) {
-	//if (( index == 0  || index==( int (_numNodes/2)-1) ) && (_curTime<=200 ) ) {
-		
-//	if (( index == 0  || index==560 ) && (_curTime<=200 ) ) {
-//		return thrust::make_tuple (locXOld+fx*_dt/_dampECM, locYOld) ;
-//	}
-//	else {
-		if (nodeType==excm) {		
-			return thrust::make_tuple (locXOld+fx*_dt/_dampECM, locYOld+fy*_dt/_dampECM) ;
-		}
-		else {
-//			if (_curTime<=200) {
-//				return thrust::make_tuple (locXOld, locYOld+0.36*_dt/_dampPeri) ;
-//			} 
-//			else {
-				return thrust::make_tuple (locXOld+fx*_dt/_dampPeri, locYOld+fy*_dt/_dampPeri) ;
-		//	}
-		}
-//	}
-}
+	__host__ __device__ DD operator() (const DDDDD & dDDDD) const  {
+		double 			  locXOld= thrust:: get <0> (dDDDD) ;
+		double 			  locYOld= thrust:: get <1> (dDDDD) ;
+		double 			  fx= 	   thrust:: get <2> (dDDDD) ;
+		double 			  fy= 	   thrust:: get <3> (dDDDD) ;
+		double            dampCoef=thrust:: get <4> (dDDDD) ; 
+		return thrust::make_tuple (locXOld+fx*_dt/dampCoef, locYOld+fy*_dt/dampCoef) ;
+	}
 }; 
 
 
@@ -786,6 +856,41 @@ struct SumBendForce: public thrust::unary_function<IDD,DD> {
 				  fBendCenterY+_fBendLeftYAddr[index_right]+_fBendRightYAddr[index_left]); 
 	}
 }; 
+
+
+
+
+struct AssignDamping : public thrust::unary_function<EType,double> {
+
+
+   double _dampBasal ;
+   double _dampBC ; 
+   double _dampApical ; 
+
+  __host__ __device__  AssignDamping  (double dampBasal, double dampBC, double dampApical ):
+   _dampBasal (dampBasal) , _dampBC (dampBC), _dampApical (dampApical) {
+					 }
+
+	__host__ __device__  double operator()(const EType & eCMNodeType) const {
+
+		if ( eCMNodeType==excm ){
+
+			return (_dampBasal) ; 
+		}
+			else if (eCMNodeType==bc2 ) {
+
+				return (_dampBC) ; 
+			}
+				else if ( eCMNodeType==perip ){
+
+					return (_dampApical) ; 
+				}
+					else {
+				 		return (0.0) ; // this is an indication of error
+					}
+	}
+	
+} ; 
 
 
 #endif

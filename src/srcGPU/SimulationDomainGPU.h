@@ -6,11 +6,13 @@
 #include "SceCells.h"
 #include "commonData.h"
 #include "NetworkInfo.h"
+#include "Solver.h"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <string>
 
+using namespace std; 
 /**
  * This class will control the process of stabilizing cell centers.
  */
@@ -28,11 +30,14 @@ public:
 /**
  * This class is responsible for domain-wise highest level logic, e.g. output animation.
  */
+
 class SimulationDomainGPU {
 	/**
 	 * Variable that contains information for nodes.
 	 * Handles node level interaction logic.
 	 */
+
+	Solver solver ; 
 	SceNodes nodes;
 
 	SceECM   eCM ;  // Ali 
@@ -41,6 +46,7 @@ class SimulationDomainGPU {
 	 * Handles cell level logics like growth and division.
 	 */
 	SceCells cells;
+
 	NetworkInfo netInfo;
 
 	std::vector<std::vector<PreT1State> > preT1Vec;
@@ -93,6 +99,7 @@ class SimulationDomainGPU {
 			std::vector<uint> &numOfInitActiveInternalNodeCounts,
 			std::vector<double> &initGrowProgVec, 
 			std::vector<ECellType> & eCellTypeV1,
+			std::vector<double> & mDppV,
 			std::vector<MembraneType1> & mTypeV
 			,double InitTimeStage);
 
@@ -159,6 +166,9 @@ public:
 
 	void outputVtkColorByCell_polySide(std::string scriptNameBase, int rank,
 			AnimationCriteria aniCri);
+
+	void outputResumeData(uint frame);
+
 	/**
 	 * Method that output the simulation domain as label matrix.
 	 * @param resultNameBase name of the labelMatrix series.
@@ -182,8 +192,11 @@ public:
 	void performAblation(AblationEvent &ablEvent);
 
 	CellsStatsData outputPolyCountData();
+	SingleCellData OutputStressStrain();
 
 	void processT1Info(int maxStepTraceBack, CellsStatsData &polyData);
 };
+
+
 
 #endif

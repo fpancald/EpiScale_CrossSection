@@ -110,6 +110,8 @@ void inputInitialData::addNewPoints(std::vector<SceInputPoint>& newPoints) {
 	}
 }
 
+
+
 bool AnimationCriteria::isPairQualify(uint seq1, uint seq2, double x1,
 		double y1, double z1, SceNodeType t1, uint r1, double x2, double y2,
 		double z2, SceNodeType t2, uint r2) {
@@ -236,11 +238,11 @@ void VtkAnimationData::outputVtkAni(std::string scriptNameBase, int rank) {
 	//AAMIRI finished writing the node tension vector
 
 	//AAMIRI starts writing external force vector
- 	fs << "VECTORS ExternalForce float" << endl;
+ 	fs << "VECTORS IntercellForce float" << endl;
 		for (uint i = 0; i < pointsAniData.size(); i++) {
 
-			fs << pointsAniData[i].extForce.x << " " << pointsAniData[i].extForce.y << " "
-					<< pointsAniData[i].extForce.z << endl;
+			fs << pointsAniData[i].intercellForce.x << " " << pointsAniData[i].intercellForce.y << " "
+					<< pointsAniData[i].intercellForce.z << endl;
 		}
 	//AAMIRI finished writing the node ext force vector
 
@@ -254,6 +256,118 @@ void VtkAnimationData::outputVtkAni(std::string scriptNameBase, int rank) {
 	}
 	fs.close();
 }
+
+
+void WriteResumeData::writeForMembAndIntnl(AniResumeData membData, AniResumeData intnlData, std::string membFileNameResume, std::string intnlFileNameResume, std::string uniqueSymbol) {
+
+	
+
+	std::string resumeFileNameM ="./resources/" + membFileNameResume + uniqueSymbol +  "Resume.cfg";
+	std::cout << "start to create resume file for membrane nodes " << resumeFileNameM << std::endl;
+	std::ofstream fsM;
+	fsM.open(resumeFileNameM.c_str());
+	
+	fsM << fixed << setprecision(4) << endl ;
+	for (int i=0 ; i< membData.nodePosArr.size() ; i++) {
+		 fsM<<membData.cellRank.at(i)     	   <<"	"<< 
+			  membData.nodePosArr.at(i).GetX() <<"	"<<
+			  membData.nodePosArr.at(i).GetY() <<"	"<<
+			  membData.signalLevel.at(i)	   <<"	"<<
+			  printNodeEnum(membData.nodeType.at(i))      <<endl;
+	}
+	fsM.close() ; 
+
+	string resumeFileNameI ="./resources/" + intnlFileNameResume + uniqueSymbol +  "Resume.cfg";
+	std::cout << "start to create resume file for internal nodes " << resumeFileNameI << std::endl;
+	std::ofstream fsI;
+	fsI.open(resumeFileNameI.c_str());
+	fsI << fixed << setprecision(4) << endl ; 
+	for (int i=0 ; i< intnlData.nodePosArr.size() ; i++) {
+		 fsI<<intnlData.cellRank.at(i) 		    <<"	"<< 
+			  intnlData.nodePosArr.at(i).GetX() <<"	"<<
+			  intnlData.nodePosArr.at(i).GetY() <<"	"<<
+			  0.0								<<"	"<<endl ; 
+	}
+	fsI.close() ; 
+}
+
+void WriteResumeData::writeForECM(AniResumeData eCMData, string uniqueSymbol) {
+	
+	string resumeFileName ="./resources/DataFileECM_" + uniqueSymbol +  "Resume.cfg";
+	std::cout << "start to create resume file for ECM nodes " << resumeFileName << std::endl;
+	std::ofstream fs;
+	fs.open(resumeFileName.c_str());
+    fs<< eCMData.nodePosArr.size() ;  	
+	fs << fixed << setprecision(4) << endl ;
+	for (int i=0 ; i< eCMData.nodePosArr.size() ; i++) {
+		fs <<eCMData.nodePosArr.at(i).GetX() <<"	"<<
+			 eCMData.nodePosArr.at(i).GetY() <<"	"<<
+			 printECMEnum(eCMData.nodeECMType.at(i))      <<endl;
+	}
+	fs.close() ; 
+}
+
+// This file it is being written but it is not used now. Becasue the number and type of the cells are fixed now.
+void WriteResumeData::writeForCells(AniResumeData cellsData, string uniqueSymbol) {
+	
+	string resumeFileName ="./resources/DataFileCell_" + uniqueSymbol +  "Resume.cfg";
+	std::cout << "start to create resume file for cells" << resumeFileName << std::endl;
+	std::ofstream fs;
+	fs.open(resumeFileName.c_str());
+    fs<< cellsData.nodePosArr.size() ;  	
+	fs << fixed << setprecision(4) << endl ;
+	for (int i=0 ; i< cellsData.nodePosArr.size() ; i++) {
+		fs<<cellsData.nodePosArr.at(i).GetX() <<"	"<<
+			cellsData.nodePosArr.at(i).GetY() <<"	"<<
+			0.0								  <<"	"<<
+			 printCellsEnum(cellsData.cellType.at(i))      <<endl;
+	}
+	fs.close() ; 
+}
+
+
+std:: string WriteResumeData::printECMEnum( EType eCMType) {
+	switch (eCMType) {
+		case perip:
+			return "perip" ; 
+		case excm:
+			return "excm" ;
+		case bc2:
+			return "bc2";
+	}
+}
+
+std:: string WriteResumeData::printNodeEnum( MembraneType1  nodeType) {
+	switch (nodeType) {
+		case lateralB:
+			return "lateralB" ; 
+		case lateralA:
+			return "lateralA" ;
+		case apical1:
+			return "apical1";
+		case basal1: 
+			return "basal1" ; 
+		case notAssigned1:
+			return "notAssigned1" ; 
+	}
+}
+
+std:: string WriteResumeData::printCellsEnum( ECellType  cellType) {
+	switch (cellType) {
+		case notActive:
+			return "notActive" ; 
+		case lateralA:
+			return "pouch" ;
+		case apical1:
+			return "peri";
+		case basal1: 
+			return "bc" ; 
+	}
+}
+
+
+
+
 
 std::vector<double> getArrayXComp(std::vector<CVector>& nodePosVec) {
 	std::vector<double> result;
@@ -559,17 +673,18 @@ vector<double> CellsStatsData::outputPolySides() {
 }
 
 //Ali
-void CellsStatsData::printStressStrain(std::string FileName1,double curTime,double Init_Displace) {
-  ofstream ofs1(FileName1.c_str(),ios::app); 
-//  double F_Ext=60*SceMechPara_M.F_Ext_Incline*curTime ; 
-  ofs1 << curTime<<","<<50*F_Ext_Out/(Cells_Extrem_Loc[3]-Cells_Extrem_Loc[2])<<","
-       <<((Cells_Extrem_Loc[1]-Cells_Extrem_Loc[0])-Init_Displace)/Init_Displace<<"," <<(MaxDistanceX-Init_Displace)/Init_Displace<<std::endl ; 
+void SingleCellData::printStressStrainToFile(string fileName, double curTime) {
+  ofstream ofs(fileName.c_str(),ios::app);
+  ofs << curTime<<","<<F_Ext_Out<<"," <<(Cells_Extrem_Loc[1]-Cells_Extrem_Loc[0])<<std::endl ; 
+}
+SingleCellData::SingleCellData(std::string fileName) {
+  ofstream ofs(fileName.c_str(),ios::out); 
+  ofs << "Time"<<","<<"Force"<<","<<"displacement"<<std::endl ;
+  ofs.close() ; 
+}
+SingleCellData::SingleCellData() {
+}
 
-}
-void CellsStatsData::printStressStrain_Ini(std::string FileName1) {
-  ofstream ofs1(FileName1.c_str(),ios::out); 
-  ofs1 << "Time"<<","<<"Stress"<<","<<"Strain_M"<<","<< "Strain_Center"<<std::endl ; 
-}
 
 //Ali     
 
